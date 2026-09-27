@@ -17,9 +17,9 @@
 
 깃허브 릴리즈에서 운영체제에 맞는 설치 파일을 다운로드하세요.
 
-[![Download for macOS](https://img.shields.io/badge/macOS%20(Apple%20Silicon)-Download%20.dmg-black?style=for-the-badge&logo=apple&logoColor=white)](#)
+[![Download for macOS](https://img.shields.io/badge/macOS%20(Apple%20Silicon)-Download%20.dmg-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/v0.1.5/Font.Finder_aarch64.dmg)
 &nbsp;&nbsp;
-[![Download for Windows](https://img.shields.io/badge/Windows%20(x64)-Download%20.msi%20%2F%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
+[![Download for Windows](https://img.shields.io/badge/Windows%20(x64)-Download%20.msi%20%2F%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/v0.1.5/Font.Finder_x64-setup.exe)
 
 <p align="center">
   <sub>* 위 버튼 클릭 시 최신 릴리즈 다운로드 링크로 연결됩니다.</sub>
@@ -47,7 +47,7 @@
 | **macOS**   | Apple Silicon | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](#) |
 | **Windows** | x64 (64-bit)  | `.exe` / `.msi` | [**Windows (x64) 다운로드**](#)         |
 
-> 💡 추후 업데이트되는 새 버전은 [Releases 페이지](https://github.com/)에서도 확인하실 수 있습니다.
+> 💡 추후 업데이트되는 새 버전은 [Releases 페이지](https://github.com/monodle/fontfinder/releases)에서도 확인하실 수 있습니다.
 
 ---
 
@@ -56,9 +56,21 @@
 #### 🍏 macOS 설치 및 실행 시 참고사항
 1. 다운로드한 `.dmg` 파일을 더블 클릭하여 실행합니다.
 2. `FontFinder.app` 아이콘을 `Applications` 폴더로 드래그 앤 드롭합니다.
-3. **"확인되지 않은 개발자가 배포했기 때문에 열 수 없습니다"** 경고가 표시되는 경우:
-   - `Finder` > `응용 프로그램`에서 **FontFinder**를 **우클릭(또는 Control + 클릭)** 후 **[열기]**를 선택합니다.
-   - 대화상자에서 **[열기]**를 다시 클릭하면 이후부터는 정상 실행됩니다.
+3. **"확인되지 않은 개발자가 배포했기 때문에 열 수 없습니다"** 또는 **손상 경고**가 표시되는 경우 아래 방법 중 하나를 진행해 주세요.
+
+   **방법 1. 터미널 명령어로 해결 (권장)**
+   - `Terminal(터미널)` 앱을 실행합니다. (`Command + Space` > `Terminal` 입력 후 엔터)
+   - 아래 명령어를 복사하여 붙여넣고 엔터를 누릅니다:
+     ```bash
+     xattr -cr /Applications/FontFinder.app
+     ```
+   - 이후 `FontFinder.app`을 실행하면 정상 동작합니다.
+
+   **방법 2. 시스템 설정에서 허용**
+   - 경고창이 나타나면 **[확인]**을 누릅니다.
+   - Mac 좌측 상단 **Apple 메뉴() > [시스템 설정...]**으로 이동합니다.
+   - **[개인정보 보호 및 보안]** 탭으로 이동하여 하단 **보안** 섹션을 확인합니다.
+   - *"FontFinder.app은 확인되지 않은 개발자가 배포했기 때문에 사용이 차단되었습니다."* 안내 옆의 **[확인 없이 열기]**(또는 **[그래도 열기]**)를 클릭합니다.
 
 #### 🪟 Windows 설치 및 실행 시 참고사항
 1. 다운로드한 설치 파일(`.exe` 또는 `.msi`)을 실행합니다.
@@ -77,26 +89,26 @@
 - 🔍 **정밀 폰트 비교 (Font Diff)**: 최대 5개 폰트를 한 캔버스에 레이어로 겹쳐(Overlay) 투명도·오프셋·외곽선 모드로 글리프 형태와 자폭의 미세한 차이를 정밀하게 비교 분석
 - 📁 **컬렉션 & 세트 관리**: 프로젝트별, 스타일별(고딕, 명조, 손글씨 등) 세트를 생성하고 즐겨찾기 관리
 - 🔌 **원클릭 폰트 임시 활성화 & 설치**: 디자인 프로그램 작업 중에만 폰트를 켜두거나 시스템 영구 설치 가능
-- 🌐 **7개 언어 다국어 인터페이스**: 한국어, 영어, 스페인어, 일본어, 중국어(간체/번체), 독일어 지원
+- 🌐 **7개 언어 다국어 인터페이스**: 한국어, 영어, 스페인어, 일본어, 중국어(간체/번체), 독일어, 프랑스어 지원
 
 ---
 
 ## 📂 지원 폰트 포맷
 
-| 포맷 확장자 | 설명                                           |  지원 여부  |
-| :---------- | :--------------------------------------------- | :---------: |
-| `.ttf`      | TrueType Font                                  | ✅ 완벽 지원 |
-| `.otf`      | OpenType Font                                  | ✅ 완벽 지원 |
-| `.woff`     | Web Open Font Format                           | ✅ 완벽 지원 |
-| `.ttc`      | TrueType Collection (단일 파일 내 복수 패밀리) | ✅ 완벽 지원 |
+| 포맷 확장자 | 설명                                           | 지원 여부 |
+| :---------- | :--------------------------------------------- | :-------: |
+| `.ttf`      | TrueType Font                                  |  ✅ 지원   |
+| `.otf`      | OpenType Font                                  |  ✅ 지원   |
+| `.woff`     | Web Open Font Format                           |  ✅ 지원   |
+| `.ttc`      | TrueType Collection (단일 파일 내 복수 패밀리) |  ✅ 지원   |
 
 ---
 
 ## 🛠️ 기술 스택
 
-- **Frontend**: React 19, TypeScript, Vite 6, Tailwind CSS v4, `@tanstack/react-virtual`, `lucide-react`
-- **Backend**: Tauri v2, Rust 2021 Edition, `ttf-parser`, `rayon`, `rusqlite`
-- **Native OS Font API**: macOS CoreText FFI / Windows Win32 GDI
+- **Frontend**: `React 19`, `TypeScript`, `Vite 6`, `Tailwind CSS v4`, `@tanstack/react-virtual`, `lucide-react`
+- **Backend**: `Tauri v2`, `Rust 2021 Edition`, `ttf-parser`, `rayon`, `rusqlite`
+- **Native OS Font API**: `macOS CoreText FFI` / `Windows Win32 GDI`
 
 ---
 
