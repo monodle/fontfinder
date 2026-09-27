@@ -42,10 +42,10 @@
 
 ### 1. 다운로드 링크
 
-| 플랫폼      | 아키텍처      | 형식            | 다운로드                                |
-| :---------- | :------------ | :-------------- | :-------------------------------------- |
-| **macOS**   | Apple Silicon | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](#) |
-| **Windows** | x64 (64-bit)  | `.exe` / `.msi` | [**Windows (x64) 다운로드**](#)         |
+| 플랫폼      | 아키텍처      | 형식            | 다운로드                                                                                                                     |
+| :---------- | :------------ | :-------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **macOS**   | Apple Silicon | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](https://github.com/monodle/fontfinder/releases/download/v0.1.5/Font.Finder_aarch64.dmg) |
+| **Windows** | x64 (64-bit)  | `.exe` / `.msi` | [**Windows (x64) 다운로드**](https://github.com/monodle/fontfinder/releases/download/v0.1.5/Font.Finder_x64-setup.exe)       |
 
 > 💡 추후 업데이트되는 새 버전은 [Releases 페이지](https://github.com/monodle/fontfinder/releases)에서도 확인하실 수 있습니다.
 
