@@ -1,0 +1,773 @@
+import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-dialog";
+import { FontMetadata, FontSet, CustomFolder } from "../types/font";
+import { fontService } from "../services/fontService";
+import { getRandomLibraryColor } from "../config/colorPresets";
+import { isPathInFolder } from "../utils/pathUtils";
+import { isFontFavorite } from "../utils/fontSortUtils";
+
+interface UseFontActionsProps {
+  fonts: FontMetadata[];
+  unpluggedFonts?: FontMetadata[];
+  setFonts: React.Dispatch<React.SetStateAction<FontMetadata[]>>;
+  filteredFonts: FontMetadata[];
+  selectedFontIds: Set<string>;
+  favoriteIds: Set<string>;
+  setFavoriteIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  activatedFontIds: Set<string>;
+  setActivatedFontIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  sets: FontSet[];
+  setSets: React.Dispatch<React.SetStateAction<FontSet[]>>;
+  customFolders: CustomFolder[];
+  setCustomFolders: React.Dispatch<React.SetStateAction<CustomFolder[]>>;
+  customFoldersRef: React.MutableRefObject<CustomFolder[]>;
+  activeCategory: string;
+  setActiveCategory: (cat: string) => void;
+  setIsLoading: (loading: boolean) => void;
+  loadSystemFonts: (foldersToScan?: CustomFolder[]) => Promise<FontMetadata[]>;
+  loadDbState: () => Promise<void>;
+  refreshSets?: () => Promise<any>;
+  refreshList?: () => Promise<void>;
+  handleClearSelection: () => void;
+  showToast: (message: string) => void;
+}
+
+export function useFontActions({
+  fonts,
+  unpluggedFonts,
+  setFonts,
+  filteredFonts,
+  selectedFontIds,
+  favoriteIds,
+  setFavoriteIds,
+  activatedFontIds,
+  setActivatedFontIds,
+  setSets,
+  setCustomFolders,
+  customFoldersRef,
+  activeCategory,
+  setActiveCategory,
+  setIsLoading,
+  loadSystemFonts,
+  loadDbState,
+  refreshSets,
+  refreshList,
+  handleClearSelection,
+  showToast,
+}: UseFontActionsProps) {
+  const { t } = useTranslation();
+
+  // 즐겨찾기 토글 (비활성화 상태와 정상 상태 간 해시 키 동기화 지원)
+  const handleToggleFavorite = useCallback(
+    async (fontId: string) => {
+      try {
+        const targetFont =
+          fonts.find((f) => f.id === fontId) ||
+          unpluggedFonts?.find((f) => f.id === fontId) ||
+          filteredFonts.find((f) => f.id === fontId);
+
+        const hashKey = targetFont?.file_hash
+          ? `${targetFont.file_hash}:${targetFont.font_index}`
+          : fontId;
+
+        const isCurrentFav = targetFont
+          ? isFontFavorite(targetFont, favoriteIds)
+          : favoriteIds.has(fontId);
+
+        // 현재 즐겨찾기 Set에 존재하는 관련 키 수집
+        const matchingKeys = new Set<string>();
+        if (favoriteIds.has(fontId)) matchingKeys.add(fontId);
+        if (hashKey && favoriteIds.has(hashKey)) matchingKeys.add(hashKey);
+        if (targetFont?.file_hash && favoriteIds.has(targetFont.file_hash)) {
+          matchingKeys.add(targetFont.file_hash);
+        }
+
+        if (isCurrentFav) {
+          // 즐겨찾기 해제: 매칭된 모든 키를 DB 및 메모리에서 제거
+          const keysToRemove = matchingKeys.size > 0 ? Array.from(matchingKeys) : [fontId];
+          for (const k of keysToRemove) {
+            await fontService.toggleFavorite(k);
+          }
+          setFavoriteIds((prev) => {
+            const next = new Set(prev);
+            keysToRemove.forEach((k) => next.delete(k));
+            next.delete(fontId);
+            if (hashKey) next.delete(hashKey);
+            return next;
+          });
+        } else {
+          // 즐겨찾기 등록: 영구 식별을 위해 hashKey 우선 등록
+          const keyToAdd = hashKey || fontId;
+          await fontService.toggleFavorite(keyToAdd);
+          setFavoriteIds((prev) => {
+            const next = new Set(prev);
+            next.add(keyToAdd);
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error("즐겨찾기 토글 실패:", err);
+      }
+    },
+    [favoriteIds, filteredFonts, fonts, setFavoriteIds, unpluggedFonts]
+  );
+
+  // 일괄 즐겨찾기 변경
+  const handleBulkFavorite = useCallback(
+    async (fontIds: string[], add: boolean) => {
+      try {
+        for (const fontId of fontIds) {
+          const targetFont =
+            fonts.find((f) => f.id === fontId) ||
+            unpluggedFonts?.find((f) => f.id === fontId) ||
+            filteredFonts.find((f) => f.id === fontId);
+
+          const isCurrentFav = targetFont
+            ? isFontFavorite(targetFont, favoriteIds)
+            : favoriteIds.has(fontId);
+
+          if ((add && !isCurrentFav) || (!add && isCurrentFav)) {
+            await handleToggleFavorite(fontId);
+          }
+        }
+        handleClearSelection();
+      } catch (err) {
+        console.error("일괄 즐겨찾기 변경 실패:", err);
+      }
+    },
+    [favoriteIds, filteredFonts, fonts, handleClearSelection, handleToggleFavorite, unpluggedFonts]
+  );
+
+  // 단일 폰트 임시 활성화/비활성화
+  const handleToggleActivate = useCallback(
+    async (font: FontMetadata) => {
+      if (font.source === "system" || font.source === "user") {
+        showToast(t("toast.already_installed"));
+        return;
+      }
+      if (font.install_status === "deleted") {
+        showToast(t("toast.deleted_activate_error", "출처 폴더가 제거된 폰트는 활성화할 수 없습니다."));
+        return;
+      }
+      if (font.isMissing || font.install_status === "unplugged") {
+        showToast(t("toast.unplugged_activate_error", "폰트 원본 파일이 연결되어 있지 않습니다."));
+        return;
+      }
+      const isCurrentlyActive = activatedFontIds.has(font.id);
+      try {
+        if (isCurrentlyActive) {
+          await fontService.deactivateFont(font.file_path, font.id);
+          setActivatedFontIds((prev) => {
+            const next = new Set(prev);
+            next.delete(font.id);
+            return next;
+          });
+          showToast(t("toast.deactivated", { name: font.family_name }));
+        } else {
+          await fontService.activateFont(font.file_path, font.id);
+          setActivatedFontIds((prev) => {
+            const next = new Set(prev);
+            next.add(font.id);
+            return next;
+          });
+          showToast(t("toast.activated", { name: font.family_name }));
+        }
+      } catch (err) {
+        showToast(t("toast.activate_failed", { error: String(err) }));
+      }
+    },
+    [activatedFontIds, setActivatedFontIds, showToast, t]
+  );
+
+  // 일괄 임시 활성화/비활성화
+  const handleBulkActivate = useCallback(
+    async (fontIds: string[], activate: boolean) => {
+      const targetFonts = fonts.filter(
+        (f) =>
+          fontIds.includes(f.id) &&
+          f.source !== "system" &&
+          f.source !== "user" &&
+          !f.isMissing &&
+          f.install_status !== "unplugged" &&
+          f.install_status !== "deleted"
+      );
+      if (targetFonts.length === 0) {
+        showToast(t("toast.no_external_selected_activate"));
+        return;
+      }
+      try {
+        const items = targetFonts.map((f) => ({ font_id: f.id, path: f.file_path }));
+        if (activate) {
+          const count = await fontService.activateFonts(items);
+          setActivatedFontIds((prev) => {
+            const next = new Set(prev);
+            targetFonts.forEach((f) => next.add(f.id));
+            return next;
+          });
+          showToast(t("toast.bulk_activated", { count }));
+        } else {
+          const count = await fontService.deactivateFonts(items);
+          setActivatedFontIds((prev) => {
+            const next = new Set(prev);
+            targetFonts.forEach((f) => next.delete(f.id));
+            return next;
+          });
+          showToast(t("toast.bulk_deactivated", { count }));
+        }
+        handleClearSelection();
+      } catch (err) {
+        showToast(t("toast.bulk_activate_failed", { error: String(err) }));
+      }
+    },
+    [fonts, handleClearSelection, setActivatedFontIds, showToast, t]
+  );
+
+  // 일괄 설치 (설치 전 임시 활성화 해제 시 font_id 정확히 매핑하여 DB 고아 레코드 방지)
+  const handleBulkInstall = useCallback(async () => {
+    const selectedFonts = filteredFonts.filter((f) => selectedFontIds.has(f.id));
+    const installable = selectedFonts.filter(
+      (f) =>
+        f.source !== "system" &&
+        f.source !== "user" &&
+        !f.isMissing &&
+        f.install_status !== "unplugged" &&
+        f.install_status !== "deleted"
+    );
+    if (installable.length === 0) {
+      showToast(t("toast.no_external_selected_install"));
+      return;
+    }
+    try {
+      // 1. 임시 활성화된 글꼴이 있다면 먼저 DB 및 OS에서 정확한 font_id와 함께 해제
+      const activatedToDeactivate = installable.filter((f) => activatedFontIds.has(f.id));
+      if (activatedToDeactivate.length > 0) {
+        const deactivateItems = activatedToDeactivate.map((f) => ({
+          font_id: f.id,
+          path: f.file_path,
+        }));
+        try {
+          await fontService.deactivateFonts(deactivateItems);
+          setActivatedFontIds((prev) => {
+            const next = new Set(prev);
+            activatedToDeactivate.forEach((f) => next.delete(f.id));
+            return next;
+          });
+        } catch (deactErr) {
+          console.warn("일괄 설치 전 임시 활성화 해제 오류(설치 계속 진행):", deactErr);
+        }
+      }
+
+      // 2. 시스템 등록 진행
+      const paths = installable.map((f) => f.file_path);
+      const installed = await fontService.installFonts(paths);
+      showToast(t("toast.bulk_installed", { count: installed.length }));
+      setActivatedFontIds((prev) => {
+        const next = new Set(prev);
+        installable.forEach((f) => next.delete(f.id));
+        return next;
+      });
+      handleClearSelection();
+      if (refreshList) {
+        await refreshList();
+      } else {
+        await loadSystemFonts();
+      }
+    } catch (err) {
+      showToast(t("toast.install_failed", { error: String(err) }));
+    }
+  }, [
+    activatedFontIds,
+    filteredFonts,
+    handleClearSelection,
+    loadSystemFonts,
+    refreshList,
+    selectedFontIds,
+    setActivatedFontIds,
+    showToast,
+    t,
+  ]);
+
+  // 일괄 삭제
+  const handleBulkUninstall = useCallback(async () => {
+    const selectedFonts = filteredFonts.filter((f) => selectedFontIds.has(f.id));
+    const uninstallable = selectedFonts.filter((f) => f.source === "user");
+    if (uninstallable.length === 0) {
+      showToast(t("toast.no_user_selected_uninstall"));
+      return;
+    }
+    try {
+      const paths = uninstallable.map((f) => f.file_path);
+      const count = await fontService.uninstallFonts(paths);
+      showToast(t("toast.bulk_uninstalled", { count }));
+      handleClearSelection();
+      if (refreshList) {
+        await refreshList();
+      } else {
+        await loadSystemFonts();
+      }
+    } catch (err) {
+      showToast(t("toast.uninstall_failed", { error: String(err) }));
+    }
+  }, [filteredFonts, handleClearSelection, loadSystemFonts, refreshList, selectedFontIds, showToast, t]);
+
+  // 세트 생성
+  const handleCreateSet = useCallback(
+    async (name: string, color?: string) => {
+      try {
+        const finalColor = color || getRandomLibraryColor();
+        const newSet = await fontService.createSet(name, finalColor);
+        setSets((prev) => {
+          const next = [newSet, ...prev];
+          void fontService.setSetting("set_order", JSON.stringify(next.map((s) => s.id)));
+          return next;
+        });
+        setActiveCategory(`set:${newSet.id}`);
+      } catch (err) {
+        console.error("세트 생성 실패:", err);
+      }
+    },
+    [setActiveCategory, setSets]
+  );
+
+  // 세트 삭제
+  const handleDeleteSet = useCallback(
+    async (setId: number) => {
+      try {
+        await fontService.deleteSet(setId);
+        setSets((prev) => {
+          const next = prev.filter((s) => s.id !== setId);
+          void fontService.setSetting("set_order", JSON.stringify(next.map((s) => s.id)));
+          return next;
+        });
+        if (activeCategory === `set:${setId}`) {
+          setActiveCategory("all");
+        }
+      } catch (err) {
+        console.error("세트 삭제 실패:", err);
+      }
+    },
+    [activeCategory, setActiveCategory, setSets]
+  );
+
+  // 단일 세트에 폰트 추가
+  const handleAddToSet = useCallback(
+    async (setId: number, fontId: string) => {
+      try {
+        const targetFont = fonts.find((f) => f.id === fontId);
+        const key = targetFont?.file_hash
+          ? `${targetFont.file_hash}:${targetFont.font_index}`
+          : fontId;
+        await fontService.addFontToSet(setId, key);
+        if (refreshSets) {
+          await refreshSets();
+        } else {
+          await loadDbState();
+        }
+        showToast(
+          t("toast.added_to_set", {
+            name: targetFont?.full_name || t("font_item.badge_external"),
+            defaultValue: `'${targetFont?.full_name || ""}' 글꼴이 서재에 등록되었습니다.`,
+          })
+        );
+      } catch (err) {
+        console.error("세트에 추가 실패:", err);
+      }
+    },
+    [fonts, loadDbState, refreshSets, showToast, t]
+  );
+
+  // 일괄 세트 추가
+  const handleBulkAddToSet = useCallback(
+    async (setId: number, fontIds: string[]) => {
+      try {
+        for (const fontId of fontIds) {
+          const targetFont = fonts.find((f) => f.id === fontId);
+          const key = targetFont?.file_hash
+            ? `${targetFont.file_hash}:${targetFont.font_index}`
+            : fontId;
+          await fontService.addFontToSet(setId, key);
+        }
+        if (refreshSets) {
+          await refreshSets();
+        } else {
+          await loadDbState();
+        }
+        handleClearSelection();
+        showToast(
+          t("toast.bulk_added_to_set", {
+            count: fontIds.length,
+            defaultValue: `${fontIds.length}개 글꼴이 서재에 등록되었습니다.`,
+          })
+        );
+      } catch (err) {
+        console.error("일괄 세트 추가 실패:", err);
+      }
+    },
+    [fonts, handleClearSelection, loadDbState, refreshSets, showToast, t]
+  );
+
+  // 단일 세트에서 폰트 제거
+  const handleRemoveFromSet = useCallback(
+    async (setId: number, fontId: string) => {
+      try {
+        const targetFont = fonts.find((f) => f.id === fontId);
+        const key = targetFont?.file_hash
+          ? `${targetFont.file_hash}:${targetFont.font_index}`
+          : fontId;
+        await fontService.removeFontFromSet(setId, key);
+        if (key !== fontId) {
+          await fontService.removeFontFromSet(setId, fontId).catch(() => { });
+        }
+        if (refreshSets) {
+          await refreshSets();
+        } else {
+          await loadDbState();
+        }
+        handleClearSelection();
+        showToast(
+          t("toast.removed_from_set", {
+            name: targetFont?.full_name || t("font_item.badge_external"),
+            defaultValue: "서재에서 제거되었습니다.",
+          })
+        );
+      } catch (err) {
+        console.error("서재에서 제거 실패:", err);
+        showToast(
+          t("toast.remove_from_set_failed", {
+            error: String(err),
+            defaultValue: `서재에서 제거 실패: ${String(err)}`,
+          })
+        );
+      }
+    },
+    [fonts, handleClearSelection, loadDbState, refreshSets, showToast, t]
+  );
+
+  // 일괄 세트에서 폰트 제거
+  const handleBulkRemoveFromSet = useCallback(
+    async (setId: number, fontIds: string[]) => {
+      try {
+        for (const fontId of fontIds) {
+          const targetFont = fonts.find((f) => f.id === fontId);
+          const key = targetFont?.file_hash
+            ? `${targetFont.file_hash}:${targetFont.font_index}`
+            : fontId;
+          await fontService.removeFontFromSet(setId, key);
+          if (key !== fontId) {
+            await fontService.removeFontFromSet(setId, fontId).catch(() => { });
+          }
+        }
+        if (refreshSets) {
+          await refreshSets();
+        } else {
+          await loadDbState();
+        }
+        handleClearSelection();
+        showToast(
+          t("toast.bulk_removed_from_set", {
+            count: fontIds.length,
+            defaultValue: `${fontIds.length}개 글꼴이 서재에서 제거되었습니다.`,
+          })
+        );
+      } catch (err) {
+        console.error("일괄 서재 제거 실패:", err);
+        showToast(
+          t("toast.remove_from_set_failed", {
+            error: String(err),
+            defaultValue: `서재에서 제거 실패: ${String(err)}`,
+          })
+        );
+      }
+    },
+    [fonts, handleClearSelection, loadDbState, refreshSets, showToast, t]
+  );
+
+  // 여러 폴더 경로 일괄 추가 (드래그앤드롭 및 탐색기 공용)
+  const handleAddFoldersByPaths = useCallback(
+    async (paths: string[]) => {
+      if (!paths || paths.length === 0) return;
+
+      try {
+        // 1. 경로 유효성 및 디렉토리 판별 (Rust 백엔드 커맨드)
+        const pathInfos = await fontService.checkPaths(paths);
+        const dirInfos = pathInfos.filter((info) => info.exists && info.is_dir);
+
+        if (dirInfos.length === 0) {
+          showToast(
+            t("toast.drop_folder_only", {
+              defaultValue: "폴더를 끌어다 놓아주세요. (단일 파일 제외)",
+            })
+          );
+          return;
+        }
+
+        // 2. 이미 존재하는 폴더 필터링
+        const existingPaths = new Set(customFoldersRef.current.map((f) => f.path));
+        const newDirs = dirInfos.filter((d) => !existingPaths.has(d.path));
+
+        // 모든 폴더가 이미 등록되어 있는 경우
+        if (newDirs.length === 0) {
+          const firstExisting = dirInfos[0];
+          setActiveCategory(`folder:${firstExisting.path}`);
+          showToast(
+            t("toast.folder_already_exists", {
+              name: firstExisting.name,
+              defaultValue: `'${firstExisting.name}' 폴더는 이미 서재에 등록되어 있습니다.`,
+            })
+          );
+          return;
+        }
+
+        setIsLoading(true);
+
+        const newFoldersToAdd: CustomFolder[] = [];
+        const allNewFonts: FontMetadata[] = [];
+        let lastAddedPath = "";
+
+        for (const dir of newDirs) {
+          const folderFonts = await fontService.scanDirectory(dir.path);
+          const folderName = dir.name || dir.path.split(/[\\/]/).pop() || dir.path;
+          const randomColor = getRandomLibraryColor();
+          const dbFolder = await fontService.addFolder(dir.path, folderName, randomColor);
+
+          newFoldersToAdd.push({
+            id: dbFolder.id,
+            path: dir.path,
+            name: folderName,
+            color: dbFolder.color || randomColor,
+            count: folderFonts.length,
+          });
+
+          allNewFonts.push(...folderFonts);
+          lastAddedPath = dir.path;
+          await fontService.watchFolder(dir.path);
+        }
+
+        // 3. 서재 목록 및 순서 저장
+        const nextFolders = [
+          ...customFoldersRef.current.filter((f) => !newDirs.some((d) => d.path === f.path)),
+          ...newFoldersToAdd,
+        ];
+        setCustomFolders(nextFolders);
+        void fontService.setSetting("folder_order", JSON.stringify(nextFolders.map((f) => f.path)));
+
+        // 4. 전체 폰트 목록에 새 폰트 병합
+        setFonts((prev) => {
+          const existingFontPaths = new Set(prev.map((f) => f.file_path));
+          const freshFonts = allNewFonts.filter((f) => !existingFontPaths.has(f.file_path));
+          return [...prev, ...freshFonts];
+        });
+
+        // 5. 마지막 추가된 폴더로 카테고리 전환
+        if (lastAddedPath) {
+          setActiveCategory(`folder:${lastAddedPath}`);
+        }
+
+        // 6. 완료 토스트 알림
+        if (newFoldersToAdd.length === 1) {
+          const added = newFoldersToAdd[0];
+          showToast(t("toast.folder_added", { name: added.name, count: added.count }));
+        } else {
+          showToast(
+            t("toast.folders_added", {
+              count: newFoldersToAdd.length,
+              fontCount: allNewFonts.length,
+              defaultValue: `${newFoldersToAdd.length}개의 폴더에서 총 ${allNewFonts.length}개의 폰트를 서재에 등록했습니다.`,
+            })
+          );
+        }
+      } catch (error) {
+        console.error("폴더 추가 실패:", error);
+        showToast(t("toast.folder_scan_failed", { error: String(error) }));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [customFoldersRef, getRandomLibraryColor, setActiveCategory, setCustomFolders, setFonts, setIsLoading, showToast, t]
+  );
+
+  // 폴더 추가 다이얼로그
+  const handleAddFolder = useCallback(async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: t("toast.folder_dialog_title"),
+      });
+
+      if (!selected || typeof selected !== "string") {
+        return;
+      }
+
+      await handleAddFoldersByPaths([selected]);
+    } catch (error) {
+      console.error("폴더 다이얼로그 실패:", error);
+    }
+  }, [handleAddFoldersByPaths, t]);
+
+  // 사이드바 폴더 선택 (필요 시 보충 스캔)
+  const handleSelectFolder = useCallback(
+    async (folderPath: string) => {
+      setActiveCategory(`folder:${folderPath}`);
+      const hasFonts = fonts.some((f) => isPathInFolder(f.file_path, folderPath));
+
+      if (!hasFonts) {
+        try {
+          setIsLoading(true);
+          const folderFonts = await fontService.scanDirectory(folderPath);
+          setFonts((prev) => {
+            const existingPaths = new Set(prev.map((f) => f.file_path));
+            const newOnes = folderFonts.filter((f) => !existingPaths.has(f.file_path));
+            return [...prev, ...newOnes];
+          });
+          setCustomFolders((prev) =>
+            prev.map((f) => (f.path === folderPath ? { ...f, count: folderFonts.length } : f))
+          );
+        } catch (err) {
+          console.error("폴더 재스캔 실패:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    },
+    [fonts, setActiveCategory, setCustomFolders, setFonts, setIsLoading]
+  );
+
+  // 커스텀 폴더 제거
+  const handleRemoveFolder = useCallback(
+    async (folderPath: string) => {
+      // 1. 해당 폴더 내 폰트 수집
+      const folderFonts = fonts.filter((f) => isPathInFolder(f.file_path, folderPath));
+      const remainingFonts = fonts.filter((f) => !isPathInFolder(f.file_path, folderPath));
+
+      // 2. 활성화된 폰트 처리 (다른 폴더에 복제본이 있으면 인계, 없으면 안전 해제)
+      for (const font of folderFonts) {
+        if (activatedFontIds.has(font.id)) {
+          // 다른 활성 폴더에 동일 해시 폰트가 있는지 검사
+          const counterpart = font.file_hash
+            ? remainingFonts.find(
+              (rf) => rf.file_hash === font.file_hash && rf.font_index === font.font_index
+            )
+            : undefined;
+
+          if (counterpart) {
+            // 다른 폴더의 파일로 활성화 인계
+            void fontService.deactivateFont(font.file_path, font.id);
+            void fontService.activateFont(counterpart.file_path, counterpart.id);
+            setActivatedFontIds((prev) => {
+              const next = new Set(prev);
+              next.delete(font.id);
+              next.add(counterpart.id);
+              return next;
+            });
+          } else {
+            // 어디에도 없으면 OS에서 안전하게 해제
+            void fontService.deactivateFont(font.file_path, font.id);
+            setActivatedFontIds((prev) => {
+              const next = new Set(prev);
+              next.delete(font.id);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 3. 백엔드 폴더 삭제 (세트/즐겨찾기 보존 캐시는 백엔드에서 유지됨)
+      await fontService.removeFolder(folderPath);
+
+      // 4. 프론트엔드 상태 갱신
+      setCustomFolders((prev) => {
+        const next = prev.filter((f) => f.path !== folderPath);
+        void fontService.setSetting("folder_order", JSON.stringify(next.map((f) => f.path)));
+        return next;
+      });
+      setFonts(remainingFonts);
+      void fontService.unwatchFolder(folderPath);
+
+      if (activeCategory === `folder:${folderPath}`) {
+        setActiveCategory("all");
+      }
+
+      if (refreshSets) {
+        await refreshSets();
+      }
+
+      showToast(t("toast.folder_removed"));
+    },
+    [activatedFontIds, activeCategory, fonts, refreshSets, setActiveCategory, setActivatedFontIds, setCustomFolders, setFonts, showToast, t]
+  );
+
+  // 폴더 위치 재지정 (새 위치 찾기)
+  const handleRelinkFolder = useCallback(
+    async (oldPath: string) => {
+      try {
+        const selected = await open({
+          directory: true,
+          multiple: false,
+          title: t("folder.relink_dialog_title"),
+        });
+
+        if (!selected || typeof selected !== "string") {
+          return;
+        }
+
+        setIsLoading(true);
+        const folderName = selected.split(/[\\/]/).pop() || selected;
+        await fontService.relinkFolder(oldPath, selected, folderName);
+        await loadDbState();
+        showToast(t("toast.folder_relinked"));
+      } catch (err) {
+        console.error("폴더 재연결 실패:", err);
+        showToast(t("toast.folder_relink_failed"));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [loadDbState, setIsLoading, showToast, t]
+  );
+
+  // 폴더 및 관련 데이터 완전 제거
+  const handleRemoveFolderWithData = useCallback(
+    async (folderPath: string) => {
+      try {
+        await fontService.removeFolderWithData(folderPath);
+        setCustomFolders((prev) => {
+          const next = prev.filter((f) => f.path !== folderPath);
+          void fontService.setSetting("folder_order", JSON.stringify(next.map((f) => f.path)));
+          return next;
+        });
+        setFonts((prev) => prev.filter((f) => !isPathInFolder(f.file_path, folderPath)));
+        if (activeCategory === `folder:${folderPath}`) {
+          setActiveCategory("all");
+        }
+        await loadDbState();
+        showToast(t("toast.folder_removed"));
+      } catch (err) {
+        console.error("폴더 완전 제거 실패:", err);
+      }
+    },
+    [activeCategory, loadDbState, setActiveCategory, setCustomFolders, setFonts, showToast, t]
+  );
+
+  return {
+    handleToggleFavorite,
+    handleBulkFavorite,
+    handleToggleActivate,
+    handleBulkActivate,
+    handleBulkInstall,
+    handleBulkUninstall,
+    handleCreateSet,
+    handleDeleteSet,
+    handleAddToSet,
+    handleBulkAddToSet,
+    handleRemoveFromSet,
+    handleBulkRemoveFromSet,
+    handleAddFolder,
+    handleAddFoldersByPaths,
+    handleSelectFolder,
+    handleRemoveFolder,
+    handleRelinkFolder,
+    handleRemoveFolderWithData,
+  };
+}

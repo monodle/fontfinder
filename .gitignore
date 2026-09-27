@@ -1,0 +1,161 @@
+############################################################
+# 🧱 빌드 / 배포 / 의존성 관련 파일 및 디렉터리
+############################################################
+# 데이터 및 분석용 대용량 파일
+attach/data/
+attach/pull/
+*.csv
+*.tsv
+*.xlsx
+*.pkl
+*.parquet
+
+# Node.js 의존성
+node_modules/
+*.tgz
+
+# 🚀 주요 프레임워크 빌드 및 정적 결과물
+dist/
+build/
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+.astro/
+out/
+pkg/
+target/
+src-tauri/target/
+src-tauri/binaries/
+
+# 테스트 및 커버리지 리포트
+coverage/
+.nyc_output/
+
+# Python 빌드 및 배포 아티팩트
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.whl
+*.egg
+*.egg-info/
+pip-wheel-metadata/
+
+############################################################
+# 🧩 환경 변수 / 민감한 정보 (보안 필수)
+############################################################
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+config/secrets.yml
+*.key
+*.pem
+*.pfx
+*.jks
+
+############################################################
+# 🧾 로그 / 디버그 / PID 파일
+############################################################
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+*.pid
+test-results/
+
+############################################################
+# 🧹 캐시 및 임시 파일
+############################################################
+# 빌드 도구 캐시 (Vite, Turbo, Nx 등)
+.cache/
+.turbo/
+.nx/
+.vercel/
+.temp/
+temp/
+tmp/
+
+# 에디터 및 시스템 임시 작업 파일
+*.tmp
+*.swp
+*.swo
+*~
+
+############################################################
+# 💻 운영체제별 임시 파일
+############################################################
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+############################################################
+# 🧰 IDE / 에디터 관련 설정 파일
+############################################################
+.idea/
+# .agents/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.vcxproj*
+*.workspace
+*.project
+.settings/
+.continueignore
+.kilocodeignore
+
+############################################################
+# 🔀 Git 충돌 / 백업 파일
+############################################################
+*.BACKUP
+*.BASE
+*.LOCAL
+*.REMOTE
+*.bak
+*.orig
+
+############################################################
+# 🐍 가상 환경 디렉터리
+############################################################
+venv/
+.venv/
+env/
+.env/
+
+# PWA files
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+
+############################################################
+# 📝 개인 메모 및 할 일 목록 (.md)
+############################################################
+todo.md
+todos.md
+memo.md
+note.md
+notes.md
+scratch.md
+journal.md
+log.md
+docs/working/
+
+.editorconfig
+.codexignore
+.geminiignore
+.agents/
+*.old
+playwright-report/
+docs/

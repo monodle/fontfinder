@@ -1,0 +1,675 @@
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Settings,
+  RotateCcw,
+  Check,
+  Type,
+  LayoutGrid,
+  SlidersHorizontal,
+  HardDrive,
+  Sliders,
+  Globe,
+  Palette,
+  Download,
+  Upload,
+  Trash2,
+  Coffee,
+  Info,
+} from "lucide-react";
+import { ModalDialog } from "./ModalDialog";
+import {
+  CustomAppSettings,
+  getDefaultSettings,
+  applyTheme,
+} from "../services/settingsService";
+import {
+  LibraryCategory,
+  getDefaultPreviewText,
+  AppTheme,
+} from "../config/appConfig";
+import { changeLanguage } from "../i18n";
+import {
+  PreviewTypographyForm,
+  TypographyStyleValues,
+} from "./PreviewTypographyForm";
+import { ThemeSelector } from "./ThemeSelector";
+import { LanguageSelector } from "./LanguageSelector";
+import { ViewModeControl } from "./ViewModeControl";
+import { GridColumnsSelector } from "./GridColumnsSelector";
+import { ConfirmModal } from "./ConfirmModal";
+import { ExportModal } from "./ExportModal";
+import { ImportModal } from "./ImportModal";
+import { SponsorSection } from "./settings/SponsorSection";
+import { AboutSection } from "./settings/AboutSection";
+import { backupService } from "../services/backupService";
+import { fontService } from "../services/fontService";
+import type { AppBackupData } from "../types/backup";
+
+export type SettingsTab =
+  | "all"
+  | "appearance"
+  | "library"
+  | "preview"
+  | "layout"
+  | "advanced"
+  | "sponsor"
+  | "about";
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  settings: CustomAppSettings;
+  initialTab?: SettingsTab;
+  onClose: () => void;
+  onSave: (newSettings: CustomAppSettings) => Promise<void> | void;
+  onNotify?: (message: string) => void;
+}
+
+export function SettingsModal({
+  isOpen,
+  settings,
+  initialTab = "all",
+  onClose,
+  onSave,
+  onNotify,
+}: SettingsModalProps) {
+  const { t, i18n } = useTranslation();
+  const [form, setForm] = useState<CustomAppSettings>(settings);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedBackupData, setImportedBackupData] = useState<AppBackupData | null>(null);
+  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setForm(settings);
+      setActiveTab(initialTab);
+      applyTheme(settings.theme);
+    }
+  }, [isOpen, settings, initialTab]);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
+
+  if (!isOpen) return null;
+
+  const handleCloseModal = () => {
+    applyTheme(settings.theme);
+    onClose();
+  };
+
+  const handleThemeChange = (newTheme: AppTheme) => {
+    setForm((prev) => ({
+      ...prev,
+      theme: newTheme,
+    }));
+    applyTheme(newTheme);
+  };
+
+  const categoryOptions: { id: LibraryCategory; label: string; desc: string }[] = [
+    { id: "user", label: t("sidebar.category_user"), desc: t("settings.cat_user_desc") },
+    { id: "all", label: t("sidebar.category_all"), desc: t("settings.cat_all_desc") },
+    { id: "system", label: t("sidebar.category_system"), desc: t("settings.cat_system_desc") },
+    { id: "activated", label: t("sidebar.category_activated"), desc: t("settings.cat_activated_desc") },
+    { id: "favorites", label: t("sidebar.category_favorites"), desc: t("settings.cat_favorites_desc") },
+    { id: "duplicates", label: t("sidebar.category_duplicates"), desc: t("settings.cat_duplicates_desc") },
+  ];
+
+  const handleLanguageChange = (langCode: string) => {
+    setForm((prev) => ({
+      ...prev,
+      language: langCode,
+      defaultPreviewText: getDefaultPreviewText(langCode),
+    }));
+    changeLanguage(langCode);
+  };
+
+  const handleSave = async () => {
+    const validMin = Math.max(8, form.minFontSize);
+    const validMax = Math.max(validMin + 4, form.maxFontSize);
+    const validDefaultSize = Math.min(validMax, Math.max(validMin, form.defaultFontSize));
+
+    const finalSettings: CustomAppSettings = {
+      ...form,
+      minFontSize: validMin,
+      maxFontSize: validMax,
+      defaultFontSize: validDefaultSize,
+      defaultGridColumns: Math.min(5, Math.max(2, form.defaultGridColumns)),
+      defaultVariableWeight: Math.min(900, Math.max(100, form.defaultVariableWeight)),
+      defaultTextAlign: ["left", "center", "right"].includes(form.defaultTextAlign) ? form.defaultTextAlign : "left",
+      defaultLineHeight: Math.min(2.5, Math.max(1.0, form.defaultLineHeight || 1.45)),
+      defaultLetterSpacing: Math.min(12, Math.max(-2, form.defaultLetterSpacing ?? 0)),
+      defaultIsBold: Boolean(form.defaultIsBold),
+      defaultIsItalic: Boolean(form.defaultIsItalic),
+      defaultIsUnderline: Boolean(form.defaultIsUnderline),
+    };
+
+    setIsSaving(true);
+    try {
+      await onSave(finalSettings);
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (!window.confirm(t("settings.reset_confirm"))) {
+      return;
+    }
+
+    const currentLang = form.language;
+    const currentTheme = form.theme;
+    const defaults = getDefaultSettings(currentLang);
+
+    setForm({
+      ...defaults,
+      language: currentLang,
+      theme: currentTheme,
+    });
+  };
+
+  const typographyValues: TypographyStyleValues = {
+    text: form.defaultPreviewText,
+    fontSize: form.defaultFontSize,
+    fontWeight: form.defaultVariableWeight,
+    isBold: Boolean(form.defaultIsBold),
+    isItalic: Boolean(form.defaultIsItalic),
+    isUnderline: Boolean(form.defaultIsUnderline),
+    textAlign: form.defaultTextAlign,
+    lineHeight: form.defaultLineHeight || 1.45,
+    letterSpacing: form.defaultLetterSpacing ?? 0,
+    textColor: form.defaultTextColor,
+    backgroundColor: form.defaultBackgroundColor,
+  };
+
+  const handleTypographyChange = <K extends keyof TypographyStyleValues>(
+    field: K,
+    value: TypographyStyleValues[K]
+  ) => {
+    setForm((prev) => {
+      switch (field) {
+        case "text":
+          return { ...prev, defaultPreviewText: value as string };
+        case "fontSize":
+          return { ...prev, defaultFontSize: value as number };
+        case "fontWeight":
+          return { ...prev, defaultVariableWeight: value as number };
+        case "isBold":
+          return { ...prev, defaultIsBold: Boolean(value) };
+        case "isItalic":
+          return { ...prev, defaultIsItalic: Boolean(value) };
+        case "isUnderline":
+          return { ...prev, defaultIsUnderline: Boolean(value) };
+        case "textAlign":
+          return {
+            ...prev,
+            defaultTextAlign: value as "left" | "center" | "right",
+          };
+        case "lineHeight":
+          return { ...prev, defaultLineHeight: value as number };
+        case "letterSpacing":
+          return { ...prev, defaultLetterSpacing: value as number };
+        case "textColor":
+          return { ...prev, defaultTextColor: value as string };
+        case "backgroundColor":
+          return { ...prev, defaultBackgroundColor: value as string };
+        default:
+          return prev;
+      }
+    });
+  };
+
+  const handleOpenExport = () => {
+    setIsExportModalOpen(true);
+  };
+
+  const handleStartImport = async () => {
+    try {
+      const data = await backupService.selectAndReadBackupFile();
+      if (!data) return; // 사용자 취소
+      setImportedBackupData(data);
+      setIsImportModalOpen(true);
+    } catch (err) {
+      console.error("Backup file read error:", err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : t("settings.import_failed", "파일을 읽을 수 없습니다.");
+      if (onNotify) {
+        onNotify(msg);
+      } else {
+        alert(msg);
+      }
+    }
+  };
+
+  const handleExportSuccess = (msg: string) => {
+    if (onNotify) {
+      onNotify(msg);
+    }
+  };
+
+  const handleImportSuccess = (msg: string) => {
+    if (onNotify) {
+      onNotify(msg);
+    }
+  };
+
+  const handleImportComplete = () => {
+    onClose();
+    setTimeout(() => {
+      window.location.reload();
+    }, 600);
+  };
+
+  const handleExecuteResetAll = async () => {
+    setIsResetting(true);
+    try {
+      await fontService.resetAppData();
+      localStorage.clear();
+      if (onNotify) {
+        onNotify(
+          t(
+            "settings.reset_all_data_success",
+            "앱 데이터 및 캐시가 성공적으로 초기화되었습니다."
+          )
+        );
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (err) {
+      console.error("Reset app data failed:", err);
+      alert(err instanceof Error ? err.message : "초기화에 실패했습니다.");
+      setIsResetting(false);
+    }
+  };
+
+  const tabs: {
+    id: SettingsTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+      { id: "all", label: t("settings.tab_all"), icon: SlidersHorizontal },
+      { id: "appearance", label: t("settings.tab_appearance"), icon: Palette },
+      { id: "library", label: t("settings.tab_library"), icon: Type },
+      { id: "layout", label: t("settings.tab_layout"), icon: LayoutGrid },
+      { id: "preview", label: t("settings.tab_preview"), icon: Sliders },
+      { id: "advanced", label: t("settings.tab_advanced"), icon: HardDrive },
+      { id: "sponsor", label: t("settings.tab_sponsor", "커피 한 잔 보내기"), icon: Coffee },
+      { id: "about", label: t("settings.tab_about", "정보"), icon: Info },
+    ];
+
+  return (
+    <>
+      <ModalDialog
+      isOpen={isOpen}
+      onClose={handleCloseModal}
+      maxWidth="4xl"
+      heightClass="h-[720px] max-h-[90vh]"
+      icon={<Settings className="w-4 h-4" />}
+      title={t("settings.title")}
+      subtitle={tabs.find((tab) => tab.id === activeTab)?.label}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 text-xs text-theme-text-muted hover:text-theme-accent px-2.5 py-1.5 rounded-lg hover:bg-theme-hover transition-colors cursor-pointer"
+            title={t("common.reset")}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{t("common.reset")}</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-3.5 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text-secondary hover:bg-theme-hover transition-colors cursor-pointer"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-theme-accent hover:bg-theme-accent-hover text-theme-accent-text text-xs font-medium shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>{isSaving ? t("common.loading") : t("common.save")}</span>
+            </button>
+          </div>
+        </>
+      }
+    >
+      {/* Modal Body: Left Tab Sidebar + Right Content Area */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+          {/* Left Tabs Sidebar */}
+          <aside className="w-full md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-theme-border bg-theme-surface-header/30 flex flex-col justify-between p-3 select-none">
+            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible no-scrollbar pb-1 md:pb-0">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left whitespace-nowrap cursor-pointer shrink-0 md:shrink ${isActive
+                      ? "bg-theme-accent text-theme-accent-text font-semibold shadow-xs"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                      }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+          </aside>
+
+          {/* Right Main Content */}
+          <main
+            ref={contentRef}
+            className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs text-theme-text"
+          >
+            {/* 1 & 2. 언어 및 테마 설정 (Appearance) */}
+            {(activeTab === "all" || activeTab === "appearance") && (
+              <>
+                {/* 1. 언어 설정 (Language) */}
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                    <Globe className="w-4 h-4 text-theme-accent" />
+                    <h3 className="font-semibold text-xs text-theme-text">
+                      {t("settings.language")}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-theme-card rounded-xl border border-theme-border flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-theme-text text-xs block">
+                        {t("settings.language")}
+                      </span>
+                      <span className="text-[11px] text-theme-text-muted">
+                        {t("settings.language_desc")}
+                      </span>
+                    </div>
+                    <LanguageSelector
+                      variant="dropdown"
+                      selectedLanguage={form.language || i18n.language}
+                      onSelect={handleLanguageChange}
+                    />
+                  </div>
+                </section>
+
+                {/* 2. 테마 설정 (Theme) */}
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                    <Palette className="w-4 h-4 text-theme-accent" />
+                    <h3 className="font-semibold text-xs text-theme-text">
+                      {t("settings.theme")}
+                    </h3>
+                  </div>
+                  <ThemeSelector
+                    selectedTheme={form.theme}
+                    onSelect={handleThemeChange}
+                    columns={3}
+                  />
+                </section>
+              </>
+            )}
+
+            {/* 3. 서재 및 기본 카테고리 설정 (Library) */}
+            {(activeTab === "all" || activeTab === "library") && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <Type className="w-4 h-4 text-theme-accent" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.default_category")}
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {categoryOptions.map((cat) => {
+                    const isSelected = form.defaultCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, defaultCategory: cat.id }))}
+                        className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer ${isSelected
+                          ? "border-theme-accent bg-theme-active/30 text-theme-text font-semibold shadow-xs ring-1 ring-theme-accent/40"
+                          : "border-theme-border bg-theme-card text-theme-text-secondary hover:border-theme-border-card-hover hover:bg-theme-card-hover"
+                          }`}
+                      >
+                        <span className="font-semibold text-xs">{cat.label}</span>
+                        <span className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-1">
+                          {cat.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* 4. 폰트 미리보기 및 스타일 설정 (Preview) */}
+            {(activeTab === "all" || activeTab === "preview") && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <Sliders className="w-4 h-4 text-theme-accent" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.tab_preview")}
+                  </h3>
+                </div>
+
+                <PreviewTypographyForm
+                  mode="defaults"
+                  values={typographyValues}
+                  onChange={handleTypographyChange}
+                  minFontSize={form.minFontSize}
+                  maxFontSize={form.maxFontSize}
+                  onMinFontSizeChange={(val) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      minFontSize: val,
+                      defaultFontSize: Math.max(val, prev.defaultFontSize),
+                    }))
+                  }
+                  onMaxFontSizeChange={(val) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      maxFontSize: val,
+                      defaultFontSize: Math.min(val, prev.defaultFontSize),
+                    }))
+                  }
+                  onSubmitShortcut={handleSave}
+                />
+              </section>
+            )}
+
+            {/* 5. 뷰 모드 및 그리드 설정 (Layout) */}
+            {(activeTab === "all" || activeTab === "layout") && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <LayoutGrid className="w-4 h-4 text-theme-accent" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.default_view_mode")} & {t("settings.grid_columns")}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {/* 기본 뷰 모드 */}
+                  <div className="p-3 bg-theme-card rounded-xl border border-theme-border space-y-2">
+                    <span className="text-[11px] font-medium text-theme-text-secondary">
+                      {t("settings.default_view_mode")}
+                    </span>
+                    <ViewModeControl
+                      viewMode={form.defaultViewMode}
+                      onChange={(mode) =>
+                        setForm((prev) => ({ ...prev, defaultViewMode: mode }))
+                      }
+                      variant="button"
+                    />
+                  </div>
+
+                  {/* 기본 그리드 열 수 */}
+                  <div className="p-3 bg-theme-card rounded-xl border border-theme-border space-y-2">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-medium text-theme-text-secondary">
+                        {t("settings.grid_columns")}
+                      </span>
+                      <span className="font-mono font-semibold text-theme-accent bg-theme-accent-subtle px-1.5 py-0.5 rounded text-[10px]">
+                        {t("settings.grid_column_unit", {
+                          cols: form.defaultGridColumns,
+                        })}
+                      </span>
+                    </div>
+                    <GridColumnsSelector
+                      columns={form.defaultGridColumns}
+                      onChange={(cols) =>
+                        setForm((prev) => ({ ...prev, defaultGridColumns: cols }))
+                      }
+                      variant="buttons"
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* 6. 시스템 관리 (System / Advanced) */}
+            {(activeTab === "all" || activeTab === "advanced") && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <HardDrive className="w-4 h-4 text-theme-accent" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.tab_advanced")}
+                  </h3>
+                </div>
+
+                {/* 데이터 내보내기 & 가져오기 카드 */}
+                <div className="p-4 rounded-xl bg-theme-card/60 border border-theme-border space-y-3">
+                  <div>
+                    <span className="font-semibold text-xs text-theme-text block">
+                      {t("settings.system_backup_title")}
+                    </span>
+                    <p className="text-[11px] text-theme-text-secondary leading-relaxed mt-0.5">
+                      {t("settings.system_backup_desc")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleOpenExport}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text hover:bg-theme-hover hover:border-theme-border-hover transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 text-theme-accent" />
+                      <span>{t("settings.export_btn")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleStartImport}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text hover:bg-theme-hover hover:border-theme-border-hover transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-theme-accent" />
+                      <span>{t("settings.import_btn")}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 캐시 및 데이터 전체 초기화 (Danger Zone) */}
+                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20 space-y-3">
+                  <div>
+                    <span className="font-semibold text-xs text-red-500 block">
+                      {t("settings.system_danger_title")}
+                    </span>
+                    <p className="text-[11px] text-theme-text-secondary leading-relaxed mt-0.5">
+                      {t("settings.system_danger_desc")}
+                    </p>
+                  </div>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmResetOpen(true)}
+                      disabled={isResetting}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-600 dark:text-red-400 border border-red-600/30 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>
+                        {isResetting
+                          ? t("common.loading")
+                          : t("settings.reset_all_data_btn")}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* 7. 커피 한 잔 보내기 (Sponsor) */}
+            {(activeTab === "all" || activeTab === "sponsor") && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <Coffee className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.tab_sponsor", "커피 한 잔 보내기")}
+                  </h3>
+                </div>
+                <SponsorSection />
+              </section>
+            )}
+
+            {/* 8. 정보 (About) */}
+            {(activeTab === "all" || activeTab === "about") && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                  <Info className="w-4 h-4 text-theme-accent" />
+                  <h3 className="font-semibold text-xs text-theme-text">
+                    {t("settings.tab_about", "정보")}
+                  </h3>
+                </div>
+                <AboutSection />
+              </section>
+            )}
+          </main>
+        </div>
+      </ModalDialog>
+
+      {/* 내보내기 모달 */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onSuccess={handleExportSuccess}
+      />
+
+      {/* 가져오기 모달 */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        backupData={importedBackupData}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={handleImportSuccess}
+        onComplete={handleImportComplete}
+      />
+
+      {/* 캐시 및 데이터 완전 초기화 확인 모달 */}
+      <ConfirmModal
+        isOpen={isConfirmResetOpen}
+        onClose={() => setIsConfirmResetOpen(false)}
+        onConfirm={handleExecuteResetAll}
+        title={t("settings.reset_all_data_confirm_title")}
+        description={t("settings.reset_all_data_confirm_desc")}
+        confirmText={t("settings.reset_all_data_confirm_btn")}
+        isDanger
+        icon={<Trash2 className="w-6 h-6 text-red-500" />}
+      />
+    </>
+  );
+}

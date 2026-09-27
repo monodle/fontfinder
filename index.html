@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Font Finder</title>
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <!-- Local Bundled Fonts (Noto Sans KR/JP/SC/TC/Latin, JetBrains Mono) -->
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("fontfinder_user_settings") || localStorage.getItem("fontfinder_user_settings");
+        var theme = "light";
+        if (saved) {
+          var parsed = JSON.parse(saved);
+          if (parsed && parsed.theme) theme = parsed.theme;
+        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          theme = "dark";
+        }
+        document.documentElement.setAttribute("data-theme", theme);
+        if (theme !== "light") {
+          document.documentElement.classList.add("dark");
+        }
+
+        var savedLang = localStorage.getItem("fontfinder_language") || localStorage.getItem("fontfinder_language");
+        if (!savedLang) {
+          var browserLang = (navigator.language || "").toLowerCase();
+          if (browserLang.indexOf("ko") === 0) savedLang = "ko";
+          else if (browserLang === "zh-tw" || browserLang === "zh-hk" || browserLang === "zh-hant") savedLang = "zh-TW";
+          else if (browserLang.indexOf("zh") === 0) savedLang = "zh-CN";
+          else if (browserLang.indexOf("ja") === 0) savedLang = "ja";
+          else if (browserLang.indexOf("es") === 0) savedLang = "es";
+          else if (browserLang.indexOf("de") === 0) savedLang = "de";
+          else if (browserLang.indexOf("fr") === 0) savedLang = "fr";
+          else savedLang = "en";
+        }
+        document.documentElement.lang = savedLang;
+        document.documentElement.setAttribute("data-lang", savedLang);
+      } catch (e) { }
+    })();
+  </script>
+</head>
+
+<body class="bg-theme-app text-theme-text antialiased select-none overflow-hidden h-screen w-screen">
+  <div id="root" class="h-full w-full"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Turbo
+.turbo/
+
+# Build output
+dist/
+build/
+
+# Env files
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

@@ -1,0 +1,54 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Font Finder",
+  "version": "0.1.5",
+  "identifier": "com.fontfinder.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "Font Finder",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": [
+            "underWindowBackground",
+            "sidebar",
+            "mica",
+            "acrylic"
+          ],
+          "state": "followsWindowActiveState"
+        }
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; font-src 'self' font: data:; img-src 'self' asset: https://github.com https://avatars.githubusercontent.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';",
+      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420; font-src 'self' font: data:; img-src 'self' asset: https://github.com https://avatars.githubusercontent.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';",
+      "capabilities": [
+        "default"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
