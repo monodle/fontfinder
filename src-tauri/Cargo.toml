@@ -1,0 +1,44 @@
+[package]
+name = "fontfinder"
+version = "0.1.5"
+description = "Font Finder - Modern Cross-platform Font Manager"
+authors = ["Font Finder"]
+edition = "2021"
+
+[lib]
+name = "fontfinder_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.2", features = [] }
+
+[dependencies]
+tauri = { version = "2.2", features = ["macos-private-api"] }
+tauri-plugin-dialog = "2.2"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ttf-parser = "0.25"
+rusqlite = { version = "0.33", features = ["bundled"] }
+tokio = { version = "1.43", features = ["full"] }
+rayon = "1.10"
+thiserror = "2.0"
+walkdir = "2.5"
+percent-encoding = "2.3"
+notify-debouncer-mini = "0.7.0"
+tauri-plugin-window-state = "2.4.1"
+tauri-plugin-single-instance = "2"
+sha2 = "0.10"
+window-vibrancy = "0.6"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-text = "20.1"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Graphics_Gdi",
+    "Win32_Foundation",
+    "Win32_System_Registry",
+    "Win32_UI_WindowsAndMessaging"
+] }

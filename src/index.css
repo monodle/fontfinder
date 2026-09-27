@@ -1,0 +1,477 @@
+@import "tailwindcss";
+
+@theme {
+  --color-theme-app: var(--theme-bg-app);
+  --color-theme-sidebar: var(--theme-bg-sidebar);
+  --color-theme-header: var(--theme-bg-header);
+  --color-theme-surface: var(--theme-bg-surface);
+  --color-theme-surface-header: var(--theme-bg-surface-header);
+  --color-theme-card: var(--theme-bg-card);
+  --color-theme-card-hover: var(--theme-bg-card-hover);
+  --color-theme-input: var(--theme-bg-input);
+  --color-theme-hover: var(--theme-bg-hover);
+  --color-theme-active: var(--theme-bg-active);
+  --color-theme-badge: var(--theme-bg-badge);
+
+  --color-theme-border: var(--theme-border);
+  --color-theme-border-subtle: var(--theme-border-subtle);
+  --color-theme-border-card: var(--theme-border-card);
+  --color-theme-border-card-hover: var(--theme-border-card-hover);
+
+  --color-theme-text: var(--theme-text);
+  --color-theme-text-secondary: var(--theme-text-secondary);
+  --color-theme-text-muted: var(--theme-text-muted);
+  --color-theme-text-badge: var(--theme-text-badge);
+
+  --color-theme-accent: var(--theme-accent);
+  --color-theme-accent-hover: var(--theme-accent-hover);
+  --color-theme-accent-subtle: var(--theme-accent-subtle);
+  --color-theme-accent-text: var(--theme-accent-text);
+}
+@layer base {
+  /* Base Font Stacks (Google Web Fonts with OS Native Fallback) */
+  :root {
+    --font-mono: 'JetBrains Mono', monospace;
+    /* OS Native Default Fallback Font Stack */
+    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Yu Gothic UI", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+    /* Default Latin Web Font + System Fallback */
+    --font-sans: 'Noto Sans', 'Noto Sans KR', var(--font-system);
+  }
+
+  /* Language-specific Noto Sans Web Font & OS System Font Stacks */
+  :root[lang="ko"],
+  [data-lang="ko"],
+  :lang(ko) {
+    --font-system: "Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: 'Noto Sans KR', 'Noto Sans', var(--font-system);
+  }
+
+  :root[lang="ja"],
+  [data-lang="ja"],
+  :lang(ja) {
+    --font-system: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: 'Noto Sans JP', 'Noto Sans', var(--font-system);
+  }
+
+  :root[lang="zh-CN"],
+  [data-lang="zh-CN"],
+  :lang(zh-CN) {
+    --font-system: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: 'Noto Sans SC', 'Noto Sans', var(--font-system);
+  }
+
+  :root[lang="zh-TW"],
+  [data-lang="zh-TW"],
+  :lang(zh-TW) {
+    --font-system: "PingFang TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: 'Noto Sans TC', 'Noto Sans', var(--font-system);
+  }
+
+  :root[lang="en"],
+  [data-lang="en"],
+  :root[lang="es"],
+  [data-lang="es"],
+  :root[lang="de"],
+  [data-lang="de"],
+  :root[lang="fr"],
+  [data-lang="fr"] {
+    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-sans: 'Noto Sans', 'Noto Sans KR', var(--font-system);
+  }
+
+  .font-system {
+    font-family: var(--font-system) !important;
+  }
+
+  /* 1. Light Theme (Warm Paper / Bookish Cream) */
+  :root,
+  [data-theme="light"] {
+
+    --theme-bg-app: #f8f4eb;
+    --theme-bg-sidebar: #f2ece0;
+    --theme-bg-header: #faf6ee;
+    --theme-bg-surface: #fcf9f2;
+    --theme-bg-surface-header: #f7f2e7;
+    --theme-bg-card: #fcfaf5;
+    --theme-bg-card-hover: #ffffff;
+    --theme-bg-input: #ffffff;
+    --theme-bg-hover: #e9e2d3;
+    --theme-bg-active: #e5dccb;
+    --theme-bg-badge: #efe9dc;
+
+    --theme-border: #e4dccf;
+    --theme-border-subtle: #eee7d8;
+    --theme-border-card: #e7e0d0;
+    --theme-border-card-hover: #d9d0bd;
+
+    --theme-text: #2c2825;
+    --theme-text-secondary: #5e5447;
+    --theme-text-muted: #8c8072;
+    --theme-text-badge: #7c7267;
+
+    --theme-accent: #92400e;
+    --theme-accent-hover: #78350f;
+    --theme-accent-subtle: #f5ecdd;
+    --theme-accent-text: #fff9ef;
+
+    --theme-scrollbar-thumb: rgba(146, 64, 14, 0.2);
+    --theme-scrollbar-hover: rgba(146, 64, 14, 0.38);
+    --theme-backdrop: rgba(33, 29, 26, 0.6);
+  }
+
+  /* 2. Dark Theme (Warm Ink / Bookbinder Espresso) */
+  [data-theme="dark"] {
+    --theme-bg-app: #1a1614;
+    --theme-bg-sidebar: #151210;
+    --theme-bg-header: #1e1917;
+    --theme-bg-surface: #231d1a;
+    --theme-bg-surface-header: #1c1815;
+    --theme-bg-card: #221c19;
+    --theme-bg-card-hover: #2a231f;
+    --theme-bg-input: #191513;
+    --theme-bg-hover: #2d2521;
+    --theme-bg-active: #3c3029;
+    --theme-bg-badge: #2b231e;
+
+    --theme-border: #362d26;
+    --theme-border-subtle: #2a231d;
+    --theme-border-card: #3a3028;
+    --theme-border-card-hover: #524438;
+
+    --theme-text: #f5eee6;
+    --theme-text-secondary: #c4b7a6;
+    --theme-text-muted: #8e806f;
+    --theme-text-badge: #d9cebe;
+
+    --theme-accent: #d97706;
+    --theme-accent-hover: #f59e0b;
+    --theme-accent-subtle: #3d2612;
+    --theme-accent-text: #fffbeb;
+
+    --theme-scrollbar-thumb: rgba(217, 119, 6, 0.25);
+    --theme-scrollbar-hover: rgba(217, 119, 6, 0.45);
+    --theme-backdrop: rgba(10, 8, 7, 0.75);
+  }
+
+  /* 3. Nord Theme (Nord & Slate Minimalist Cool Dark) */
+  [data-theme="nord"] {
+    --theme-bg-app: #1e222a;
+    --theme-bg-sidebar: #181b22;
+    --theme-bg-header: #212630;
+    --theme-bg-surface: #252b37;
+    --theme-bg-surface-header: #202530;
+    --theme-bg-card: #252b38;
+    --theme-bg-card-hover: #2c3343;
+    --theme-bg-input: #1a1e26;
+    --theme-bg-hover: #2e3646;
+    --theme-bg-active: #374256;
+    --theme-bg-badge: #2b3342;
+
+    --theme-border: #343c4d;
+    --theme-border-subtle: #29303e;
+    --theme-border-card: #384255;
+    --theme-border-card-hover: #4c5770;
+
+    --theme-text: #eceff4;
+    --theme-text-secondary: #abb2bf;
+    --theme-text-muted: #6f788a;
+    --theme-text-badge: #d8dee9;
+
+    --theme-accent: #7cb7eb;
+    --theme-accent-hover: #93c5fd;
+    --theme-accent-subtle: #1e2e42;
+    --theme-accent-text: #0f172a;
+
+    --theme-scrollbar-thumb: rgba(124, 183, 235, 0.25);
+    --theme-scrollbar-hover: rgba(124, 183, 235, 0.45);
+    --theme-backdrop: rgba(15, 18, 24, 0.75);
+  }
+
+  /* 4. Monochrome Theme (Studio Neutral Typography Black & White) */
+  [data-theme="monochrome"] {
+    --theme-bg-app: #121212;
+    --theme-bg-sidebar: #0c0c0c;
+    --theme-bg-header: #161616;
+    --theme-bg-surface: #1a1a1a;
+    --theme-bg-surface-header: #141414;
+    --theme-bg-card: #191919;
+    --theme-bg-card-hover: #222222;
+    --theme-bg-input: #111111;
+    --theme-bg-hover: #242424;
+    --theme-bg-active: #323232;
+    --theme-bg-badge: #262626;
+
+    --theme-border: #292929;
+    --theme-border-subtle: #202020;
+    --theme-border-card: #2e2e2e;
+    --theme-border-card-hover: #444444;
+
+    --theme-text: #f4f4f5;
+    --theme-text-secondary: #a1a1aa;
+    --theme-text-muted: #63636b;
+    --theme-text-badge: #d4d4d8;
+
+    --theme-accent: #e4e4e7;
+    --theme-accent-hover: #ffffff;
+    --theme-accent-subtle: #27272a;
+    --theme-accent-text: #09090b;
+
+    --theme-scrollbar-thumb: rgba(228, 228, 231, 0.22);
+    --theme-scrollbar-hover: rgba(228, 228, 231, 0.4);
+    --theme-backdrop: rgba(5, 5, 5, 0.8);
+  }
+
+  /* 5. Forest Theme (Forest & Moss Antique Brass) */
+  [data-theme="forest"] {
+    --theme-bg-app: #141c18;
+    --theme-bg-sidebar: #0f1512;
+    --theme-bg-header: #18221d;
+    --theme-bg-surface: #1c2721;
+    --theme-bg-surface-header: #16201b;
+    --theme-bg-card: #1b2620;
+    --theme-bg-card-hover: #23312a;
+    --theme-bg-input: #121915;
+    --theme-bg-hover: #24332b;
+    --theme-bg-active: #2e4338;
+    --theme-bg-badge: #223028;
+
+    --theme-border: #283930;
+    --theme-border-subtle: #1f2c25;
+    --theme-border-card: #2e4238;
+    --theme-border-card-hover: #405c50;
+
+    --theme-text: #e7f0ec;
+    --theme-text-secondary: #adc1b8;
+    --theme-text-muted: #6f857b;
+    --theme-text-badge: #c8dcd3;
+
+    --theme-accent: #d4a373;
+    --theme-accent-hover: #e2b487;
+    --theme-accent-subtle: #33291c;
+    --theme-accent-text: #1c1307;
+
+    --theme-scrollbar-thumb: rgba(212, 163, 115, 0.25);
+    --theme-scrollbar-hover: rgba(212, 163, 115, 0.45);
+    --theme-backdrop: rgba(10, 15, 12, 0.78);
+  }
+
+  /* 6. Clean White Theme (RightFont Modern Crisp Pure White) */
+  [data-theme="clean-white"] {
+    --theme-bg-app: #f6f7f9;
+    --theme-bg-sidebar: #fbfbfd;
+    --theme-bg-header: #ffffff;
+    --theme-bg-surface: #f6f7f9;
+    --theme-bg-surface-header: #ffffff;
+    --theme-bg-card: #ffffff;
+    --theme-bg-card-hover: #ffffff;
+    --theme-bg-input: #ffffff;
+    --theme-bg-hover: #f1f3f6;
+    --theme-bg-active: #e7eaee;
+    --theme-bg-badge: #f1f3f6;
+
+    --theme-border: #e6e8ec;
+    --theme-border-subtle: #f0f2f5;
+    --theme-border-card: #e3e6eb;
+    --theme-border-card-hover: #cfd4dc;
+
+    --theme-text: #111827;
+    --theme-text-secondary: #4b5563;
+    --theme-text-muted: #9ca3af;
+    --theme-text-badge: #374151;
+
+    --theme-accent: #18181b;
+    --theme-accent-hover: #000000;
+    --theme-accent-subtle: #f1f3f6;
+    --theme-accent-text: #ffffff;
+
+    --theme-scrollbar-thumb: rgba(17, 24, 39, 0.15);
+    --theme-scrollbar-hover: rgba(17, 24, 39, 0.3);
+    --theme-backdrop: rgba(17, 24, 39, 0.4);
+  }
+
+  /* 7. Glass Theme (Translucent Acrylic & Native OS Vibrancy) */
+  [data-theme="glass"] {
+    --theme-bg-app: rgba(244, 247, 251, 0.38);
+    --theme-bg-sidebar: rgba(255, 255, 255, 0.45);
+    --theme-bg-header: rgba(255, 255, 255, 0.6);
+    --theme-bg-surface: #ffffff;
+    --theme-bg-surface-header: #f8fafc;
+    --theme-bg-card: rgba(255, 255, 255, 0.78);
+    --theme-bg-card-hover: rgba(255, 255, 255, 0.94);
+    --theme-bg-input: #ffffff;
+    --theme-bg-hover: rgba(241, 245, 249, 0.85);
+    --theme-bg-active: rgba(226, 232, 240, 0.9);
+    --theme-bg-badge: rgba(241, 245, 249, 0.85);
+
+    --theme-border: rgba(226, 232, 240, 0.8);
+    --theme-border-subtle: rgba(241, 245, 249, 0.9);
+    --theme-border-card: rgba(226, 232, 240, 0.85);
+    --theme-border-card-hover: rgba(203, 213, 225, 0.95);
+
+    --theme-text: #0f172a;
+    --theme-text-secondary: #334155;
+    --theme-text-muted: #64748b;
+    --theme-text-badge: #1e293b;
+
+    --theme-accent: #0284c7;
+    --theme-accent-hover: #0369a1;
+    --theme-accent-subtle: rgba(2, 132, 199, 0.12);
+    --theme-accent-text: #ffffff;
+
+    --theme-scrollbar-thumb: rgba(2, 132, 199, 0.25);
+    --theme-scrollbar-hover: rgba(2, 132, 199, 0.45);
+    --theme-backdrop: rgba(15, 23, 42, 0.5);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--theme-bg-app);
+    color: var(--theme-text);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Clean White Specific Card Elevation */
+  [data-theme="clean-white"] .bg-theme-card {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  }
+  [data-theme="clean-white"] .bg-theme-card:hover {
+    box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Glass Theme Native OS Transparency & Vibrancy Enhancements */
+  [data-theme="glass"] body {
+    background-color: transparent !important;
+  }
+
+  [data-theme="glass"] aside {
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+  }
+
+  [data-theme="glass"] header {
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  [data-theme="glass"] .bg-theme-card {
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.03), inset 0 1px 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  [data-theme="glass"] .bg-theme-card:hover {
+    box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 1);
+  }
+
+  /* Glass Theme Modal & Dialog Isolation (뒤쪽 폰트 목록 비침 방지 및 가독성 보장) */
+  [data-theme="glass"] [role="dialog"] > div {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(40px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.9) inset !important;
+  }
+
+  [data-theme="glass"] [role="dialog"] .bg-theme-surface-header {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  [data-theme="glass"] [role="dialog"] aside {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  [data-theme="glass"] [role="dialog"] .bg-theme-card {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  [data-theme="glass"] [role="dialog"] .bg-theme-card:hover {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  [data-theme="glass"] [role="dialog"] input,
+  [data-theme="glass"] [role="dialog"] textarea,
+  [data-theme="glass"] [role="dialog"] select {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Glass Theme Context Menu & Popover Isolation */
+  [data-theme="glass"] .fixed.z-50.bg-theme-surface,
+  [data-theme="glass"] .absolute.z-50.bg-theme-surface,
+  [data-theme="glass"] [role="menu"] {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.9) inset !important;
+  }
+
+  textarea {
+    resize: none;
+    box-sizing: border-box;
+  }
+
+  ::selection {
+    background-color: var(--theme-accent);
+    color: var(--theme-accent-text);
+  }
+
+  /* Custom Theme Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--theme-scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-scrollbar-hover);
+  }
+}
+
+@keyframes modalBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modalBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-modal-content {
+  animation: modalContentZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.draggable-sidebar-item {
+  -webkit-user-drag: element !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
