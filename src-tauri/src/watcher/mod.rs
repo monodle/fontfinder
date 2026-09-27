@@ -56,7 +56,7 @@ impl FontFolderWatcher {
                             continue;
                         }
 
-                        if path.starts_with(watched) && (is_font || path == watched || !path.exists()) {
+                        if crate::protocol::is_same_or_subpath(watched, path) && (is_font || path == watched || !path.exists()) {
                             affected_folders.insert(watched_str);
                         }
                     }

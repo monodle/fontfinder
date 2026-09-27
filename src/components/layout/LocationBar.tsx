@@ -20,6 +20,7 @@ interface LocationBarProps {
   customFolders: CustomFolder[];
   sets: FontSet[];
   fontsCount: number;
+  selectedCount?: number;
   onOpenFolder: (path: string) => void;
   onRelinkFolder?: (path: string) => void;
 }
@@ -29,10 +30,35 @@ export function LocationBar({
   customFolders,
   sets,
   fontsCount,
+  selectedCount = 0,
   onOpenFolder,
   onRelinkFolder,
 }: LocationBarProps) {
   const { t } = useTranslation();
+
+  const renderFontCount = () => {
+    if (selectedCount > 0) {
+      return (
+        <div className="flex items-center gap-1.5 text-[11px] font-mono">
+          <span className="font-semibold text-theme-accent">
+            {t("action_bar.selected_count", {
+              count: selectedCount,
+              defaultValue: `${selectedCount}개 글꼴 선택됨`,
+            })}
+          </span>
+          <span className="text-theme-text-muted">
+            / {fontsCount} {t("common.fonts", { defaultValue: "글꼴" })}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <span className="text-[11px] text-theme-text-muted font-mono">
+        {fontsCount} {t("common.fonts", { defaultValue: "글꼴" })}
+      </span>
+    );
+  };
 
   // 1. 감시 폴더인 경우
   if (activeCategory.startsWith("folder:")) {
@@ -100,9 +126,7 @@ export function LocationBar({
               )}
             </div>
           ) : (
-            <span className="text-[11px] text-theme-text-muted font-mono">
-              {fontsCount} {t("common.fonts", { defaultValue: "글꼴" })}
-            </span>
+            renderFontCount()
           )}
         </div>
       </div>
@@ -136,9 +160,7 @@ export function LocationBar({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] text-theme-text-muted font-mono">
-            {fontsCount} {t("common.fonts", { defaultValue: "글꼴" })}
-          </span>
+          {renderFontCount()}
         </div>
       </div>
     );
@@ -187,9 +209,7 @@ export function LocationBar({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[11px] text-theme-text-muted font-mono">
-          {fontsCount} {t("common.fonts", { defaultValue: "글꼴" })}
-        </span>
+        {renderFontCount()}
       </div>
     </div>
   );

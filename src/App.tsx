@@ -483,83 +483,6 @@ export default function App() {
           onOpenStyleModal={() => setIsPreviewModalOpen(true)}
           selectedCount={selection.selectedFontIds.size}
           onOpenDiff={() => handleOpenDiffModal()}
-          selectionBar={{
-            selectedCount: selection.selectedFontIds.size,
-            onOpenDiff: () => handleOpenDiffModal(),
-            onSelectAll: selection.handleSelectAll,
-            onClearSelection: selection.handleClearSelection,
-            canActivate: library.filteredFonts.some(
-              (f) =>
-                selection.selectedFontIds.has(f.id) &&
-                f.source !== "system" &&
-                f.source !== "user" &&
-                !f.isMissing &&
-                f.install_status !== "unplugged" &&
-                f.install_status !== "deleted" &&
-                !library.activatedFontIds.has(f.id)
-            ),
-            onActivate: () =>
-              actions.handleBulkActivate(
-                library.filteredFonts
-                  .filter(
-                    (f) =>
-                      selection.selectedFontIds.has(f.id) &&
-                      f.source !== "system" &&
-                      f.source !== "user" &&
-                      !f.isMissing &&
-                      f.install_status !== "unplugged" &&
-                      f.install_status !== "deleted" &&
-                      !library.activatedFontIds.has(f.id)
-                  )
-                  .map((f) => f.id),
-                true
-              ),
-            canDeactivate: library.filteredFonts.some(
-              (f) =>
-                selection.selectedFontIds.has(f.id) &&
-                f.source !== "system" &&
-                f.source !== "user" &&
-                !f.isMissing &&
-                f.install_status !== "unplugged" &&
-                f.install_status !== "deleted" &&
-                library.activatedFontIds.has(f.id)
-            ),
-            onDeactivate: () =>
-              actions.handleBulkActivate(
-                library.filteredFonts
-                  .filter(
-                    (f) =>
-                      selection.selectedFontIds.has(f.id) &&
-                      f.source !== "system" &&
-                      f.source !== "user" &&
-                      !f.isMissing &&
-                      f.install_status !== "unplugged" &&
-                      f.install_status !== "deleted" &&
-                      library.activatedFontIds.has(f.id)
-                  )
-                  .map((f) => f.id),
-                false
-              ),
-            canInstall: library.filteredFonts.some(
-              (f) =>
-                selection.selectedFontIds.has(f.id) &&
-                f.source !== "system" &&
-                f.source !== "user" &&
-                !f.isMissing &&
-                f.install_status !== "unplugged" &&
-                f.install_status !== "deleted"
-            ),
-            onInstall: actions.handleBulkInstall,
-            canRemoveFromSet: currentSetId !== null && selection.selectedFontIds.size > 0,
-            onRemoveFromSet: () => {
-              if (currentSetId !== null) {
-                void actions.handleBulkRemoveFromSet(
-                  currentSetId,
-                  Array.from(selection.selectedFontIds)
-                );
-              }
-            },
-          }}
         />
 
         <LocationBar
@@ -567,6 +490,7 @@ export default function App() {
           customFolders={library.customFolders}
           sets={library.sets}
           fontsCount={library.filteredFonts.length}
+          selectedCount={selection.selectedFontIds.size}
           onOpenFolder={handleOpenFolder}
           onRelinkFolder={actions.handleRelinkFolder}
         />

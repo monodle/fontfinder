@@ -24,8 +24,8 @@ export interface PrivacyPolicySection {
 
 export const CREATORS: CreatorInfo[] = [
   {
-    id: "jeongmin-lee",
-    name: "이정민",
+    id: "monodoro",
+    name: "모노도로",
     role: "Developer, Architect, QA",
     githubUrl: "https://github.com/monodle",
     githubHandle: "@monodle",
@@ -33,8 +33,8 @@ export const CREATORS: CreatorInfo[] = [
     bio: "안녕하세요",
   },
   {
-    id: "jinwon-choi",
-    name: "최진원",
+    id: "ken-choi",
+    name: "Ken Choi",
     role: "Product Designer, Product Manager, QA",
     githubUrl: "https://github.com/sojoongpapa",
     githubHandle: "@sojoongpapa",

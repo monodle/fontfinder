@@ -66,14 +66,10 @@ impl Database {
         if f.source == FontSource::System || f.source == FontSource::User {
           return true;
         }
-        let f_path = &f.file_path;
+        let f_buf = std::path::PathBuf::from(&f.file_path);
         watched_folders.iter().any(|wf| {
-          let normalized = if wf.ends_with('/') || wf.ends_with('\\') {
-            wf.clone()
-          } else {
-            format!("{}/", wf)
-          };
-          f_path == wf || f_path.starts_with(&normalized)
+          let wf_buf = std::path::PathBuf::from(wf);
+          crate::protocol::is_same_or_subpath(&wf_buf, &f_buf)
         })
       })
       .collect();
@@ -81,29 +77,16 @@ impl Database {
   }
 
   pub fn get_cached_fonts_by_prefix(&self, prefix: &str) -> AppResult<Vec<FontMetadata>> {
-    let conn = self.conn()?;
-    let normalized = if prefix.ends_with('/') || prefix.ends_with('\\') {
-      prefix.to_string()
-    } else {
-      format!("{}/", prefix)
-    };
-    let pattern = format!("{}%", normalized);
-    let mut stmt = conn.prepare(
-      "SELECT metadata_json FROM font_cache WHERE file_path LIKE ?1 ORDER BY family_name COLLATE NOCASE ASC, id ASC",
-    )?;
-    let rows = stmt.query_map(params![pattern], |row| {
-      let json: String = row.get(0)?;
-      Ok(json)
-    })?;
-
-    let mut fonts = Vec::new();
-    for row in rows {
-      let json_str = row?;
-      if let Ok(meta) = serde_json::from_str::<FontMetadata>(&json_str) {
-        fonts.push(meta);
-      }
-    }
-    Ok(fonts)
+    let all = self.get_all_cached_fonts()?;
+    let prefix_buf = std::path::PathBuf::from(prefix);
+    let filtered = all
+      .into_iter()
+      .filter(|f| {
+        let f_buf = std::path::PathBuf::from(&f.file_path);
+        crate::protocol::is_same_or_subpath(&prefix_buf, &f_buf)
+      })
+      .collect();
+    Ok(filtered)
   }
 
   pub fn get_font_cache_entries(&self) -> AppResult<HashMap<String, (u64, i64)>> {
@@ -226,13 +209,10 @@ impl Database {
     let mut to_delete = Vec::new();
     for row in rows {
       if let Ok((id, file_path, file_hash)) = row {
+        let file_path_buf = std::path::PathBuf::from(&file_path);
         let belongs_to_watched = folders.iter().any(|f| {
-          let normalized = if f.ends_with('/') || f.ends_with('\\') {
-            f.clone()
-          } else {
-            format!("{}/", f)
-          };
-          file_path == *f || file_path.starts_with(&normalized)
+          let folder_buf = std::path::PathBuf::from(f);
+          crate::protocol::is_same_or_subpath(&folder_buf, &file_path_buf)
         });
 
         if !belongs_to_watched {

@@ -61,6 +61,44 @@ fn resolve_allowed_origin(request: &tauri::http::Request<Vec<u8>>) -> Option<Str
     Some(default_origin.to_string())
 }
 
+/// Windows UNC Verbatim 접두사 (\\?\ 및 \\?\UNC\) 제거 헬퍼
+pub fn strip_unc_prefix(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if let Some(stripped) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{}", stripped))
+    } else if let Some(stripped) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(stripped)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// 경로 일치 또는 하위 경로 검증 (Windows 대소문자 비구분 및 경로 구분자 정규화 포함)
+pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
+    let clean_parent = strip_unc_prefix(parent);
+    let clean_child = strip_unc_prefix(child);
+
+    #[cfg(target_os = "windows")]
+    {
+        let parent_str = clean_parent.to_string_lossy().replace('/', "\\").to_lowercase();
+        let child_str = clean_child.to_string_lossy().replace('/', "\\").to_lowercase();
+
+        let clean_parent_str = parent_str.trim_end_matches('\\');
+        if child_str == clean_parent_str {
+            return true;
+        }
+        if child_str.starts_with(&format!("{}\\", clean_parent_str)) {
+            return true;
+        }
+        false
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        clean_child.starts_with(&clean_parent)
+    }
+}
+
 /// 요청된 정규화 파일 경로가 안전한 폰트 디렉토리 또는 DB 카탈로그에 속하는지 검증합니다.
 pub fn is_font_path_allowed<R: tauri::Runtime>(
     path: &Path,
@@ -69,10 +107,11 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
     // 1. OS 시스템 폰트 디렉토리 검증
     for sys_dir in crate::platform::Platform::get_system_font_directories() {
         if let Ok(canonical_sys) = sys_dir.canonicalize() {
-            if path.starts_with(&canonical_sys) {
+            if is_same_or_subpath(&canonical_sys, path) {
                 return true;
             }
-        } else if path.starts_with(&sys_dir) {
+        }
+        if is_same_or_subpath(&sys_dir, path) {
             return true;
         }
     }
@@ -82,10 +121,11 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
         // 앱 데이터 디렉토리 허용
         if let Ok(app_data) = app.path().app_data_dir() {
             if let Ok(canonical_app_data) = app_data.canonicalize() {
-                if path.starts_with(&canonical_app_data) {
+                if is_same_or_subpath(&canonical_app_data, path) {
                     return true;
                 }
-            } else if path.starts_with(&app_data) {
+            }
+            if is_same_or_subpath(&app_data, path) {
                 return true;
             }
         }
@@ -96,19 +136,29 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
                 for folder in folders {
                     let folder_path = PathBuf::from(&folder.path);
                     if let Ok(canonical_folder) = folder_path.canonicalize() {
-                        if path.starts_with(&canonical_folder) {
+                        if is_same_or_subpath(&canonical_folder, path) {
                             return true;
                         }
-                    } else if path.starts_with(&folder_path) {
+                    }
+                    if is_same_or_subpath(&folder_path, path) {
                         return true;
                     }
                 }
             }
 
             // 2-2. 폰트 캐시 DB에 등록된 유효한 폰트 경로인지 검증
-            let path_str = path.to_string_lossy();
-            if let Ok(true) = state.db.is_font_path_cached(&path_str) {
+            // (Windows UNC 접두사 제거 경로 및 원본 경로 모두 대조)
+            let clean_path = strip_unc_prefix(path);
+            let clean_path_str = clean_path.to_string_lossy();
+            if let Ok(true) = state.db.is_font_path_cached(&clean_path_str) {
                 return true;
+            }
+
+            let raw_path_str = path.to_string_lossy();
+            if raw_path_str != clean_path_str {
+                if let Ok(true) = state.db.is_font_path_cached(&raw_path_str) {
+                    return true;
+                }
             }
         }
     }
@@ -217,12 +267,16 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
             path
         }
         Err(err) => {
-            eprintln!("[font protocol] Font file not found or invalid path {:?}: {}", file_path, err);
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
-                .body(b"Font file not found".to_vec())
-                .unwrap_or_default();
+            if file_path.is_file() {
+                file_path.clone()
+            } else {
+                eprintln!("[font protocol] Font file not found or invalid path {:?}: {}", file_path, err);
+                return Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+                    .body(b"Font file not found".to_vec())
+                    .unwrap_or_default();
+            }
         }
     };
 
