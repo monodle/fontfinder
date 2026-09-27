@@ -113,12 +113,16 @@ export const fontService = {
     try {
       return convertFileSrc(filePath, "font");
     } catch {
-      const encoded = filePath
-        .replace(/\\/g, "/")
-        .split("/")
-        .map((seg) => encodeURIComponent(seg))
-        .join("/");
-      return `font://localhost${encoded.startsWith("/") ? "" : "/"}${encoded}`;
+      const isWindows =
+        typeof navigator !== "undefined" &&
+        (navigator.userAgent.includes("Windows") || navigator.platform?.includes("Win"));
+      const normalized = filePath.replace(/\\/g, "/");
+      const parts = normalized.split("/").map((seg) => encodeURIComponent(seg));
+      const joined = parts.join("/");
+      if (isWindows) {
+        return `http://font.localhost/${joined.replace(/^\/+/, "")}`;
+      }
+      return `font://localhost${joined.startsWith("/") ? "" : "/"}${joined}`;
     }
   },
 

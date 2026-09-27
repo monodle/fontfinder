@@ -6,7 +6,6 @@ import { TextAlignDropdown } from "../TextAlignDropdown";
 import { ViewModeControl } from "../ViewModeControl";
 import { GridColumnsSelector } from "../GridColumnsSelector";
 import { ListRefreshButton } from "../ListRefreshButton";
-import { ContextualActionBar, ContextualActionBarProps } from "./ContextualActionBar";
 
 interface HeaderToolbarProps {
   searchQuery: string;
@@ -29,7 +28,6 @@ interface HeaderToolbarProps {
   isLoading: boolean;
   onRefresh: () => void;
   onOpenStyleModal: () => void;
-  selectionBar?: ContextualActionBarProps;
   selectedCount?: number;
   onOpenDiff?: () => void;
 }
@@ -55,27 +53,10 @@ export function HeaderToolbar({
   isLoading,
   onRefresh,
   onOpenStyleModal,
-  selectionBar,
   selectedCount = 0,
   onOpenDiff,
 }: HeaderToolbarProps) {
   const { t } = useTranslation();
-
-  // 다중 선택 시: 폰트 리스트 영역을 가리지 않고 상단 헤더가 눈에 띄는 일괄 작업 툴바로 명확하게 전환
-  if (selectionBar && selectionBar.selectedCount > 0) {
-    return (
-      <header className="h-14 border-b-2 border-theme-accent bg-theme-accent-subtle/90 backdrop-blur-md flex items-center shrink-0 select-none shadow-sm transition-colors duration-200 relative z-30">
-        <ContextualActionBar
-          {...selectionBar}
-          onOpenDiff={onOpenDiff || selectionBar.onOpenDiff}
-          viewMode={viewMode}
-          onViewModeChange={onViewModeChange}
-          gridColumns={gridColumns}
-          onGridColumnsChange={onGridColumnsChange}
-        />
-      </header>
-    );
-  }
 
   return (
     <header className="h-14 border-b border-theme-border bg-theme-header px-4 flex items-center justify-between gap-3 shrink-0 select-none relative z-30">

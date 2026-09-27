@@ -139,7 +139,7 @@ impl FontScanner {
         let mut to_delete = Vec::new();
         for cached_path in cache_map.keys() {
             let path_ref = Path::new(cached_path);
-            let belongs_to_valid_dir = valid_root_dirs.iter().any(|root| path_ref.starts_with(root));
+            let belongs_to_valid_dir = valid_root_dirs.iter().any(|root| crate::protocol::is_same_or_subpath(root, path_ref));
             if belongs_to_valid_dir && !current_paths.contains(cached_path) && !path_ref.exists() {
                 to_delete.push(cached_path.clone());
             }
@@ -213,7 +213,7 @@ impl FontScanner {
                         return true;
                     }
                     let p = Path::new(&f.file_path);
-                    dirs.iter().any(|d| p.starts_with(d))
+                    dirs.iter().any(|d| crate::protocol::is_same_or_subpath(d, p))
                 })
                 .collect();
             Ok(filtered)
