@@ -3,6 +3,7 @@ import { Coffee, Heart, ExternalLink, Check, Copy, Sparkles } from "lucide-react
 import { useTranslation } from "react-i18next";
 import { CREATORS } from "../../data/aboutData";
 import { openExternalUrl } from "../../utils/url";
+import { appConfig } from "../../config/appConfig";
 
 export function SponsorSection() {
   const { t } = useTranslation();
@@ -18,30 +19,67 @@ export function SponsorSection() {
     }
   };
 
+  const isKofiCopied = copiedId === "kofi";
+
   return (
     <div className="space-y-6">
-      {/* 헤더 배너 */}
+      {/* 헤더 배너 & 빠른 후원 CTA */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 via-theme-card to-amber-500/5 p-5 border border-amber-500/20">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-            <Coffee className="w-6 h-6" />
-          </div>
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-theme-text flex items-center gap-1.5">
-                {t("sponsor.title", "커피 한 잔 보내기")}
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              </h3>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300">
-                {t("sponsor.badge", "Support & Sponsor")}
-              </span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+              <Coffee className="w-6 h-6" />
             </div>
-            <p className="text-xs text-theme-text-secondary leading-relaxed">
-              {t(
-                "sponsor.desc",
-                "Font Finder는 창작자와 개발자를 위해 정성을 담아 만드는 오픈소스 폰트 매니저입니다. 여러분의 따뜻한 커피 한 잔은 지속적인 업데이트와 새로운 기능 개발에 가장 큰 힘이 됩니다."
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-theme-text flex items-center gap-1.5">
+                  {t("sponsor.title", "커피 한 잔 보내기")}
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                </h3>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300">
+                  {t("sponsor.badge", "Support & Sponsor")}
+                </span>
+              </div>
+              <p className="text-xs text-theme-text-secondary leading-relaxed">
+                {t(
+                  "sponsor.desc",
+                  "Font Finder는 창작자와 개발자를 위해 정성을 담아 만드는 오픈소스 폰트 매니저입니다. 여러분의 따뜻한 커피 한 잔은 지속적인 업데이트와 새로운 기능 개발에 가장 큰 힘이 됩니다."
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-auto shrink-0 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => openExternalUrl(appConfig.links.sponsorUrl)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold text-xs shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <Coffee className="w-4 h-4" />
+              <span>{t("sponsor.go_to_sponsor", "후원하러 가기")}</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCopy("kofi", appConfig.links.sponsorUrl)}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-surface hover:bg-theme-hover border border-theme-border text-[11px] font-medium text-theme-text transition-colors cursor-pointer"
+              title={t("sponsor.copy_sponsor_link", "후원 링크 복사")}
+            >
+              {isKofiCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    {t("sponsor.copied", "복사됨")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-theme-text-muted" />
+                  <span>{t("sponsor.copy_sponsor_link", "후원 링크 복사")}</span>
+                </>
               )}
-            </p>
+            </button>
           </div>
         </div>
       </div>

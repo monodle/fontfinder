@@ -42,11 +42,7 @@ export function getDefaultPreviewText(lang = "ko"): string {
 }
 
 const LEGACY_DEFAULT_PREVIEW_TEXTS = [
-  "다람쥐 헌 쳇바퀴에 타고파\n키스의 고유조건은 입술끼리 만나야 하고 특별한 기술은 필요치 않다\n1234567890",
-  "다람쥐 헌 쳇바퀴에 타고파\n키스의 고유조건은 입술끼리 만나야 하고 특별한 기술은 필요치 않다",
-  "다람쥐 헌 쳇바퀴에 타고파",
   "다람쥐 헌 쳇바퀴에 타고파\nThe quick brown fox jumps over the lazy dog\n1234567890",
-  "다람쥐 헌 쳇바퀴에 타고파\\nThe quick brown fox jumps over the lazy dog\\n1234567890",
 ];
 
 export function isDefaultPreviewText(text: string): boolean {
@@ -125,6 +121,7 @@ export const appConfig = {
   },
   links: {
     githubRepo: getEnvString("VITE_GITHUB_REPO_URL", "https://github.com/monodle/fontfinder"),
+    sponsorUrl: getEnvString("VITE_SPONSOR_URL", "https://ko-fi.com/fontfinder/tip"),
   },
   library: {
     defaultCategory: getEnvCategory("VITE_DEFAULT_CATEGORY", "user"),
