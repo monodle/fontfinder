@@ -25,21 +25,21 @@ export interface PrivacyPolicySection {
 export const CREATORS: CreatorInfo[] = [
   {
     id: "monodoro",
-    name: "모노도로",
+    name: "이정민",
     role: "Developer, Architect, QA",
     githubUrl: "https://github.com/monodle",
     githubHandle: "@monodle",
     avatarUrl: "https://github.com/monodle.png",
-    bio: "안녕하세요",
+    bio: "Happy Thinker",
   },
   {
     id: "ken-choi",
-    name: "Ken Choi",
+    name: "최진원",
     role: "Product Designer, Product Manager, QA",
     githubUrl: "https://github.com/sojoongpapa",
     githubHandle: "@sojoongpapa",
     avatarUrl: "https://github.com/sojoongpapa.png",
-    bio: "안녕하세요",
+    bio: "자칭 꿈꾸는 늙은 천재 디발자 Ken",
   },
 ];
 

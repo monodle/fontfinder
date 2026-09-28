@@ -596,6 +596,10 @@ pub async fn open_external_url(url: String) -> Result<(), String> {
         return Err("안전하지 않은 URL 스킴입니다. http 또는 https 링크만 열 수 있습니다.".to_string());
     }
 
+    if trimmed.contains('\n') || trimmed.contains('\r') || trimmed.contains('\0') {
+        return Err("URL에 유효하지 않은 제어 문자가 포함되어 있습니다.".to_string());
+    }
+
     let url_clone = trimmed.to_string();
     tokio::task::spawn_blocking(move || {
         #[cfg(target_os = "macos")]
@@ -603,6 +607,11 @@ pub async fn open_external_url(url: String) -> Result<(), String> {
             let status = std::process::Command::new("open")
                 .arg(&url_clone)
                 .status()
+                .or_else(|_| {
+                    std::process::Command::new("/usr/bin/open")
+                        .arg(&url_clone)
+                        .status()
+                })
                 .map_err(|e| format!("URL 열기 실패: {}", e))?;
             if !status.success() {
                 return Err("브라우저 프로세스 실행 실패".to_string());
@@ -612,10 +621,21 @@ pub async fn open_external_url(url: String) -> Result<(), String> {
         {
             let status = std::process::Command::new("rundll32")
                 .args(["url.dll,FileProtocolHandler", &url_clone])
-                .status()
-                .map_err(|e| format!("URL 열기 실패: {}", e))?;
-            if !status.success() {
-                return Err("브라우저 프로세스 실행 실패".to_string());
+                .status();
+
+            let is_success = match status {
+                Ok(s) => s.success(),
+                Err(_) => false,
+            };
+
+            if !is_success {
+                let cmd_status = std::process::Command::new("cmd")
+                    .args(["/c", "start", "", &url_clone])
+                    .status()
+                    .map_err(|e| format!("URL 열기 실패: {}", e))?;
+                if !cmd_status.success() {
+                    return Err("브라우저 프로세스 실행 실패".to_string());
+                }
             }
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows")))]
