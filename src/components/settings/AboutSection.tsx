@@ -24,7 +24,7 @@ import {
   OpenSourceLicense,
 } from "../../data/aboutData";
 import { openExternalUrl } from "../../utils/url";
-import appIcon from "@/assets/icon.png";
+import appIcon from "@/assets/128x128.png";
 
 type AboutSubSection = "all" | "version" | "creators" | "licenses" | "privacy";
 
@@ -59,11 +59,10 @@ export function AboutSection() {
               key={tab.id}
               type="button"
               onClick={() => setActiveSubTab(tab.id as AboutSubSection)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                isActive
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${isActive
                   ? "bg-theme-accent text-theme-accent-text font-semibold shadow-xs"
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
-              }`}
+                }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
@@ -238,11 +237,10 @@ export function AboutSection() {
                     cat.id as "all" | "frontend" | "backend" | "fonts"
                   )
                 }
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
-                  licenseCategory === cat.id
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${licenseCategory === cat.id
                     ? "bg-theme-accent/20 text-theme-accent font-semibold border border-theme-accent/30"
                     : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
-                }`}
+                  }`}
               >
                 {cat.label}
               </button>

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { SettingsTab } from "../SettingsModal";
 import { FontSet, CustomFolder } from "../../types/font";
-import appIcon from "@/assets/icon.png";
+import appIcon from "@/assets/128x128.png";
 import { SortableSidebarList } from "../SortableSidebarList";
 import { LibraryItemModal } from "../LibraryItemModal";
 import { ConfirmModal } from "../ConfirmModal";
@@ -238,8 +238,8 @@ export function Sidebar({
                   onClick={() => onSelectCategory(cat.id)}
                   title={`${cat.label} (${cat.count})`}
                   className={`w-full flex items-center rounded-lg font-medium transition-colors cursor-pointer ${isCollapsed
-                      ? "w-9 h-9 mx-auto justify-center px-0 py-0"
-                      : "justify-between px-2.5 py-2"
+                    ? "w-9 h-9 mx-auto justify-center px-0 py-0"
+                    : "justify-between px-2.5 py-2"
                     } ${isActive
                       ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
                       : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
@@ -288,8 +288,8 @@ export function Sidebar({
                     onClick={() => onSelectFolder(folder.path)}
                     title={`${folder.name} (${folder.count})\n${folder.path}`}
                     className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${isActive
-                        ? "bg-theme-active text-theme-accent shadow-2xs"
-                        : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                      ? "bg-theme-active text-theme-accent shadow-2xs"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
                       }`}
                   >
                     <span
@@ -447,8 +447,8 @@ export function Sidebar({
                     onClick={() => onSelectSet(set.id)}
                     title={`${set.name} (${set.count})`}
                     className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer ${isActive
-                        ? "bg-theme-active text-theme-accent shadow-2xs"
-                        : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                      ? "bg-theme-active text-theme-accent shadow-2xs"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
                       }`}
                   >
                     <span
