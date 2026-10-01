@@ -10,7 +10,7 @@ import {
   FontVersionStatus,
 } from "../types/font";
 import { fontService } from "../services/fontService";
-import { isPathInFolder } from "../utils/pathUtils";
+import { isPathInFolder, normalizePath } from "../utils/pathUtils";
 import { sortFonts } from "../utils/fontSortUtils";
 import { deduplicateFonts, getFontUniqueKey } from "../utils/fontDeduplication";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "../types/sort";
@@ -61,20 +61,34 @@ export function useFontLibrary({
     try {
       const syncedFonts = await fontService.syncFontLibrary(validPaths);
 
+      // 연결 끊김(isMissing: true) 상태인 폴더의 캐시 폰트를 보존하여 병합
+      let allMergedFonts = syncedFonts;
+      const missingFolders = targetFolders.filter((f) => f.isMissing);
+      if (missingFolders.length > 0) {
+        const cached = await fontService.getCachedFonts().catch(() => []);
+        const syncedPaths = new Set(syncedFonts.map((f) => f.file_path));
+        const missingFolderFonts = cached.filter((f) => {
+          if (syncedPaths.has(f.file_path)) return false;
+          return missingFolders.some((mf) => isPathInFolder(f.file_path, mf.path));
+        });
+        allMergedFonts = [...syncedFonts, ...missingFolderFonts];
+      }
+
       if (targetFolders.length > 0) {
         const updatedFolders = targetFolders.map((folder) => {
-          if (folder.isMissing) {
-            return { ...folder, count: 0 };
-          }
-          const folderFonts = syncedFonts.filter((f) => isPathInFolder(f.file_path, folder.path));
+          const folderFonts = allMergedFonts.filter((f) => isPathInFolder(f.file_path, folder.path));
           const uniqueFolderFonts = deduplicateFonts(folderFonts);
-          return { ...folder, count: uniqueFolderFonts.length, isMissing: false };
+          return {
+            ...folder,
+            count: uniqueFolderFonts.length,
+            isMissing: folder.isMissing,
+          };
         });
         setCustomFolders(updatedFolders);
       }
 
-      setFonts(syncedFonts);
-      return syncedFonts;
+      setFonts(allMergedFonts);
+      return allMergedFonts;
     } catch (error) {
       console.error("폰트 라이브러리 동기화 실패:", error);
       return [];
@@ -113,14 +127,13 @@ export function useFontLibrary({
       }
       setSets(fetchedSets);
 
-      // 각 세트의 폰트 ID 목록 병렬 로드
-      const setFontEntries = await Promise.all(
-        fetchedSets.map(async (s) => {
-          const ids = await fontService.getSetFontIds(s.id).catch(() => []);
-          return [s.id, new Set(ids)] as const;
-        })
-      );
-      const newSetMap = new Map(setFontEntries);
+      // 모든 세트의 폰트 ID 목록을 단일 쿼리로 일괄 로드하여 1+N 쿼리/IPC 방지
+      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>));
+      const newSetMap = new Map<number, Set<string>>();
+      for (const s of fetchedSets) {
+        const ids = allSetFonts[s.id] ?? [];
+        newSetMap.set(s.id, new Set(ids));
+      }
       setSetMap(newSetMap);
 
       // 현재 활성화된 카테고리가 세트인 경우 폰트 ID 목록 즉시 갱신
@@ -139,9 +152,26 @@ export function useFontLibrary({
 
   // DB 상태 로드 (캐시 우선 렌더링 + 세트, 즐겨찾기, 등록 폴더, 활성화 폰트, 순서)
   const loadDbState = useCallback(async () => {
-    // 1. 캐시된 폰트가 있으면 첫 화면을 즉시 렌더링 (SWR)
+    // 1. 캐시된 폰트와 등록 폴더가 있으면 첫 화면을 즉시 렌더링 (SWR)
     try {
-      const cached = await fontService.getCachedFonts();
+      const [cached, initialFolders] = await Promise.all([
+        fontService.getCachedFonts(),
+        fontService.getFolders().catch(() => []),
+      ]);
+      if (initialFolders && initialFolders.length > 0) {
+        setCustomFolders((prev) =>
+          prev.length === 0
+            ? initialFolders.map((df) => ({
+                id: df.id,
+                path: df.path,
+                name: df.name,
+                color: df.color || "#0ea5e9",
+                count: 0,
+                isMissing: false,
+              }))
+            : prev
+        );
+      }
       if (cached && cached.length > 0) {
         setFonts(cached);
         setIsLoading(false);
@@ -226,11 +256,9 @@ export function useFontLibrary({
 
       setCustomFolders(targetFolders);
       targetFolders.forEach((folder) => {
-        if (!folder.isMissing) {
-          fontService.watchFolder(folder.path).catch((err) => {
-            console.warn(`폴더 감시 등록 실패 (${folder.path}):`, err);
-          });
-        }
+        fontService.watchFolder(folder.path).catch((err) => {
+          console.warn(`폴더 감시 등록 실패 (${folder.path}):`, err);
+        });
       });
 
       await loadSystemFonts(targetFolders);
@@ -275,11 +303,27 @@ export function useFontLibrary({
     const unlistenChangedPromise = listen<string>("folder-font-changed", async (event) => {
       const changedPath = event.payload;
       try {
+        // 해당 폴더가 실제 디스크에 존재하는지 선행 확인하여 언마운트 오탐 및 폰트 증발 방지
+        const pathInfos = await fontService.checkPaths([changedPath]).catch(() => []);
+        const exists = pathInfos.length > 0 && pathInfos[0].exists && pathInfos[0].is_dir;
+
+        if (!exists) {
+          // 디렉터리가 부재(언마운트)한 경우 scanDirectory 호출을 건너뛰고 isMissing: true로 전환
+          setCustomFolders((prev) =>
+            prev.map((f) =>
+              normalizePath(f.path) === normalizePath(changedPath) ? { ...f, isMissing: true } : f
+            )
+          );
+          return;
+        }
+
         const updated = await fontService.scanDirectory(changedPath);
         const uniqueCount = deduplicateFonts(updated).length;
         setCustomFolders((prev) =>
           prev.map((f) =>
-            f.path === changedPath ? { ...f, count: uniqueCount, isMissing: false } : f
+            normalizePath(f.path) === normalizePath(changedPath)
+              ? { ...f, count: uniqueCount, isMissing: false }
+              : f
           )
         );
 
@@ -317,10 +361,13 @@ export function useFontLibrary({
     const unlistenMissingPromise = listen<string>("folder-missing", (event) => {
       const missingPath = event.payload;
       setCustomFolders((prev) =>
-        prev.map((f) => (f.path === missingPath ? { ...f, count: 0, isMissing: true } : f))
+        prev.map((f) =>
+          normalizePath(f.path) === normalizePath(missingPath) ? { ...f, isMissing: true } : f
+        )
       );
 
-      setFonts((prev) => prev.filter((f) => !isPathInFolder(f.file_path, missingPath)));
+      // 폴더 연결이 끊기더라도 캐시된 폰트를 fonts에서 제거하지 않고 보존하여,
+      // processedFonts에서 해당 폴더의 폰트들이 자동으로 언플러그드(unplugged) 상태로 렌더링되도록 함
 
       const folderName = missingPath.split(/[\\/]/).pop() || missingPath;
       onToast?.(t("toast.folder_missing", { folder: folderName }));
@@ -429,8 +476,8 @@ export function useFontLibrary({
         );
 
         // 우선순위 규칙:
-        // 폴더 목록에 해당 폴더가 여전히 등록되어 있는 경우(외장하드 분리 등) -> unplugged ("연결 끊김")
-        // 폴더 목록에서 해당 폴더가 완전히 제거된 경우 -> deleted ("폴더 제거됨")
+        // 1. 폴더 목록에 해당 폴더가 등록되어 있는 경우(외장하드 분리 등) -> unplugged ("연결 끊김")
+        // 2. 폴더 목록 어디에도 해당 폴더가 없는 경우(폴더 삭제됨) -> deleted ("폴더 제거됨")
         const install_status: "unplugged" | "deleted" =
           relatedFolders.length > 0 ? "unplugged" : "deleted";
 
@@ -568,13 +615,25 @@ export function useFontLibrary({
       }
 
       // 외부 폰트인 경우 (source === "external")
-      // 등록된 감시 폴더(customFolders)에 속하지 않는 경우 -> 출처 폴더 제거됨
-      const isBelongingToAnyFolder = customFolders.some((cf) => isPathInFolder(font.file_path, cf.path));
-      if (!isBelongingToAnyFolder) {
+      // 1. 등록된 감시 폴더(customFolders)에 속하지 않는 경우 -> 출처 폴더 제거됨 (deleted)
+      const relatedFolders = customFolders.filter((cf) => isPathInFolder(font.file_path, cf.path));
+      if (relatedFolders.length === 0) {
         return {
           ...font,
           isMissing: true,
           install_status: "deleted",
+          version_status: "none",
+          libraries,
+        };
+      }
+
+      // 2. 소속된 등록 감시 폴더가 모두 연결 끊김(외장 드라이브 미연결, 폴더 위치 변경 등) 상태이거나 이미 누락 판정된 경우 -> 원본 파일 연결 끊김 (unplugged)
+      const hasActiveFolder = relatedFolders.some((cf) => !cf.isMissing);
+      if (!hasActiveFolder || font.isMissing) {
+        return {
+          ...font,
+          isMissing: true,
+          install_status: "unplugged",
           version_status: "none",
           libraries,
         };
@@ -621,7 +680,9 @@ export function useFontLibrary({
 
   // 카테고리별 고유(Unique) 폰트 카운트
   const categoryCounts = useMemo(() => {
-    const activeFonts = processedFonts.filter((f) => f.install_status !== "deleted");
+    const activeFonts = processedFonts.filter(
+      (f) => f.install_status !== "deleted" && f.install_status !== "unplugged"
+    );
     const uniqueAll = deduplicateFonts(activeFonts, activatedFontIds);
     const uniqueSystem = deduplicateFonts(
       processedFonts.filter((f) => f.source === "system"),
@@ -653,10 +714,6 @@ export function useFontLibrary({
   const folderCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const folder of customFolders) {
-      if (folder.isMissing) {
-        map.set(folder.path, 0);
-        continue;
-      }
       const folderFonts = processedFonts.filter((f) => isPathInFolder(f.file_path, folder.path));
       const uniqueFolderFonts = deduplicateFonts(folderFonts, activatedFontIds);
       map.set(folder.path, uniqueFolderFonts.length);
@@ -713,7 +770,9 @@ export function useFontLibrary({
     let result: FontMetadata[] = [];
 
     if (activeCategory === "all") {
-      const activeFonts = processedFonts.filter((f) => f.install_status !== "deleted");
+      const activeFonts = processedFonts.filter(
+        (f) => f.install_status !== "deleted" && f.install_status !== "unplugged"
+      );
       result = deduplicateFonts(activeFonts, activatedFontIds);
     } else if (activeCategory === "system") {
       const systemFonts = processedFonts.filter((f) => f.source === "system");

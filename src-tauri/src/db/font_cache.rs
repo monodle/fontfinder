@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use rusqlite::params;
 use crate::error::AppResult;
-use crate::font::{FontMetadata, FontSource};
+use crate::font::FontMetadata;
 use super::Database;
 
 impl Database {
@@ -34,45 +34,43 @@ impl Database {
 
   /// 현재 등록된 감시 폴더(watched_folders) 및 시스템/사용자 디렉토리에 유효한 활성 폰트만 반환
   pub fn get_active_cached_fonts(&self) -> AppResult<Vec<FontMetadata>> {
-    let (watched_folders, all_fonts) = {
-      let conn = self.conn()?;
-      let mut stmt = conn.prepare("SELECT path FROM watched_folders")?;
-      let watched: Vec<String> = stmt
-        .query_map([], |row| row.get(0))?
-        .filter_map(|r| r.ok())
-        .collect();
+    let conn = self.conn()?;
+    let mut stmt = conn.prepare("SELECT path FROM watched_folders")?;
+    let watched_folders: Vec<std::path::PathBuf> = stmt
+      .query_map([], |row| {
+        let path: String = row.get(0)?;
+        Ok(std::path::PathBuf::from(path))
+      })?
+      .filter_map(|r| r.ok())
+      .collect();
 
-      let mut font_stmt = conn.prepare(
-        "SELECT metadata_json FROM font_cache ORDER BY family_name COLLATE NOCASE ASC, id ASC",
-      )?;
-      let rows = font_stmt.query_map([], |row| {
-        let json: String = row.get(0)?;
-        Ok(json)
-      })?;
+    let mut font_stmt = conn.prepare(
+      "SELECT source, file_path, metadata_json FROM font_cache ORDER BY family_name COLLATE NOCASE ASC, id ASC",
+    )?;
+    let rows = font_stmt.query_map([], |row| {
+      let source: String = row.get(0)?;
+      let file_path: String = row.get(1)?;
+      let json: String = row.get(2)?;
+      Ok((source, file_path, json))
+    })?;
 
-      let mut fonts = Vec::new();
-      for row in rows {
-        let json_str = row?;
-        if let Ok(meta) = serde_json::from_str::<FontMetadata>(&json_str) {
-          fonts.push(meta);
+    let mut active_fonts = Vec::new();
+    for row in rows {
+      let (source, file_path, json) = row?;
+      let is_active = if source == "system" || source == "user" {
+        true
+      } else {
+        let f_buf = std::path::PathBuf::from(&file_path);
+        watched_folders.iter().any(|wf| crate::protocol::is_same_or_subpath(wf, &f_buf))
+      };
+
+      if is_active {
+        if let Ok(meta) = serde_json::from_str::<FontMetadata>(&json) {
+          active_fonts.push(meta);
         }
       }
-      (watched, fonts)
-    };
+    }
 
-    let active_fonts = all_fonts
-      .into_iter()
-      .filter(|f| {
-        if f.source == FontSource::System || f.source == FontSource::User {
-          return true;
-        }
-        let f_buf = std::path::PathBuf::from(&f.file_path);
-        watched_folders.iter().any(|wf| {
-          let wf_buf = std::path::PathBuf::from(wf);
-          crate::protocol::is_same_or_subpath(&wf_buf, &f_buf)
-        })
-      })
-      .collect();
     Ok(active_fonts)
   }
 
@@ -155,17 +153,37 @@ impl Database {
     let conn = self.conn()?;
     let mut fonts = Vec::new();
     let mut seen_ids = std::collections::HashSet::new();
-    let mut stmt = conn.prepare(
-      "SELECT metadata_json FROM font_cache WHERE file_hash = ?1 OR id = ?1 OR file_path = ?1 OR file_hash = ?2 LIMIT 1",
-    )?;
+
+    // 중복 제거 및 clean_hash 추출
+    let mut unique_keys = std::collections::HashSet::new();
     for hash in hashes {
+      unique_keys.insert(hash.as_str());
       let clean_hash = hash.split(':').next().unwrap_or(hash);
-      let mut rows = stmt.query(params![hash, clean_hash])?;
-      if let Some(row) = rows.next()? {
+      unique_keys.insert(clean_hash);
+    }
+    let key_vec: Vec<&str> = unique_keys.into_iter().collect();
+
+    // SQLite 파라미터 한도를 고려하여 200개 단위 청크로 일괄 IN 쿼리 수행
+    for chunk in key_vec.chunks(200) {
+      let placeholders = (1..=chunk.len())
+        .map(|i| format!("?{}", i))
+        .collect::<Vec<_>>()
+        .join(",");
+      let sql = format!(
+        "SELECT metadata_json FROM font_cache WHERE file_hash IN ({0}) OR id IN ({0}) OR file_path IN ({0})",
+        placeholders
+      );
+      let mut stmt = conn.prepare(&sql)?;
+      let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+      let rows = stmt.query_map(params.as_slice(), |row| {
         let json: String = row.get(0)?;
+        Ok(json)
+      })?;
+
+      for row in rows {
+        let json = row?;
         if let Ok(meta) = serde_json::from_str::<FontMetadata>(&json) {
-          if !seen_ids.contains(&meta.id) {
-            seen_ids.insert(meta.id.clone());
+          if seen_ids.insert(meta.id.clone()) {
             fonts.push(meta);
           }
         }
@@ -173,6 +191,7 @@ impl Database {
     }
     Ok(fonts)
   }
+
 
   pub fn delete_cached_fonts_by_paths(&self, paths: &[String]) -> AppResult<()> {
     if paths.is_empty() {
@@ -192,51 +211,78 @@ impl Database {
 
   /// 감시 폴더 및 서재 세트 어디에도 속하지 않는 고아 외부 폰트 캐시 정리
   pub fn cleanup_orphan_cached_fonts(&self) -> AppResult<usize> {
-    let conn = self.conn()?;
-    let mut stmt = conn.prepare("SELECT path FROM watched_folders")?;
-    let folders: Vec<String> = stmt
-      .query_map([], |row| row.get(0))?
-      .filter_map(|r| r.ok())
-      .collect();
+    let mut conn = self.conn()?;
 
-    let mut stmt = conn.prepare(
-      "SELECT id, file_path, file_hash FROM font_cache WHERE source = 'external'"
-    )?;
-    let rows = stmt.query_map([], |row| {
-      Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, Option<String>>(2)?))
-    })?;
+    // 1. 감시 폴더 목록 조회
+    let watched_folders: Vec<std::path::PathBuf> = {
+      let mut stmt = conn.prepare("SELECT path FROM watched_folders")?;
+      let paths: Vec<String> = stmt
+        .query_map([], |row| row.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+      paths.into_iter().map(std::path::PathBuf::from).collect()
+    };
 
-    let mut to_delete = Vec::new();
-    for row in rows {
-      if let Ok((id, file_path, file_hash)) = row {
-        let file_path_buf = std::path::PathBuf::from(&file_path);
-        let belongs_to_watched = folders.iter().any(|f| {
-          let folder_buf = std::path::PathBuf::from(f);
-          crate::protocol::is_same_or_subpath(&folder_buf, &file_path_buf)
-        });
-
-        if !belongs_to_watched {
-          let hash_key = file_hash.as_ref().map(|h| format!("{}:0", h)).unwrap_or_default();
-          let in_set: bool = conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM set_fonts WHERE font_id = ?1 OR font_id = ?2)",
-            params![id, hash_key],
-            |r| r.get(0),
-          ).unwrap_or(false);
-
-          if !in_set {
-            to_delete.push(id);
-          }
+    // 2. set_fonts에 등록되지 않은 external 폰트 후보군만 SQL 레벨에서 1차 선별 (N+1 쿼리 제거)
+    let candidate_rows: Vec<(String, String)> = {
+      let mut stmt = conn.prepare(
+        "
+        SELECT fc.id, fc.file_path
+        FROM font_cache fc
+        WHERE fc.source = 'external'
+          AND NOT EXISTS (
+            SELECT 1 FROM set_fonts sf
+            WHERE sf.font_id = fc.id
+               OR (fc.file_hash IS NOT NULL AND (
+                   sf.font_id = fc.file_hash
+                   OR sf.font_id = fc.file_hash || ':0'
+               ))
+          )
+        ",
+      )?;
+      let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+      })?;
+      let mut list = Vec::new();
+      for r in rows {
+        if let Ok(item) = r {
+          list.push(item);
         }
       }
+      list
+    };
+
+    // 3. 감시 폴더 하위에도 포함되지 않는 고아 폰트 id 수집
+    let to_delete: Vec<String> = candidate_rows
+      .into_iter()
+      .filter_map(|(id, file_path)| {
+        let path_buf = std::path::PathBuf::from(&file_path);
+        let belongs_to_watched = watched_folders.iter().any(|f| {
+          crate::protocol::is_same_or_subpath(f, &path_buf)
+        });
+        if !belongs_to_watched {
+          Some(id)
+        } else {
+          None
+        }
+      })
+      .collect();
+
+    if to_delete.is_empty() {
+      return Ok(0);
     }
 
-    if !to_delete.is_empty() {
-      let mut del_stmt = conn.prepare("DELETE FROM font_cache WHERE id = ?1")?;
+    // 4. 트랜잭션 기반 일괄 삭제 (트랜잭션 누락 수정 및 autocommit I/O 방지)
+    let deleted_count = to_delete.len();
+    let tx = conn.transaction()?;
+    {
+      let mut del_stmt = tx.prepare_cached("DELETE FROM font_cache WHERE id = ?1")?;
       for del_id in &to_delete {
-        let _ = del_stmt.execute(params![del_id]);
+        del_stmt.execute(params![del_id])?;
       }
     }
+    tx.commit()?;
 
-    Ok(to_delete.len())
+    Ok(deleted_count)
   }
 }

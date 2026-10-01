@@ -1,6 +1,6 @@
 [package]
 name = "fontfinder"
-version = "0.2.1"
+version = "0.2.2"
 description = "Font Finder - Modern Cross-platform Font Manager"
 authors = ["Font Finder"]
 edition = "2021"

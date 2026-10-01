@@ -107,14 +107,34 @@ export const fontService = {
     return await invoke<string[]>("get_set_font_ids", { setId });
   },
 
+  async getAllSetFontIds(): Promise<Record<number, string[]>> {
+    return await invoke<Record<number, string[]>>("get_all_set_font_ids");
+  },
+
+  async addFontsToSetBulk(setId: number, fontIds: string[]): Promise<void> {
+    if (!fontIds || fontIds.length === 0) return;
+    return await invoke<void>("add_fonts_to_set_bulk", { setId, fontIds });
+  },
+
+  async removeFontsFromSetBulk(setId: number, fontIds: string[]): Promise<void> {
+    if (!fontIds || fontIds.length === 0) return;
+    return await invoke<void>("remove_fonts_from_set_bulk", { setId, fontIds });
+  },
+
   // --- Favorites ---
   async toggleFavorite(fontId: string): Promise<boolean> {
     return await invoke<boolean>("toggle_favorite", { fontId });
   },
 
+  async setFavoritesBulk(fontIds: string[], add: boolean): Promise<void> {
+    if (!fontIds || fontIds.length === 0) return;
+    return await invoke<void>("set_favorites_bulk", { fontIds, add });
+  },
+
   async getFavoriteFontIds(): Promise<string[]> {
     return await invoke<string[]>("get_favorite_font_ids");
   },
+
 
   getFontUrl(filePath: string): string {
     try {

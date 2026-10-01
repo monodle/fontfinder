@@ -5,7 +5,6 @@ import { ColorPresetPicker } from "../ColorPresetPicker";
 import { TextAlignDropdown } from "../TextAlignDropdown";
 import { ViewModeControl } from "../ViewModeControl";
 import { GridColumnsSelector } from "../GridColumnsSelector";
-import { ListRefreshButton } from "../ListRefreshButton";
 import { SearchInput } from "../common/SearchInput";
 
 interface HeaderToolbarProps {
@@ -26,8 +25,6 @@ interface HeaderToolbarProps {
   onViewModeChange: (mode: "list" | "grid") => void;
   gridColumns: number;
   onGridColumnsChange: (columns: number) => void;
-  isLoading: boolean;
-  onRefresh: () => void;
   onOpenStyleModal: () => void;
   selectedCount?: number;
   onOpenDiff?: () => void;
@@ -51,8 +48,6 @@ export function HeaderToolbar({
   onViewModeChange,
   gridColumns,
   onGridColumnsChange,
-  isLoading,
-  onRefresh,
   onOpenStyleModal,
   selectedCount = 0,
   onOpenDiff,
@@ -61,7 +56,7 @@ export function HeaderToolbar({
 
   return (
     <header className="h-14 border-b border-theme-border bg-theme-header px-4 flex items-center justify-between gap-3 shrink-0 select-none relative z-30">
-      {/* 좌측 그룹: 미리보기 및 스타일 모달 트리거, 글꼴 검색창, 새로고침 버튼 */}
+      {/* 좌측 그룹: 미리보기 및 스타일 모달 트리거, 글꼴 검색창, 글꼴 비교 버튼 */}
       <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
         <button
           type="button"
@@ -83,7 +78,7 @@ export function HeaderToolbar({
           className="flex-1 max-w-xs md:max-w-sm min-w-[140px]"
         />
 
-        {/* 글꼴 비교(Diff) 버튼: [글꼴 검색...] 우측, [새로고침(⟳)] 좌측 (기본 활성화) */}
+        {/* 글꼴 비교(Diff) 버튼: [글꼴 검색...] 우측 */}
         {onOpenDiff && (
           <button
             type="button"
@@ -112,9 +107,6 @@ export function HeaderToolbar({
             </span>
           </button>
         )}
-
-        {/* 새로고침 버튼 (공용 컴포넌트) */}
-        <ListRefreshButton onRefresh={onRefresh} isLoading={isLoading} />
       </div>
 
       {/* 우측 그룹: 폰트 크기/색상 및 뷰 모드 컨트롤 */}

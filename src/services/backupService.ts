@@ -292,16 +292,12 @@ export const backupService = {
 
     if (selection.sets) {
       const sets = await fontService.getSets();
-      payload.sets = await Promise.all(
-        sets.map(async (s) => {
-          const fontIds = await fontService.getSetFontIds(s.id).catch(() => []);
-          return {
-            name: s.name,
-            color: s.color,
-            fontIds,
-          };
-        })
-      );
+      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>));
+      payload.sets = sets.map((s) => ({
+        name: s.name,
+        color: s.color,
+        fontIds: allSetFonts[s.id] ?? [],
+      }));
     }
 
     return payload;
@@ -462,16 +458,22 @@ export const backupService = {
       }
     }
 
-    // 3. 서재 세트 복원
+    // 3. 서재 세트 복원 (사전 일괄 조회로 1+N 쿼리 및 IPC 방지)
     if (selection.sets && backup.sets && backup.sets.length > 0) {
-      const currentSets = await fontService.getSets().catch(() => []);
+      const [currentSets, allSetFonts] = await Promise.all([
+        fontService.getSets().catch(() => []),
+        fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>)),
+      ]);
       const setMap = new Map(currentSets.map((s) => [s.name, s]));
+      const existingSetFontsMap = new Map<number, Set<string>>(
+        Object.entries(allSetFonts).map(([k, v]) => [Number(k), new Set(v)])
+      );
 
       for (const setItem of backup.sets) {
         if (!setItem.name) continue;
         try {
           let targetSetId: number;
-          let existingSet = setMap.get(setItem.name);
+          const existingSet = setMap.get(setItem.name);
 
           if (existingSet) {
             targetSetId = existingSet.id;
@@ -479,17 +481,16 @@ export const backupService = {
             const created = await fontService.createSet(setItem.name, setItem.color);
             targetSetId = created.id;
             setMap.set(setItem.name, created);
+            existingSetFontsMap.set(targetSetId, new Set());
             setsAdded++;
           }
 
           if (Array.isArray(setItem.fontIds) && setItem.fontIds.length > 0) {
-            const existingFontIds = new Set(
-              await fontService.getSetFontIds(targetSetId).catch(() => [])
-            );
-            for (const fontId of setItem.fontIds) {
-              if (existingFontIds.has(fontId)) continue;
-              await fontService.addFontToSet(targetSetId, fontId).catch(() => {});
-              existingFontIds.add(fontId);
+            const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<string>();
+            const toAdd = setItem.fontIds.filter((fontId) => !existingFontIds.has(fontId));
+            if (toAdd.length > 0) {
+              await fontService.addFontsToSetBulk(targetSetId, toAdd).catch(() => {});
+              toAdd.forEach((id) => existingFontIds.add(id));
             }
           }
         } catch (e) {

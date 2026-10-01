@@ -577,8 +577,6 @@
     "no_tracker": "No Trackers / Telemetry",
     "local_sqlite_storage": "Local SQLite Storage",
     "privacy_network_policy": "100% Lokal & Privat (Kein Tracking, Keine Telemetrie)",
-    "creator_monodoro_bio": "Happy Thinker",
-    "creator_ken_choi_bio": "Selbsternannter träumender alter Genie-Devsigner Ken",
     "privacy_section_1_title": "1. 100% lokale Datenspeicherung & Keine Datenerfassung",
     "privacy_section_1_desc": "Font Finder sammelt keinerlei personenbezogene Daten oder Aktivitätsprotokolle. Registrierte Schriftpfade, Favoriten, Bibliothekssätze und Benutzereinstellungen werden ausschließlich in Ihrer lokalen SQLite-Datenbank gespeichert und niemals an externe Server übertragen.",
     "privacy_section_1_pt_1": "Keine Registrierung, kein Login, keine Erfassung personenbezogener Daten (PII)",

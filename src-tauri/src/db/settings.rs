@@ -1,18 +1,18 @@
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use crate::error::AppResult;
 use super::Database;
 
 impl Database {
   pub fn get_setting(&self, key: &str) -> AppResult<Option<String>> {
     let conn = self.conn()?;
-    let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
-    let mut rows = stmt.query(params![key])?;
-    if let Some(row) = rows.next()? {
-      let val: String = row.get(0)?;
-      Ok(Some(val))
-    } else {
-      Ok(None)
-    }
+    let val = conn
+      .query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+      )
+      .optional()?;
+    Ok(val)
   }
 
   pub fn set_setting(&self, key: &str, value: &str) -> AppResult<()> {
@@ -24,3 +24,4 @@ impl Database {
     Ok(())
   }
 }
+

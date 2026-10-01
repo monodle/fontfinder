@@ -85,11 +85,9 @@ export function useFontActions({
         }
 
         if (isCurrentFav) {
-          // 즐겨찾기 해제: 매칭된 모든 키를 DB 및 메모리에서 제거
+          // 즐겨찾기 해제: 매칭된 모든 키를 단일 트랜잭션 벌크 API로 일괄 제거 (원자성 확보 및 루프 방지)
           const keysToRemove = matchingKeys.size > 0 ? Array.from(matchingKeys) : [fontId];
-          for (const k of keysToRemove) {
-            await fontService.toggleFavorite(k);
-          }
+          await fontService.setFavoritesBulk(keysToRemove, false);
           setFavoriteIds((prev) => {
             const next = new Set(prev);
             keysToRemove.forEach((k) => next.delete(k));
@@ -118,6 +116,8 @@ export function useFontActions({
   const handleBulkFavorite = useCallback(
     async (fontIds: string[], add: boolean) => {
       try {
+        const keysToProcess = new Set<string>();
+
         for (const fontId of fontIds) {
           const targetFont =
             fonts.find((f) => f.id === fontId) ||
@@ -129,15 +129,42 @@ export function useFontActions({
             : favoriteIds.has(fontId);
 
           if ((add && !isCurrentFav) || (!add && isCurrentFav)) {
-            await handleToggleFavorite(fontId);
+            const hashKey = targetFont?.file_hash
+              ? `${targetFont.file_hash}:${targetFont.font_index}`
+              : null;
+
+            if (add) {
+              keysToProcess.add(hashKey || fontId);
+            } else {
+              if (favoriteIds.has(fontId)) keysToProcess.add(fontId);
+              if (hashKey && favoriteIds.has(hashKey)) keysToProcess.add(hashKey);
+              if (targetFont?.file_hash && favoriteIds.has(targetFont.file_hash)) {
+                keysToProcess.add(targetFont.file_hash);
+              }
+              if (keysToProcess.size === 0) keysToProcess.add(fontId);
+            }
           }
+        }
+
+        if (keysToProcess.size > 0) {
+          const keyArray = Array.from(keysToProcess);
+          await fontService.setFavoritesBulk(keyArray, add);
+          setFavoriteIds((prev) => {
+            const next = new Set(prev);
+            if (add) {
+              keyArray.forEach((k) => next.add(k));
+            } else {
+              keyArray.forEach((k) => next.delete(k));
+            }
+            return next;
+          });
         }
         handleClearSelection();
       } catch (err) {
         console.error("일괄 즐겨찾기 변경 실패:", err);
       }
     },
-    [favoriteIds, filteredFonts, fonts, handleClearSelection, handleToggleFavorite, unpluggedFonts]
+    [favoriteIds, filteredFonts, fonts, handleClearSelection, setFavoriteIds, unpluggedFonts]
   );
 
   // 단일 폰트 임시 활성화/비활성화
@@ -382,12 +409,16 @@ export function useFontActions({
   const handleBulkAddToSet = useCallback(
     async (setId: number, fontIds: string[]) => {
       try {
+        const keysToAdd = new Set<string>();
         for (const fontId of fontIds) {
           const targetFont = fonts.find((f) => f.id === fontId);
           const key = targetFont?.file_hash
             ? `${targetFont.file_hash}:${targetFont.font_index}`
             : fontId;
-          await fontService.addFontToSet(setId, key);
+          keysToAdd.add(key);
+        }
+        if (keysToAdd.size > 0) {
+          await fontService.addFontsToSetBulk(setId, Array.from(keysToAdd));
         }
         if (refreshSets) {
           await refreshSets();
@@ -416,10 +447,8 @@ export function useFontActions({
         const key = targetFont?.file_hash
           ? `${targetFont.file_hash}:${targetFont.font_index}`
           : fontId;
-        await fontService.removeFontFromSet(setId, key);
-        if (key !== fontId) {
-          await fontService.removeFontFromSet(setId, fontId).catch(() => { });
-        }
+        const keysToRemove = key !== fontId ? [key, fontId] : [key];
+        await fontService.removeFontsFromSetBulk(setId, keysToRemove);
         if (refreshSets) {
           await refreshSets();
         } else {
@@ -449,15 +478,17 @@ export function useFontActions({
   const handleBulkRemoveFromSet = useCallback(
     async (setId: number, fontIds: string[]) => {
       try {
+        const keysToRemove = new Set<string>();
         for (const fontId of fontIds) {
           const targetFont = fonts.find((f) => f.id === fontId);
           const key = targetFont?.file_hash
             ? `${targetFont.file_hash}:${targetFont.font_index}`
             : fontId;
-          await fontService.removeFontFromSet(setId, key);
-          if (key !== fontId) {
-            await fontService.removeFontFromSet(setId, fontId).catch(() => { });
-          }
+          keysToRemove.add(key);
+          keysToRemove.add(fontId);
+        }
+        if (keysToRemove.size > 0) {
+          await fontService.removeFontsFromSetBulk(setId, Array.from(keysToRemove));
         }
         if (refreshSets) {
           await refreshSets();

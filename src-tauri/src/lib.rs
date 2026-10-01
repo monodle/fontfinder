@@ -50,7 +50,11 @@ pub fn run() {
             commands::add_font_to_set,
             commands::remove_font_from_set,
             commands::get_set_font_ids,
+            commands::get_all_set_font_ids,
+            commands::add_fonts_to_set_bulk,
+            commands::remove_fonts_from_set_bulk,
             commands::toggle_favorite,
+            commands::set_favorites_bulk,
             commands::get_favorite_font_ids,
             commands::watch_folder,
             commands::unwatch_folder,
@@ -93,6 +97,14 @@ pub fn run() {
 
             let watcher = watcher::FontFolderWatcher::new(app.handle().clone())
                 .expect("Failed to initialize font folder watcher");
+
+            if let Ok(folders) = database.get_folders() {
+                if let Ok(mut w) = watcher.lock() {
+                    for f in folders {
+                        let _ = w.watch(&std::path::PathBuf::from(f.path));
+                    }
+                }
+            }
 
             let window_manager = Arc::new(window_manager::WindowManager::new(Arc::clone(&database)));
 

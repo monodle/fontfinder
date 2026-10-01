@@ -44,15 +44,28 @@ export function FontItem({
   // 3열 이상이면 간소화 모드, 4열 이상이면 초소형 모드
   const isCompact = columns >= 3;
   const isUltraCompact = columns >= 4;
+  const { id, file_path, weight, is_italic, isMissing, install_status, source } = font;
+
   const isInstalled =
-    font.install_status === "installed_system" ||
-    font.install_status === "installed_user" ||
-    font.source === "system" ||
-    font.source === "user";
+    install_status === "installed_system" ||
+    install_status === "installed_user" ||
+    source === "system" ||
+    source === "user";
+
+  const isDeleted = install_status === "deleted";
+  const isUnplugged = Boolean(install_status === "unplugged" || (isMissing && !isDeleted));
+  const isDisconnected = Boolean(isUnplugged || isDeleted);
+  const isUnavailable = Boolean(isMissing || isDisconnected);
 
   useEffect(() => {
+    if (isUnavailable) {
+      setFontFamily("var(--font-system)");
+      setIsLoaded(true);
+      return;
+    }
+
     let isMounted = true;
-    retainFont(font.id);
+    retainFont(id);
 
     loadFontIntoDocument(font).then((family) => {
       if (isMounted) {
@@ -63,9 +76,9 @@ export function FontItem({
 
     return () => {
       isMounted = false;
-      releaseFont(font.id);
+      releaseFont(id);
     };
-  }, [font]);
+  }, [id, file_path, weight, is_italic, isUnavailable]);
 
   const handleActivate = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,10 +127,6 @@ export function FontItem({
     textDecoration: previewSettings?.isUnderline ? "underline" : "none",
     color: previewSettings?.textColor || undefined,
   };
-
-  const isDeleted = font.install_status === "deleted";
-  const isUnplugged = Boolean(font.install_status === "unplugged" || (font.isMissing && !isDeleted));
-  const isDisconnected = Boolean(isUnplugged || isDeleted);
 
   const cardProps = {
     font,

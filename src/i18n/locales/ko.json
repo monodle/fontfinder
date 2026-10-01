@@ -97,6 +97,8 @@
     "relink": "새 위치 재연결",
     "relink_dialog_title": "이동된 폴더의 새 위치 선택",
     "missing_label": "폴더 위치 누락됨",
+    "missing_title": "폴더 위치 누락됨",
+    "missing_desc": "폴더가 이동되었거나 연결이 끊어졌습니다. 글꼴을 표시하려면 폴더를 재연결하세요.",
     "relink_short": "재연결"
   },
   "dropzone": {
@@ -744,8 +746,6 @@
     "no_tracker": "트래커 / 분석기 미탑재",
     "local_sqlite_storage": "로컬 SQLite 암호화 보관",
     "privacy_network_policy": "100% 로컬 프라이빗 (No Tracking, No Telemetry)",
-    "creator_monodoro_bio": "Happy Thinker",
-    "creator_ken_choi_bio": "자칭 꿈꾸는 늙은 천재 디발자 Ken",
     "privacy_section_1_title": "1. 100% 로컬 데이터 저장 및 무(無)수집 원칙",
     "privacy_section_1_desc": "Font Finder는 사용자의 개인정보나 활동 로그를 수집하지 않습니다. 앱에서 등록한 폰트 경로, 즐겨찾기, 서재 세트 및 사용자 환경 설정은 사용자의 로컬 컴퓨터 SQLite 데이터베이스에만 저장되며, 어떠한 외부 원격 서버로도 전송되지 않습니다.",
     "privacy_section_1_pt_1": "회원가입, 로그인, 개인 식별 정보(PII) 요구 없음",

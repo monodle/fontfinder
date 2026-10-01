@@ -301,6 +301,21 @@ pub fn get_set_font_ids(set_id: i64, state: State<'_, AppState>) -> Result<Vec<S
     state.db.get_set_font_ids(set_id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn get_all_set_font_ids(state: State<'_, AppState>) -> Result<std::collections::HashMap<i64, Vec<String>>, String> {
+    state.db.get_all_set_font_ids().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn add_fonts_to_set_bulk(set_id: i64, font_ids: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.add_fonts_to_set_bulk(set_id, &font_ids).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn remove_fonts_from_set_bulk(set_id: i64, font_ids: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.remove_fonts_from_set_bulk(set_id, &font_ids).map_err(|e| e.to_string())
+}
+
 // --- Favorites IPC ---
 #[tauri::command]
 pub fn toggle_favorite(font_id: String, state: State<'_, AppState>) -> Result<bool, String> {
@@ -308,9 +323,15 @@ pub fn toggle_favorite(font_id: String, state: State<'_, AppState>) -> Result<bo
 }
 
 #[tauri::command]
+pub fn set_favorites_bulk(font_ids: Vec<String>, add: bool, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.set_favorites_bulk(&font_ids, add).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_favorite_font_ids(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     state.db.get_favorite_font_ids().map_err(|e| e.to_string())
 }
+
 
 // --- Folder Watcher IPC ---
 #[tauri::command]

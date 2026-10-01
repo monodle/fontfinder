@@ -7,8 +7,8 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
     PRAGMA temp_store = MEMORY;
-    PRAGMA mmap_size = 268435456;
-    PRAGMA cache_size = -131072;
+    PRAGMA mmap_size = 67108864;
+    PRAGMA cache_size = -32768;
     PRAGMA foreign_keys = ON;
 
     -- 1. 테이블 정의
@@ -77,19 +77,25 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- 2. 인덱스 정의
-    CREATE INDEX IF NOT EXISTS idx_set_fonts_font_id ON set_fonts(font_id);
-    CREATE INDEX IF NOT EXISTS idx_tag_fonts_font_id ON tag_fonts(font_id);
+    -- 2. 이전 비효율/중복 인덱스 정리 (마이그레이션 호환)
+    DROP INDEX IF EXISTS idx_font_cache_file_path;
+    DROP INDEX IF EXISTS idx_font_cache_family_name;
+    DROP INDEX IF EXISTS idx_font_cache_source;
+    DROP INDEX IF EXISTS idx_set_fonts_font_id;
+    DROP INDEX IF EXISTS idx_tag_fonts_font_id;
+    DROP INDEX IF EXISTS idx_favorites_created_at;
+
+    -- 3. 최적화 인덱스 정의
+    CREATE INDEX IF NOT EXISTS idx_set_fonts_font_set ON set_fonts(font_id, set_id);
+    CREATE INDEX IF NOT EXISTS idx_tag_fonts_font_tag ON tag_fonts(font_id, tag_id);
     CREATE INDEX IF NOT EXISTS idx_activated_fonts_file_path ON activated_fonts(file_path);
     CREATE INDEX IF NOT EXISTS idx_activated_fonts_activated_at ON activated_fonts(activated_at ASC);
-    CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_font_cache_file_path ON font_cache(file_path);
+    CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC, font_id);
     CREATE INDEX IF NOT EXISTS idx_font_cache_file_path_nocase ON font_cache(file_path COLLATE NOCASE);
-    CREATE INDEX IF NOT EXISTS idx_font_cache_family_name ON font_cache(family_name);
     CREATE INDEX IF NOT EXISTS idx_font_cache_family_collate ON font_cache(family_name COLLATE NOCASE ASC, id ASC);
     CREATE INDEX IF NOT EXISTS idx_font_cache_scan_meta ON font_cache(file_path, file_size, mtime);
-    CREATE INDEX IF NOT EXISTS idx_font_cache_source ON font_cache(source);
     CREATE INDEX IF NOT EXISTS idx_font_cache_file_hash ON font_cache(file_hash);
+    CREATE INDEX IF NOT EXISTS idx_font_cache_external ON font_cache(id, file_path, file_hash) WHERE source = 'external';
     ",
   )?;
 

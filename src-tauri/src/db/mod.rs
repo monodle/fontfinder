@@ -14,6 +14,9 @@ mod activated_fonts;
 mod settings;
 mod font_cache;
 
+#[cfg(test)]
+mod tests;
+
 pub use models::*;
 
 pub struct Database {
@@ -27,6 +30,16 @@ impl Database {
     }
 
     let conn = Connection::open(&db_path)?;
+    schema::initialize_schema(&conn)?;
+
+    Ok(Self {
+      conn: Mutex::new(conn),
+    })
+  }
+
+  #[cfg(test)]
+  pub fn new_in_memory() -> AppResult<Self> {
+    let conn = Connection::open_in_memory()?;
     schema::initialize_schema(&conn)?;
 
     Ok(Self {

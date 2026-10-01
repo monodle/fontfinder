@@ -7,7 +7,7 @@
  */
 export function normalizePath(path: string): string {
   if (!path) return "";
-  return path.replace(/\\/g, "/").replace(/\/+$/, "");
+  return path.replace(/\\/g, "/").replace(/\/+$/, "").normalize("NFC");
 }
 
 /**

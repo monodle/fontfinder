@@ -97,6 +97,8 @@
     "relink": "Relink to new location",
     "relink_dialog_title": "Select New Location for Missing Folder",
     "missing_label": "Missing folder location",
+    "missing_title": "Folder Location Missing",
+    "missing_desc": "The folder was moved or disconnected. Relink the folder to display fonts.",
     "relink_short": "Relink"
   },
   "dropzone": {
@@ -744,8 +746,6 @@
     "no_tracker": "No Trackers / Telemetry",
     "local_sqlite_storage": "Local SQLite Storage",
     "privacy_network_policy": "100% Local Private (No Tracking, No Telemetry)",
-    "creator_monodoro_bio": "Happy Thinker",
-    "creator_ken_choi_bio": "Self-proclaimed dreaming old genius Dev-signer Ken",
     "privacy_section_1_title": "1. 100% Local Data Storage & Zero Data Collection",
     "privacy_section_1_desc": "Font Finder does not collect any personal information or activity logs. Registered font paths, favorites, library sets, and user preferences are stored exclusively in your local SQLite database and are never sent to external servers.",
     "privacy_section_1_pt_1": "No sign-up, login, or Personally Identifiable Information (PII) required",

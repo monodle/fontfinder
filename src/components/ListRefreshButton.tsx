@@ -9,7 +9,7 @@ export interface ListRefreshButtonProps {
   className?: string;
   iconClassName?: string;
   size?: "sm" | "md" | "lg";
-  variant?: "icon" | "button";
+  variant?: "icon" | "button" | "ghost";
   showLabel?: boolean;
   label?: string;
   title?: string;
@@ -64,6 +64,11 @@ export const ListRefreshButton: React.FC<ListRefreshButtonProps> = ({
     lg: "w-4 h-4",
   }[size];
 
+  const variantClasses =
+    variant === "ghost"
+      ? "text-theme-text-muted hover:text-theme-accent hover:bg-theme-hover active:scale-95"
+      : "border border-theme-border bg-theme-card hover:bg-theme-card-hover text-theme-text-secondary hover:text-theme-text shadow-2xs";
+
   return (
     <button
       type="button"
@@ -72,7 +77,8 @@ export const ListRefreshButton: React.FC<ListRefreshButtonProps> = ({
       title={buttonTitle}
       aria-label={buttonTitle}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg border border-theme-border bg-theme-card hover:bg-theme-card-hover text-theme-text-secondary hover:text-theme-text transition-colors disabled:opacity-50 shadow-2xs cursor-pointer select-none",
+        "inline-flex items-center justify-center rounded-lg transition-all disabled:opacity-50 cursor-pointer select-none",
+        variantClasses,
         sizeClasses,
         className
       )}

@@ -744,8 +744,6 @@
     "no_tracker": "No Trackers / Telemetry",
     "local_sqlite_storage": "Local SQLite Storage",
     "privacy_network_policy": "100% ローカルプライベート (No Tracking, No Telemetry)",
-    "creator_monodoro_bio": "Happy Thinker",
-    "creator_ken_choi_bio": "自称 夢見るオールド天才デブサイナー Ken",
     "privacy_section_1_title": "1. 100%ローカルデータ保存と無収集原則",
     "privacy_section_1_desc": "Font Finderは、ユーザーの個人情報や利用ログを一切収集しません。登録されたフォントパス、お気に入り、ライブラリセット、設定はすべてローカルのSQLiteデータベースにのみ保存され、外部サーバーへ送信されることはありません。",
     "privacy_section_1_pt_1": "会員登録・ログイン・個人識別情報(PII)の要求なし",

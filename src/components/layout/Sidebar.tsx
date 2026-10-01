@@ -27,6 +27,7 @@ import appIcon from "@/assets/128x128.png";
 import { SortableSidebarList } from "../SortableSidebarList";
 import { LibraryItemModal } from "../LibraryItemModal";
 import { ConfirmModal } from "../ConfirmModal";
+import { ListRefreshButton } from "../ListRefreshButton";
 
 interface CategoryCounts {
   total: number;
@@ -52,6 +53,8 @@ interface SidebarProps {
   customFolders: CustomFolder[];
   sets: FontSet[];
   isCollapsed?: boolean;
+  isLoading?: boolean;
+  onRefresh?: () => void | Promise<void>;
   onToggleCollapse?: () => void;
   onOpenSettings: (tab?: SettingsTab) => void;
   onSelectCategory: (category: string) => void;
@@ -77,6 +80,8 @@ export function Sidebar({
   customFolders,
   sets,
   isCollapsed = false,
+  isLoading = false,
+  onRefresh,
   onToggleCollapse,
   onOpenSettings,
   onSelectCategory,
@@ -164,7 +169,7 @@ export function Sidebar({
     >
       {/* App Title Header */}
       <div
-        className={`h-14 flex items-center border-b border-theme-border shrink-0 ${isCollapsed ? "justify-center px-1" : "justify-between px-4"
+        className={`h-14 flex items-center border-b border-theme-border shrink-0 ${isCollapsed ? "justify-center px-1" : "justify-between px-3.5"
           }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
@@ -186,6 +191,16 @@ export function Sidebar({
             </span>
           )}
         </div>
+
+        {!isCollapsed && onRefresh && (
+          <ListRefreshButton
+            onRefresh={onRefresh}
+            isLoading={isLoading}
+            variant="ghost"
+            size="md"
+            className="w-7 h-7 p-1 rounded-md shrink-0"
+          />
+        )}
       </div>
 
       {/* Sidebar Nav Items */}
@@ -196,7 +211,7 @@ export function Sidebar({
         {/* Library Section */}
         <div>
           {isCollapsed ? (
-            <div className="flex justify-center pb-1">
+            <div className="flex flex-col items-center gap-1 pb-1">
               {onToggleCollapse && (
                 <button
                   type="button"
@@ -207,6 +222,15 @@ export function Sidebar({
                 >
                   <PanelLeftOpen className="w-4 h-4" />
                 </button>
+              )}
+              {onRefresh && (
+                <ListRefreshButton
+                  onRefresh={onRefresh}
+                  isLoading={isLoading}
+                  variant="ghost"
+                  size="md"
+                  className="w-9 h-9 p-0 flex items-center justify-center rounded-lg"
+                />
               )}
             </div>
           ) : (

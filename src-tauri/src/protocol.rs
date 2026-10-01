@@ -99,19 +99,75 @@ pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
     }
 }
 
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
+
+struct SafePathCache {
+    watched_folders: Option<(Instant, Vec<PathBuf>)>,
+    verified_paths: std::collections::HashMap<PathBuf, Instant>,
+}
+
+static PATH_CACHE: LazyLock<Mutex<SafePathCache>> = LazyLock::new(|| {
+    Mutex::new(SafePathCache {
+        watched_folders: None,
+        verified_paths: std::collections::HashMap::new(),
+    })
+});
+
+fn remember_verified_path(path: &Path) {
+    if let Ok(mut cache) = PATH_CACHE.lock() {
+        if cache.verified_paths.len() > 2000 {
+            cache.verified_paths.clear();
+        }
+        cache.verified_paths.insert(path.to_path_buf(), Instant::now());
+    }
+}
+
+fn get_cached_watched_folders(db: &crate::db::Database) -> Vec<PathBuf> {
+    let now = Instant::now();
+    if let Ok(mut cache) = PATH_CACHE.lock() {
+        if let Some((fetched_at, ref folders)) = cache.watched_folders {
+            if now.duration_since(fetched_at) < Duration::from_secs(5) {
+                return folders.clone();
+            }
+        }
+        if let Ok(db_folders) = db.get_folders() {
+            let paths: Vec<PathBuf> = db_folders.into_iter().map(|f| PathBuf::from(f.path)).collect();
+            cache.watched_folders = Some((now, paths.clone()));
+            return paths;
+        }
+    }
+    Vec::new()
+}
+
 /// 요청된 정규화 파일 경로가 안전한 폰트 디렉토리 또는 DB 카탈로그에 속하는지 검증합니다.
 pub fn is_font_path_allowed<R: tauri::Runtime>(
     path: &Path,
     app_handle: Option<&tauri::AppHandle<R>>,
 ) -> bool {
+    let now = Instant::now();
+
+    // 0. 최근 검증 성공한 경로 인메모리 빠른 반환 (TTL 30초, DB 조회 0회)
+    if let Ok(mut cache) = PATH_CACHE.lock() {
+        if let Some(&cached_time) = cache.verified_paths.get(path) {
+            if now.duration_since(cached_time) < Duration::from_secs(30) {
+                return true;
+            } else {
+                cache.verified_paths.remove(path);
+            }
+        }
+    }
+
     // 1. OS 시스템 폰트 디렉토리 검증
     for sys_dir in crate::platform::Platform::get_system_font_directories() {
         if let Ok(canonical_sys) = sys_dir.canonicalize() {
             if is_same_or_subpath(&canonical_sys, path) {
+                remember_verified_path(path);
                 return true;
             }
         }
         if is_same_or_subpath(&sys_dir, path) {
+            remember_verified_path(path);
             return true;
         }
     }
@@ -122,27 +178,29 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
         if let Ok(app_data) = app.path().app_data_dir() {
             if let Ok(canonical_app_data) = app_data.canonicalize() {
                 if is_same_or_subpath(&canonical_app_data, path) {
+                    remember_verified_path(path);
                     return true;
                 }
             }
             if is_same_or_subpath(&app_data, path) {
+                remember_verified_path(path);
                 return true;
             }
         }
 
         if let Some(state) = app.try_state::<crate::commands::AppState>() {
-            // 2-1. 사용자가 등록한 감시 폴더(watched folders) 하위 경로인지 검증
-            if let Ok(folders) = state.db.get_folders() {
-                for folder in folders {
-                    let folder_path = PathBuf::from(&folder.path);
-                    if let Ok(canonical_folder) = folder_path.canonicalize() {
-                        if is_same_or_subpath(&canonical_folder, path) {
-                            return true;
-                        }
-                    }
-                    if is_same_or_subpath(&folder_path, path) {
+            // 2-1. 사용자가 등록한 감시 폴더(watched folders) 하위 경로인지 검증 (5초 TTL 인메모리 캐싱)
+            let folders = get_cached_watched_folders(&state.db);
+            for folder_path in folders {
+                if let Ok(canonical_folder) = folder_path.canonicalize() {
+                    if is_same_or_subpath(&canonical_folder, path) {
+                        remember_verified_path(path);
                         return true;
                     }
+                }
+                if is_same_or_subpath(&folder_path, path) {
+                    remember_verified_path(path);
+                    return true;
                 }
             }
 
@@ -151,12 +209,14 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
             let clean_path = strip_unc_prefix(path);
             let clean_path_str = clean_path.to_string_lossy();
             if let Ok(true) = state.db.is_font_path_cached(&clean_path_str) {
+                remember_verified_path(path);
                 return true;
             }
 
             let raw_path_str = path.to_string_lossy();
             if raw_path_str != clean_path_str {
                 if let Ok(true) = state.db.is_font_path_cached(&raw_path_str) {
+                    remember_verified_path(path);
                     return true;
                 }
             }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, RefreshCw, Sliders } from "lucide-react";
+import { Check, RefreshCw, Sliders, AlertTriangle, FolderSync } from "lucide-react";
+import { normalizePath } from "./utils/pathUtils";
 import { FontMetadata, PreviewSettings, FontLibraryTag } from "./types/font";
 import { fontService } from "./services/fontService";
 import { settingsService, CustomAppSettings } from "./services/settingsService";
@@ -400,6 +401,16 @@ export default function App() {
     return null;
   }, [library.activeCategory, library.customFolders]);
 
+  const activeMissingFolder = useMemo(() => {
+    if (library.activeCategory.startsWith("folder:")) {
+      const folderPath = library.activeCategory.replace("folder:", "");
+      return library.customFolders.find(
+        (f) => f.isMissing && normalizePath(f.path) === normalizePath(folderPath)
+      );
+    }
+    return null;
+  }, [library.activeCategory, library.customFolders]);
+
   // 서재 세트 화면에서 Delete / Backspace 키 단축키로 서재에서 선택 폰트 제거 (확인 모달 트리거)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -514,6 +525,8 @@ export default function App() {
         sets={library.sets}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
+        isLoading={library.isLoading}
+        onRefresh={() => void library.refreshList()}
         onOpenSettings={(tab) => {
           setSettingsInitialTab(tab || "all");
           setIsSettingsModalOpen(true);
@@ -559,8 +572,6 @@ export default function App() {
           onViewModeChange={setViewMode}
           gridColumns={gridColumns}
           onGridColumnsChange={setGridColumns}
-          isLoading={library.isLoading}
-          onRefresh={() => void library.refreshList()}
           onOpenStyleModal={() => setIsPreviewModalOpen(true)}
           selectedCount={selection.selectedFontIds.size}
           onOpenDiff={() => handleOpenDiffModal()}
@@ -597,6 +608,26 @@ export default function App() {
                       defaultValue: "외장 드라이브 또는 파일이 많은 경우 몇 분 정도 걸릴 수 있습니다.",
                     })}
               </p>
+            </div>
+          ) : activeMissingFolder ? (
+            <div className="h-full flex items-center justify-center">
+              <EmptyState
+                icon={<AlertTriangle className="w-8 h-8 text-amber-500" />}
+                title={t("folder.missing_title", { defaultValue: "폴더 위치 누락됨" })}
+                description={t("folder.missing_desc", {
+                  defaultValue: "폴더가 이동되었거나 연결이 끊어졌습니다. 글꼴을 표시하려면 폴더를 재연결하세요.",
+                })}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => actions.handleRelinkFolder(activeMissingFolder.path)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors font-medium text-xs shadow-xs cursor-pointer"
+                  >
+                    <FolderSync className="w-4 h-4" />
+                    <span>{t("folder.relink", { defaultValue: "새 위치 재연결" })}</span>
+                  </button>
+                }
+              />
             </div>
           ) : library.isLoading && library.fonts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted">

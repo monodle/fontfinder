@@ -185,7 +185,7 @@ export function AboutSection() {
                       {t("about.bio_label", "소개말 (Bio)")}
                     </span>
                     <p className="text-xs text-theme-text leading-relaxed">
-                      {t(`about.creator_${creator.id.replace(/-/g, "_")}_bio`, creator.bio)}
+                      {creator.bio}
                     </p>
                   </div>
                 </div>

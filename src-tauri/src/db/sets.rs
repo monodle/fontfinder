@@ -42,8 +42,10 @@ impl Database {
     let conn = self.conn()?;
     let mut stmt = conn.prepare(
       "
-      SELECT s.id, s.name, s.color, (SELECT COUNT(1) FROM set_fonts sf WHERE sf.set_id = s.id) as font_count
+      SELECT s.id, s.name, s.color, COUNT(sf.font_id) as font_count
       FROM sets s
+      LEFT JOIN set_fonts sf ON sf.set_id = s.id
+      GROUP BY s.id
       ORDER BY s.id DESC
       ",
     )?;
@@ -97,4 +99,57 @@ impl Database {
     }
     Ok(ids)
   }
+
+  /// 모든 세트의 font_id 매핑을 1회의 쿼리로 일괄 조회하여 1+N 쿼리를 방지
+  pub fn get_all_set_font_ids(&self) -> AppResult<std::collections::HashMap<i64, Vec<String>>> {
+    let conn = self.conn()?;
+    let mut stmt = conn.prepare("SELECT set_id, font_id FROM set_fonts ORDER BY set_id ASC")?;
+    let rows = stmt.query_map([], |row| {
+      let set_id: i64 = row.get(0)?;
+      let font_id: String = row.get(1)?;
+      Ok((set_id, font_id))
+    })?;
+
+    let mut map: std::collections::HashMap<i64, Vec<String>> = std::collections::HashMap::new();
+    for row in rows {
+      let (set_id, font_id) = row?;
+      map.entry(set_id).or_default().push(font_id);
+    }
+    Ok(map)
+  }
+
+  /// 단일 트랜잭션 내에서 여러 폰트를 세트에 일괄 추가
+  pub fn add_fonts_to_set_bulk(&self, set_id: i64, font_ids: &[String]) -> AppResult<()> {
+    if font_ids.is_empty() {
+      return Ok(());
+    }
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    {
+      let mut stmt = tx.prepare_cached("INSERT OR IGNORE INTO set_fonts (set_id, font_id) VALUES (?1, ?2)")?;
+      for font_id in font_ids {
+        stmt.execute(params![set_id, font_id])?;
+      }
+    }
+    tx.commit()?;
+    Ok(())
+  }
+
+  /// 단일 트랜잭션 내에서 여러 폰트를 세트에서 일괄 제거
+  pub fn remove_fonts_from_set_bulk(&self, set_id: i64, font_ids: &[String]) -> AppResult<()> {
+    if font_ids.is_empty() {
+      return Ok(());
+    }
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    {
+      let mut stmt = tx.prepare_cached("DELETE FROM set_fonts WHERE set_id = ?1 AND font_id = ?2")?;
+      for font_id in font_ids {
+        stmt.execute(params![set_id, font_id])?;
+      }
+    }
+    tx.commit()?;
+    Ok(())
+  }
 }
+

@@ -37,7 +37,11 @@ function getRepresentativeScore(
     score = 80;
   } else if (!font.isMissing && font.install_status !== "deleted" && font.install_status !== "unplugged") {
     score = 50;
+  } else if (font.install_status === "unplugged") {
+    // 연결 끊김(외장 드라이브 분리 등)은 출처 폴더 완전 제거(deleted)보다 우선 채택
+    score = 20;
   } else {
+    // 출처 폴더 제거(deleted) 또는 알 수 없는 부재 상태
     score = 10;
   }
 
