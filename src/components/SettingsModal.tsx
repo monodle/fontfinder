@@ -16,13 +16,17 @@ import {
   Trash2,
   Coffee,
   Info,
+  ArrowDownAZ,
 } from "lucide-react";
 import { ModalDialog } from "./ModalDialog";
+import { SettingSection, SettingRow, Tabs, TabItem } from "./common";
 import {
   CustomAppSettings,
   getDefaultSettings,
   applyTheme,
+  sanitizeFontSortSettings,
 } from "../services/settingsService";
+import { clearFontLoaderCache } from "../utils/fontLoader";
 import {
   LibraryCategory,
   getDefaultPreviewText,
@@ -36,7 +40,10 @@ import {
 import { ThemeSelector } from "./ThemeSelector";
 import { LanguageSelector } from "./LanguageSelector";
 import { ViewModeControl } from "./ViewModeControl";
+import { DetailModeControl } from "./DetailModeControl";
 import { GridColumnsSelector } from "./GridColumnsSelector";
+import { FontSortSettingsSection } from "./FontSortSettingsSection";
+import { DEFAULT_SORT_SETTINGS } from "../types/sort";
 import { ConfirmModal } from "./ConfirmModal";
 import { ExportModal } from "./ExportModal";
 import { ImportModal } from "./ImportModal";
@@ -149,6 +156,7 @@ export function SettingsModal({
       defaultIsBold: Boolean(form.defaultIsBold),
       defaultIsItalic: Boolean(form.defaultIsItalic),
       defaultIsUnderline: Boolean(form.defaultIsUnderline),
+      fontSortSettings: sanitizeFontSortSettings(form.fontSortSettings),
     };
 
     setIsSaving(true);
@@ -273,12 +281,13 @@ export function SettingsModal({
   const handleExecuteResetAll = async () => {
     setIsResetting(true);
     try {
+      clearFontLoaderCache();
       await fontService.resetAppData();
       localStorage.clear();
       if (onNotify) {
         onNotify(
           t(
-            "settings.reset_all_data_success",
+            "settings.reset_success_alert",
             "앱 데이터 및 캐시가 성공적으로 초기화되었습니다."
           )
         );
@@ -288,25 +297,25 @@ export function SettingsModal({
       }, 500);
     } catch (err) {
       console.error("Reset app data failed:", err);
-      alert(err instanceof Error ? err.message : "초기화에 실패했습니다.");
+      alert(
+        err instanceof Error
+          ? err.message
+          : t("settings.reset_failed_alert", "초기화에 실패했습니다.")
+      );
       setIsResetting(false);
     }
   };
 
-  const tabs: {
-    id: SettingsTab;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }[] = [
-      { id: "all", label: t("settings.tab_all"), icon: SlidersHorizontal },
-      { id: "appearance", label: t("settings.tab_appearance"), icon: Palette },
-      { id: "library", label: t("settings.tab_library"), icon: Type },
-      { id: "layout", label: t("settings.tab_layout"), icon: LayoutGrid },
-      { id: "preview", label: t("settings.tab_preview"), icon: Sliders },
-      { id: "advanced", label: t("settings.tab_advanced"), icon: HardDrive },
-      { id: "sponsor", label: t("settings.tab_sponsor", "커피 한 잔 보내기"), icon: Coffee },
-      { id: "about", label: t("settings.tab_about", "정보"), icon: Info },
-    ];
+  const tabItems: TabItem<SettingsTab>[] = [
+    { id: "all", label: t("settings.tab_all"), icon: <SlidersHorizontal className="w-4 h-4 shrink-0" /> },
+    { id: "appearance", label: t("settings.tab_appearance"), icon: <Palette className="w-4 h-4 shrink-0" /> },
+    { id: "library", label: t("settings.tab_library"), icon: <Type className="w-4 h-4 shrink-0" /> },
+    { id: "layout", label: t("settings.tab_layout"), icon: <LayoutGrid className="w-4 h-4 shrink-0" /> },
+    { id: "preview", label: t("settings.tab_preview"), icon: <Sliders className="w-4 h-4 shrink-0" /> },
+    { id: "advanced", label: t("settings.tab_advanced"), icon: <HardDrive className="w-4 h-4 shrink-0" /> },
+    { id: "sponsor", label: t("settings.tab_sponsor", "커피 한 잔 보내기"), icon: <Coffee className="w-4 h-4 shrink-0" /> },
+    { id: "about", label: t("settings.tab_about", "정보"), icon: <Info className="w-4 h-4 shrink-0" /> },
+  ];
 
   return (
     <>
@@ -317,7 +326,7 @@ export function SettingsModal({
       heightClass="h-[720px] max-h-[90vh]"
       icon={<Settings className="w-4 h-4" />}
       title={t("settings.title")}
-      subtitle={tabs.find((tab) => tab.id === activeTab)?.label}
+      subtitle={tabItems.find((tab) => tab.id === activeTab)?.label}
       footer={
         <>
           <button
@@ -355,27 +364,15 @@ export function SettingsModal({
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
           {/* Left Tabs Sidebar */}
           <aside className="w-full md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-theme-border bg-theme-surface-header/30 flex flex-col justify-between p-3 select-none">
-            <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible no-scrollbar pb-1 md:pb-0">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left whitespace-nowrap cursor-pointer shrink-0 md:shrink ${isActive
-                      ? "bg-theme-accent text-theme-accent-text font-semibold shadow-xs"
-                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
-                      }`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
+            <Tabs
+              tabs={tabItems}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              orientation="vertical"
+              variant="pill"
+              className="md:flex-col gap-1 overflow-x-auto md:overflow-x-visible no-scrollbar pb-1 md:pb-0"
+              tabClassName="shrink-0 md:shrink whitespace-nowrap"
+            />
           </aside>
 
           {/* Right Main Content */}
@@ -387,56 +384,33 @@ export function SettingsModal({
             {(activeTab === "all" || activeTab === "appearance") && (
               <>
                 {/* 1. 언어 설정 (Language) */}
-                <section className="space-y-3">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
-                    <Globe className="w-4 h-4 text-theme-accent" />
-                    <h3 className="font-semibold text-xs text-theme-text">
-                      {t("settings.language")}
-                    </h3>
-                  </div>
-                  <div className="p-3 bg-theme-card rounded-xl border border-theme-border flex items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-theme-text text-xs block">
-                        {t("settings.language")}
-                      </span>
-                      <span className="text-[11px] text-theme-text-muted">
-                        {t("settings.language_desc")}
-                      </span>
-                    </div>
+                <SettingSection icon={<Globe className="w-4 h-4" />} title={t("settings.language")}>
+                  <SettingRow
+                    title={t("settings.language")}
+                    description={t("settings.language_desc")}
+                  >
                     <LanguageSelector
                       variant="dropdown"
                       selectedLanguage={form.language || i18n.language}
                       onSelect={handleLanguageChange}
                     />
-                  </div>
-                </section>
+                  </SettingRow>
+                </SettingSection>
 
                 {/* 2. 테마 설정 (Theme) */}
-                <section className="space-y-3">
-                  <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
-                    <Palette className="w-4 h-4 text-theme-accent" />
-                    <h3 className="font-semibold text-xs text-theme-text">
-                      {t("settings.theme")}
-                    </h3>
-                  </div>
+                <SettingSection icon={<Palette className="w-4 h-4" />} title={t("settings.theme")}>
                   <ThemeSelector
                     selectedTheme={form.theme}
                     onSelect={handleThemeChange}
                     columns={3}
                   />
-                </section>
+                </SettingSection>
               </>
             )}
 
             {/* 3. 서재 및 기본 카테고리 설정 (Library) */}
             {(activeTab === "all" || activeTab === "library") && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
-                  <Type className="w-4 h-4 text-theme-accent" />
-                  <h3 className="font-semibold text-xs text-theme-text">
-                    {t("settings.default_category")}
-                  </h3>
-                </div>
+              <SettingSection icon={<Type className="w-4 h-4" />} title={t("settings.default_category")}>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {categoryOptions.map((cat) => {
                     const isSelected = form.defaultCategory === cat.id;
@@ -458,19 +432,12 @@ export function SettingsModal({
                     );
                   })}
                 </div>
-              </section>
+              </SettingSection>
             )}
 
             {/* 4. 폰트 미리보기 및 스타일 설정 (Preview) */}
             {(activeTab === "all" || activeTab === "preview") && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
-                  <Sliders className="w-4 h-4 text-theme-accent" />
-                  <h3 className="font-semibold text-xs text-theme-text">
-                    {t("settings.tab_preview")}
-                  </h3>
-                </div>
-
+              <SettingSection icon={<Sliders className="w-4 h-4" />} title={t("settings.tab_preview")}>
                 <PreviewTypographyForm
                   mode="defaults"
                   values={typographyValues}
@@ -493,13 +460,30 @@ export function SettingsModal({
                   }
                   onSubmitShortcut={handleSave}
                 />
-              </section>
+              </SettingSection>
             )}
 
             {/* 5. 뷰 모드 및 그리드 설정 (Layout) */}
             {(activeTab === "all" || activeTab === "layout") && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+              <section className="space-y-4">
+                {/* 폰트 목록 정렬 섹션 */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
+                    <ArrowDownAZ className="w-4 h-4 text-theme-accent" />
+                    <h3 className="font-semibold text-xs text-theme-text">
+                      {t("settings.font_sort_title", "폰트 목록 정렬")}
+                    </h3>
+                  </div>
+
+                  <FontSortSettingsSection
+                    settings={form.fontSortSettings || DEFAULT_SORT_SETTINGS}
+                    onChange={(newSortSettings) =>
+                      setForm((prev) => ({ ...prev, fontSortSettings: newSortSettings }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle pt-2">
                   <LayoutGrid className="w-4 h-4 text-theme-accent" />
                   <h3 className="font-semibold text-xs text-theme-text">
                     {t("settings.default_view_mode")} & {t("settings.grid_columns")}
@@ -507,6 +491,25 @@ export function SettingsModal({
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
+                  {/* 폰트 카드 표시 방식 (간단히 / 자세히) */}
+                  <div className="p-3 bg-theme-card rounded-xl border border-theme-border space-y-2">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-medium text-theme-text-secondary">
+                        {t("settings.font_detail_mode", "폰트 카드 표시 방식")}
+                      </span>
+                      <span className="text-[10px] text-theme-text-muted mt-0.5">
+                        {t("settings.font_detail_mode_desc", "폰트 목록에 표시할 정보의 상세 수준을 설정합니다.")}
+                      </span>
+                    </div>
+                    <DetailModeControl
+                      detailMode={form.defaultFontDetailMode || "detailed"}
+                      onChange={(mode) =>
+                        setForm((prev) => ({ ...prev, defaultFontDetailMode: mode }))
+                      }
+                      variant="button"
+                    />
+                  </div>
+
                   {/* 기본 뷰 모드 */}
                   <div className="p-3 bg-theme-card rounded-xl border border-theme-border space-y-2">
                     <span className="text-[11px] font-medium text-theme-text-secondary">

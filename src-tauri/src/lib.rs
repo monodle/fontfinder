@@ -73,6 +73,7 @@ pub fn run() {
             commands::open_external_url,
             commands::save_backup_file,
             commands::read_backup_file,
+            commands::get_font_details,
         ])
         .on_window_event(|window, event| {
             if let Some(wm) = window.try_state::<Arc<window_manager::WindowManager>>() {

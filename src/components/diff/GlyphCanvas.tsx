@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DIFF_SLOT_CONFIGS, DiffMasterSettings, DiffSlotState } from "../../types/diff";
 
 interface GlyphCanvasProps {
@@ -16,6 +17,7 @@ export function GlyphCanvas({
   hoveredSlotIndex,
   activeFocusSlot,
 }: GlyphCanvasProps) {
+  const { t } = useTranslation();
   const characters = useMemo(() => {
     return Array.from(masterSettings.text.replace(/\s+/g, "")).slice(0, 4);
   }, [masterSettings.text]);
@@ -32,10 +34,13 @@ export function GlyphCanvas({
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[var(--theme-bg-app)] select-none text-theme-text-muted">
         <div className="p-4 rounded-2xl border border-dashed border-theme-border flex flex-col items-center gap-2 max-w-sm text-center bg-[var(--theme-bg-card)]">
           <span className="text-sm font-medium text-theme-text-secondary">
-            비교할 문자가 없습니다
+            {t("diff.empty_text_title", "비교할 문자가 없습니다")}
           </span>
           <span className="text-xs text-theme-text-muted">
-            상단 입력창에 글자를 입력하시면 글리프별 오버레이 캔버스가 표시됩니다.
+            {t(
+              "diff.empty_text_desc",
+              "상단 입력창에 글자를 입력하시면 글리프별 오버레이 캔버스가 표시됩니다."
+            )}
           </span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { FontMetadata } from "../../types/font";
 import {
   DIFF_SLOT_CONFIGS,
@@ -26,6 +27,7 @@ export function GlyphDiffModal({
   allFonts,
   fallbackText,
 }: GlyphDiffModalProps) {
+  const { t } = useTranslation();
   // 1. 마스터 전역 설정 상태
   const [masterSettings, setMasterSettings] = useState<DiffMasterSettings>(() => {
     const raw = fallbackText?.trim() || "Rghe";
@@ -310,7 +312,7 @@ export function GlyphDiffModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="글리프 Diff 비교 모달"
+      aria-label={t("diff.modal_aria", "글리프 Diff 비교 모달")}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

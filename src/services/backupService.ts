@@ -1,5 +1,11 @@
+import i18n from "../i18n";
 import { fontService } from "./fontService";
-import { settingsService, defaultSettings, type CustomAppSettings } from "./settingsService";
+import {
+  settingsService,
+  defaultSettings,
+  sanitizeFontSortSettings,
+  type CustomAppSettings,
+} from "./settingsService";
 import { appConfig, VALID_THEMES, type AppTheme, type LibraryCategory } from "../config/appConfig";
 import type {
   AppBackupData,
@@ -59,7 +65,9 @@ function getBackupFileName(): string {
  */
 function safeJsonParse(content: string): unknown {
   if (content.length > MAX_JSON_STRING_LENGTH) {
-    throw new Error("백업 파일의 크기가 제한(10MB)을 초과했습니다.");
+    throw new Error(
+      i18n.t("backup.size_limit", "백업 파일의 크기가 제한(10MB)을 초과했습니다.")
+    );
   }
 
   return JSON.parse(content, (key, value) => {
@@ -109,6 +117,12 @@ function sanitizeSettings(raw: unknown): CustomAppSettings | undefined {
       ? (obj.defaultViewMode as "list" | "grid")
       : defaultSettings.defaultViewMode;
 
+  const validDetailModes = ["detailed", "simple"] as const;
+  const defaultFontDetailMode =
+    typeof obj.defaultFontDetailMode === "string" && (validDetailModes as readonly string[]).includes(obj.defaultFontDetailMode)
+      ? (obj.defaultFontDetailMode as "detailed" | "simple")
+      : defaultSettings.defaultFontDetailMode;
+
   const validAligns = ["left", "center", "right"] as const;
   const defaultTextAlign =
     typeof obj.defaultTextAlign === "string" && (validAligns as readonly string[]).includes(obj.defaultTextAlign)
@@ -126,12 +140,14 @@ function sanitizeSettings(raw: unknown): CustomAppSettings | undefined {
     defaultGridColumns,
     defaultVariableWeight,
     defaultViewMode,
+    defaultFontDetailMode,
     defaultPreviewText: sanitizeString(obj.defaultPreviewText, 2000) || defaultSettings.defaultPreviewText,
     defaultTextColor: sanitizeColor(obj.defaultTextColor, ""),
     defaultBackgroundColor: sanitizeColor(obj.defaultBackgroundColor, ""),
     defaultTextAlign,
     defaultLineHeight: Math.min(3, Math.max(0.5, Number(obj.defaultLineHeight) || defaultSettings.defaultLineHeight)),
     defaultLetterSpacing: Math.min(100, Math.max(-20, Number(obj.defaultLetterSpacing) || defaultSettings.defaultLetterSpacing)),
+    fontSortSettings: sanitizeFontSortSettings(obj.fontSortSettings),
   };
 }
 
@@ -192,7 +208,7 @@ function sanitizeSets(raw: unknown): BackupSet[] {
  */
 function validateAndNormalizeBackupData(raw: unknown): AppBackupData {
   if (!raw || typeof raw !== "object") {
-    throw new Error("유효하지 않은 백업 데이터입니다.");
+    throw new Error(i18n.t("backup.invalid_data", "유효하지 않은 백업 데이터입니다."));
   }
 
   const root = raw as Record<string, unknown>;
@@ -205,7 +221,12 @@ function validateAndNormalizeBackupData(raw: unknown): AppBackupData {
 
   const hasAnyData = Boolean(settings || folders.length > 0 || sets.length > 0);
   if (!hasAnyData) {
-    throw new Error("백업 파일에 유효한 설정, 폴더, 또는 서재 데이터가 없습니다.");
+    throw new Error(
+      i18n.t(
+        "backup.empty_data",
+        "백업 파일에 유효한 설정, 폴더, 또는 서재 데이터가 없습니다."
+      )
+    );
   }
 
   return {
@@ -324,7 +345,11 @@ export const backupService = {
         return true;
       } catch (err) {
         console.error("파일 저장 실패:", err);
-        throw new Error(err instanceof Error ? err.message : "파일 저장에 실패했습니다.");
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : i18n.t("backup.save_failed", "파일 저장에 실패했습니다.")
+        );
       }
     }
   },
@@ -364,12 +389,20 @@ export const backupService = {
             return;
           }
           if (file.size > MAX_JSON_STRING_LENGTH) {
-            reject(new Error("파일 크기가 10MB를 초과하여 불러올 수 없습니다."));
+            reject(
+              new Error(
+                i18n.t(
+                  "backup.size_limit",
+                  "파일 크기가 10MB를 초과하여 불러올 수 없습니다."
+                )
+              )
+            );
             return;
           }
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다."));
+          reader.onerror = () =>
+            reject(new Error(i18n.t("backup.read_failed", "파일을 읽을 수 없습니다.")));
           reader.readAsText(file);
         };
         input.click();
@@ -385,7 +418,12 @@ export const backupService = {
       if (e instanceof Error) {
         throw e;
       }
-      throw new Error("JSON 파싱에 실패했습니다. 올바른 백업 파일인지 확인해주세요.");
+      throw new Error(
+        i18n.t(
+          "backup.json_parse_failed",
+          "JSON 파싱에 실패했습니다. 올바른 백업 파일인지 확인해주세요."
+        )
+      );
     }
   },
 

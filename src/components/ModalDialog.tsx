@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -124,6 +125,7 @@ export function ModalDialog({
   }, [isOpen, closeOnEsc]);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (closeOnBackdropClick && e.target === e.currentTarget) {
@@ -133,7 +135,7 @@ export function ModalDialog({
 
   const maxWidthClass = MAX_WIDTH_CLASSES[maxWidth] || "max-w-2xl";
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-150 select-none"
       onClick={handleBackdropClick}
@@ -207,4 +209,6 @@ export function ModalDialog({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

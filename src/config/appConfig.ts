@@ -134,6 +134,9 @@ export const appConfig = {
     defaultViewMode: (getEnvString("VITE_DEFAULT_VIEW_MODE", "list") === "grid"
       ? "grid"
       : "list") as "list" | "grid",
+    defaultFontDetailMode: (getEnvString("VITE_DEFAULT_FONT_DETAIL_MODE", "detailed") === "simple"
+      ? "simple"
+      : "detailed") as "detailed" | "simple",
     defaultGridColumns: Math.min(
       Math.max(getEnvNumber("VITE_DEFAULT_GRID_COLUMNS", 2), 2),
       5

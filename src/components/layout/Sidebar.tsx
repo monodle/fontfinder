@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Coffee,
+  Loader2,
 } from "lucide-react";
 import type { SettingsTab } from "../SettingsModal";
 import { FontSet, CustomFolder } from "../../types/font";
@@ -281,21 +282,29 @@ export function Sidebar({
               </button>
               {customFolders.map((folder) => {
                 const isActive = activeCategory === `folder:${folder.path}`;
+                const tooltipText = folder.isScanning
+                  ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total}` : t("sidebar.scanning_folder", "스캔 중...")})\n${folder.path}`
+                  : `${folder.name} (${folder.count})\n${folder.path}`;
+
                 return (
                   <button
                     key={folder.path}
                     type="button"
                     onClick={() => onSelectFolder(folder.path)}
-                    title={`${folder.name} (${folder.count})\n${folder.path}`}
+                    title={tooltipText}
                     className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${isActive
                       ? "bg-theme-active text-theme-accent shadow-2xs"
                       : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
                       }`}
                   >
-                    <span
-                      style={{ backgroundColor: folder.color || "#0ea5e9" }}
-                      className="w-3 h-3 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
-                    />
+                    {folder.isScanning ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-theme-accent shrink-0" />
+                    ) : (
+                      <span
+                        style={{ backgroundColor: folder.color || "#0ea5e9" }}
+                        className="w-3 h-3 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
+                      />
+                    )}
                     {folder.isMissing && (
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500 ring-1 ring-white" />
                     )}
@@ -334,10 +343,13 @@ export function Sidebar({
                   renderItem={(folder, { isDragging, dropPosition }) => {
                     const isDuplicateName = (folderNameCounts.get(folder.name) || 0) > 1;
                     const parentDir = isDuplicateName ? getParentDirHint(folder.path) : null;
+                    const tooltipText = folder.isScanning
+                      ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total} · ${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%` : t("sidebar.scanning_folder", "스캔 중...")})\n${folder.path}`
+                      : `${folder.name} (${folder.count})\n${folder.path}`;
 
                     return (
                       <div
-                        title={`${folder.name} (${folder.count})\n${folder.path}`}
+                        title={tooltipText}
                         className={`relative group w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-30 scale-[0.98] bg-theme-active" : ""
                           } ${dropPosition === "before"
                             ? "border-t-2 border-theme-accent bg-theme-accent-subtle/50"
@@ -358,17 +370,24 @@ export function Sidebar({
                           {folder.isMissing && (
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           )}
-                          <span className={`truncate ${folder.isMissing ? "text-amber-500/90" : ""}`}>
+                          <span className={`truncate ${folder.isMissing ? "text-amber-500/90" : folder.isScanning ? "opacity-90" : ""}`}>
                             {folder.name}
                           </span>
-                          {parentDir && (
+                          {folder.isScanning && (
+                            <span className="text-[10px] text-theme-accent font-normal shrink-0">
+                              {folder.scanProgress && folder.scanProgress.total > 0
+                                ? `${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%`
+                                : t("sidebar.scanning_short", "스캔 중...")}
+                            </span>
+                          )}
+                          {parentDir && !folder.isScanning && (
                             <span className="text-[10px] text-theme-text-muted/70 font-mono truncate max-w-[80px] shrink-0">
                               ({parentDir})
                             </span>
                           )}
                         </span>
                         <div className="flex items-center gap-1 shrink-0 ml-1">
-                          {folder.id && (
+                          {folder.id && !folder.isScanning && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -385,7 +404,14 @@ export function Sidebar({
                               <Palette className="w-3 h-3" />
                             </button>
                           )}
-                          {folder.isMissing ? (
+                          {folder.isScanning ? (
+                            <div
+                              className="flex items-center gap-1 text-[11px] text-theme-accent font-medium select-none px-1"
+                              title={folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total}` : undefined}
+                            >
+                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-theme-accent" />
+                            </div>
+                          ) : folder.isMissing ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -592,7 +618,7 @@ export function Sidebar({
                   type="button"
                   onClick={() => onOpenSettings("sponsor")}
                   className="flex items-center gap-1.5 text-[11px] font-medium text-theme-text-muted hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer min-w-0"
-                  title="개발자에게 커피 한 잔 보내기"
+                  title={t("sponsor.title", "커피 한 잔 보내기")}
                 >
                   <Coffee className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span className="truncate">{t("sponsor.title", "커피 한 잔 보내기")}</span>

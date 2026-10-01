@@ -5,12 +5,15 @@ import { FontItem } from "./FontItem";
 import { appConfig } from "../config/appConfig";
 import { isFontFavorite } from "../utils/fontSortUtils";
 
+import { FontDetailMode } from "./font-card/types";
+
 interface VirtualFontListProps {
   fonts: FontMetadata[];
   previewText?: string;
   fontSize?: number;
   previewSettings?: PreviewSettings;
   viewMode: "list" | "grid";
+  detailMode?: FontDetailMode;
   gridColumns?: number;
   selectedFontIds: Set<string>;
   favoriteIds?: Set<string>;
@@ -43,6 +46,7 @@ export function VirtualFontList({
   fontSize,
   previewSettings,
   viewMode,
+  detailMode = "detailed",
   gridColumns = 2,
   selectedFontIds,
   favoriteIds,
@@ -78,11 +82,13 @@ export function VirtualFontList({
   const effectiveFontSize = previewSettings?.fontSize ?? fontSize ?? 24;
   const effectiveLineHeight = previewSettings?.lineHeight ?? 1.45;
 
-  // 아이템 대략적 높이: 줄 수와 폰트 크기 및 줄간격에 따라 정밀 추정
+  // 아이템 대략적 높이: 줄 수와 폰트 크기 및 줄간격에 따라 정밀 추정 (간단 모드/상세 모드 구분)
   const estimateSize = useCallback(() => {
     const lineCount = (effectiveText.match(/\n/g) || []).length + 1;
-    return Math.max(130, effectiveFontSize * effectiveLineHeight * lineCount + 80);
-  }, [effectiveFontSize, effectiveLineHeight, effectiveText]);
+    const baseOffset = detailMode === "simple" ? 50 : 80;
+    const minHeight = detailMode === "simple" ? 105 : 130;
+    return Math.max(minHeight, effectiveFontSize * effectiveLineHeight * lineCount + baseOffset);
+  }, [detailMode, effectiveFontSize, effectiveLineHeight, effectiveText]);
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -516,6 +522,7 @@ export function VirtualFontList({
                         previewText={previewText}
                         fontSize={fontSize}
                         previewSettings={previewSettings}
+                        detailMode={detailMode}
                         columns={columns}
                         isSelected={selectedFontIds.has(font.id)}
                         isFavorite={favoriteIds ? isFontFavorite(font, favoriteIds) : false}

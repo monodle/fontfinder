@@ -46,11 +46,11 @@ export function AboutSection() {
       {/* 서브 탭 필터 (선택 사항: 전체 또는 특정 섹션만 보기) */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-theme-border-subtle no-scrollbar">
         {[
-          { id: "all", label: "전체 정보", icon: Info },
-          { id: "version", label: "앱 버전", icon: Tag },
-          { id: "creators", label: "만든 사람들", icon: Users },
-          { id: "licenses", label: "오픈소스 라이선스", icon: FileCode2 },
-          { id: "privacy", label: "개인정보 처리방침", icon: ShieldCheck },
+          { id: "all", label: t("about.subtab_all", "전체 정보"), icon: Info },
+          { id: "version", label: t("about.subtab_version", "앱 버전"), icon: Tag },
+          { id: "creators", label: t("about.subtab_creators", "만든 사람들"), icon: Users },
+          { id: "licenses", label: t("about.subtab_licenses", "오픈소스 라이선스"), icon: FileCode2 },
+          { id: "privacy", label: t("about.subtab_privacy", "개인정보 처리방침"), icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
@@ -95,7 +95,7 @@ export function AboutSection() {
                   </span>
                 </div>
                 <p className="text-xs text-theme-text-muted mt-0.5">
-                  현대적이고 직관적인 크로스 플랫폼 데스크톱 폰트 관리자
+                  {t("about.app_desc", "현대적이고 직관적인 크로스 플랫폼 데스크톱 폰트 관리자")}
                 </p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export function AboutSection() {
                 }
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-surface hover:bg-theme-hover border border-theme-border text-xs font-medium text-theme-text transition-colors cursor-pointer"
               >
-                <span>GitHub 저장소</span>
+                <span>{t("about.github_repo", "GitHub 저장소")}</span>
                 <ExternalLink className="w-3 h-3 text-theme-text-muted" />
               </button>
             </div>
@@ -116,19 +116,19 @@ export function AboutSection() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-theme-border-subtle text-[11px]">
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
-              <span className="text-theme-text-muted block text-[10px]">프레임워크</span>
+              <span className="text-theme-text-muted block text-[10px]">{t("about.framework", "프레임워크")}</span>
               <span className="font-medium text-theme-text">Tauri v2 + React 19</span>
             </div>
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
-              <span className="text-theme-text-muted block text-[10px]">엔진 코어</span>
+              <span className="text-theme-text-muted block text-[10px]">{t("about.engine_core", "엔진 코어")}</span>
               <span className="font-medium text-theme-text">Rust 2021 + SQLite</span>
             </div>
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
-              <span className="text-theme-text-muted block text-[10px]">버전 동기화</span>
-              <span className="font-medium text-theme-accent font-mono">.env 동기화</span>
+              <span className="text-theme-text-muted block text-[10px]">{t("about.version_sync", "버전 동기화")}</span>
+              <span className="font-medium text-theme-accent font-mono">.env</span>
             </div>
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
-              <span className="text-theme-text-muted block text-[10px]">라이선스</span>
+              <span className="text-theme-text-muted block text-[10px]">{t("about.license", "라이선스")}</span>
               <span className="font-medium text-theme-text">MIT License</span>
             </div>
           </div>
@@ -145,7 +145,7 @@ export function AboutSection() {
                 {t("about.creators_title", "만든 사람들")}
               </h3>
             </div>
-            <span className="text-[11px] text-theme-text-muted">Core Contributors</span>
+            <span className="text-[11px] text-theme-text-muted">{t("about.core_contributors", "Core Contributors")}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -179,13 +179,13 @@ export function AboutSection() {
                     </div>
                   </div>
 
-                  {/* 소개말 영역 (사용자 요청: 소개말을 넣을 영역 확보 및 더미 내용) */}
+                  {/* 소개말 영역 */}
                   <div className="mt-3 p-2.5 rounded-lg bg-theme-surface/70 border border-theme-border/60">
                     <span className="text-[10px] font-semibold text-theme-text-muted block mb-1">
-                      소개말 (Bio)
+                      {t("about.bio_label", "소개말 (Bio)")}
                     </span>
                     <p className="text-xs text-theme-text leading-relaxed">
-                      {creator.bio}
+                      {t(`about.creator_${creator.id.replace(/-/g, "_")}_bio`, creator.bio)}
                     </p>
                   </div>
                 </div>
@@ -196,7 +196,7 @@ export function AboutSection() {
                     onClick={() => openExternalUrl(creator.githubUrl)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-surface hover:bg-theme-hover border border-theme-border text-xs font-medium text-theme-text transition-colors cursor-pointer"
                   >
-                    <span>GitHub 프로필</span>
+                    <span>{t("about.github_profile", "GitHub 프로필")}</span>
                     <ExternalLink className="w-3 h-3 text-theme-text-muted" />
                   </button>
                 </div>
@@ -217,17 +217,17 @@ export function AboutSection() {
               </h3>
             </div>
             <span className="text-[11px] text-theme-text-muted font-mono">
-              {filteredLicenses.length} packages
+              {t("about.packages_count", "{{count}}개 패키지", { count: filteredLicenses.length })}
             </span>
           </div>
 
           {/* 카테고리 필터 */}
           <div className="flex items-center gap-1">
             {[
-              { id: "all", label: "전체" },
-              { id: "frontend", label: "프론트엔드" },
-              { id: "backend", label: "백엔드 (Rust)" },
-              { id: "fonts", label: "내장 글꼴" },
+              { id: "all", label: t("about.filter_all", "전체") },
+              { id: "frontend", label: t("about.filter_frontend", "프론트엔드") },
+              { id: "backend", label: t("about.filter_backend", "백엔드 (Rust)") },
+              { id: "fonts", label: t("about.filter_fonts", "내장 글꼴") },
             ].map((cat) => (
               <button
                 key={cat.id}
@@ -264,7 +264,10 @@ export function AboutSection() {
                     </span>
                   </div>
                   <p className="text-[11px] text-theme-text-muted leading-relaxed line-clamp-2">
-                    {item.description}
+                    {t(
+                      `about.license_${item.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}_desc`,
+                      item.description
+                    )}
                   </p>
                 </div>
 
@@ -274,7 +277,7 @@ export function AboutSection() {
                     onClick={() => openExternalUrl(item.url)}
                     className="flex items-center gap-1 text-[11px] text-theme-text-secondary hover:text-theme-accent transition-colors cursor-pointer"
                   >
-                    <span>저장소 / 라이선스</span>
+                    <span>{t("about.repo_and_license", "저장소 / 라이선스")}</span>
                     <ExternalLink className="w-3 h-3" />
                   </button>
                 </div>
@@ -299,7 +302,7 @@ export function AboutSection() {
               onClick={() => setIsPrivacyExpanded(!isPrivacyExpanded)}
               className="flex items-center gap-1 text-[11px] text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
             >
-              <span>{isPrivacyExpanded ? "접기" : "자세히"}</span>
+              <span>{isPrivacyExpanded ? t("about.collapse", "접기") : t("about.expand", "자세히")}</span>
               {isPrivacyExpanded ? (
                 <ChevronUp className="w-3.5 h-3.5" />
               ) : (
@@ -313,28 +316,31 @@ export function AboutSection() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
                 <Lock className="w-4 h-4 shrink-0" />
-                <span>100% 로컬 데이터 처리 & 무(無)수집 보장</span>
+                <span>{t("about.privacy_badge", "100% 로컬 데이터 처리 & 무(無)수집 보장")}</span>
               </div>
               <span className="text-[10px] text-theme-text-muted font-mono">
-                {PRIVACY_POLICY_SUMMARY.networkPolicy}
+                {t("about.privacy_network_policy", PRIVACY_POLICY_SUMMARY.networkPolicy)}
               </span>
             </div>
             <p className="text-[11px] text-theme-text-secondary leading-relaxed">
-              Font Finder는 사용자의 어떠한 개인정보, 설치된 글꼴 파일, 사용 로그도 수집하지 않으며 외부 서버로 전송하지 않습니다. 모든 작업은 고객님의 로컬 기기 내에서만 독립적으로 이루어집니다.
+              {t(
+                "about.privacy_summary",
+                "Font Finder는 사용자의 어떠한 개인정보, 설치된 글꼴 파일, 사용 로그도 수집하지 않으며 외부 서버로 전송하지 않습니다. 모든 작업은 고객님의 로컬 기기 내에서만 독립적으로 이루어집니다."
+              )}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-theme-card/60 border border-theme-border/60">
                 <ServerOff className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-theme-text">원격 서버 전송 없음</span>
+                <span className="text-theme-text">{t("about.no_remote_transmission", "원격 서버 전송 없음")}</span>
               </div>
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-theme-card/60 border border-theme-border/60">
                 <EyeOff className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-theme-text">트래커 / 분석기 미탑재</span>
+                <span className="text-theme-text">{t("about.no_tracker", "트래커 / 분석기 미탑재")}</span>
               </div>
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-theme-card/60 border border-theme-border/60">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-theme-text">로컬 SQLite 암호화 보관</span>
+                <span className="text-theme-text">{t("about.local_sqlite_storage", "로컬 SQLite 보관")}</span>
               </div>
             </div>
           </div>
@@ -348,14 +354,16 @@ export function AboutSection() {
                   className="p-3.5 rounded-xl bg-theme-card border border-theme-border space-y-2"
                 >
                   <h4 className="font-semibold text-xs text-theme-text">
-                    {section.title}
+                    {t(`about.privacy_section_${idx + 1}_title`, section.title)}
                   </h4>
                   <p className="text-[11px] text-theme-text-secondary leading-relaxed">
-                    {section.description}
+                    {t(`about.privacy_section_${idx + 1}_desc`, section.description)}
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-[10px] text-theme-text-muted pl-1">
                     {section.points.map((pt, pIdx) => (
-                      <li key={pIdx}>{pt}</li>
+                      <li key={pIdx}>
+                        {t(`about.privacy_section_${idx + 1}_pt_${pIdx + 1}`, pt)}
+                      </li>
                     ))}
                   </ul>
                 </div>

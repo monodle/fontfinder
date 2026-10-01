@@ -50,11 +50,29 @@ pub async fn sync_font_library(
 }
 
 #[tauri::command]
-pub async fn scan_directory(state: State<'_, AppState>, path: String) -> Result<Vec<FontMetadata>, String> {
+pub async fn scan_directory(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<Vec<FontMetadata>, String> {
     let db = Arc::clone(&state.db);
     tokio::task::spawn_blocking(move || {
         let path_buf = PathBuf::from(&path);
-        FontScanner::sync_directories(&[path_buf], &db, false, None).map_err(|e| e.to_string())
+        let path_clone = path.clone();
+        let app_handle = app.clone();
+        let progress_cb = move |current: usize, total: usize| {
+            use tauri::Emitter;
+            let _ = app_handle.emit(
+                "folder-scan-progress",
+                serde_json::json!({
+                    "path": path_clone,
+                    "current": current,
+                    "total": total
+                }),
+            );
+        };
+        FontScanner::sync_directories(&[path_buf], &db, false, Some(&progress_cb))
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -700,4 +718,17 @@ pub async fn read_backup_file(path: String) -> Result<String, String> {
     tokio::fs::read_to_string(&path_buf)
         .await
         .map_err(|e| format!("백업 파일 읽기 실패: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_font_details(
+    file_path: String,
+    font_index: u32,
+) -> Result<crate::font::FontDetailedInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        crate::font::FontParser::parse_details(&file_path, font_index)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

@@ -126,7 +126,7 @@ export function SponsorSection() {
                   </div>
 
                   <p className="text-[11px] text-theme-text-secondary leading-relaxed mb-3 line-clamp-2">
-                    {creator.bio}
+                    {t(`about.creator_${creator.id.replace(/-/g, "_")}_bio`, creator.bio)}
                   </p>
                 </div>
 

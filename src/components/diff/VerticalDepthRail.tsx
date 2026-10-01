@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { DIFF_SLOT_CONFIGS, DiffSlotState } from "../../types/diff";
 import { SortableSidebarList } from "../SortableSidebarList";
@@ -21,6 +22,7 @@ export function VerticalDepthRail({
   onHoverSlot,
   onToggleVisibility,
 }: VerticalDepthRailProps) {
+  const { t } = useTranslation();
   // 등록된 폰트가 있는 슬롯만 필터링
   const filledSlots = depthOrder.filter((idx) => slots[idx]?.font !== null);
 
@@ -58,7 +60,9 @@ export function VerticalDepthRail({
   if (filledSlots.length === 0) {
     return (
       <div className="w-16 border-r border-theme-border bg-theme-sidebar/50 p-2 flex flex-col items-center justify-center text-center select-none text-[11px] text-theme-text-muted">
-        <span className="writing-vertical-lr tracking-wider opacity-60">슬롯 비어있음</span>
+        <span className="writing-vertical-lr tracking-wider opacity-60">
+          {t("diff.slot_empty", "슬롯 비어있음")}
+        </span>
       </div>
     );
   }
@@ -66,22 +70,22 @@ export function VerticalDepthRail({
   return (
     <aside
       className="w-48 sm:w-56 border-r border-theme-border bg-theme-sidebar/60 flex flex-col shrink-0 select-none overflow-y-auto"
-      aria-label="레이어 깊이 제어기"
+      aria-label={t("diff.depth_rail_aria", "레이어 깊이 제어기")}
     >
       {/* 헤더 */}
       <div className="p-3 border-b border-theme-border/70 flex items-center justify-between">
         <span className="text-[11px] font-bold text-theme-text-secondary tracking-wider uppercase">
-          레이어 순서 (Z-INDEX)
+          {t("diff.depth_rail_title", "레이어 순서 (Z-INDEX)")}
         </span>
         <span className="text-[10px] text-theme-text-muted font-mono">
-          {filledSlots.length} 레이어
+          {t("diff.layers_count", "{{count}} 레이어", { count: filledSlots.length })}
         </span>
       </div>
 
       {/* 레일 트랙 및 라벨 목록 (SortableSidebarList 기반 포인터 드래그 앤 드롭) */}
       <div className="flex-1 p-2.5 flex flex-col gap-2">
         <div className="text-[10px] text-theme-text-muted px-1 flex items-center justify-between font-mono">
-          <span>▲ 최상위 레이어</span>
+          <span>{t("diff.top_layer", "▲ 최상위 레이어")}</span>
           <span>(3200)</span>
         </div>
 
@@ -120,7 +124,7 @@ export function VerticalDepthRail({
                 {/* 드래그 핸들 */}
                 <div
                   className="text-theme-text-muted group-hover:text-theme-accent transition-colors p-0.5 pointer-events-none"
-                  title="드래그하여 순서 변경"
+                  title={t("diff.drag_to_reorder", "드래그하여 순서 변경")}
                 >
                   <GripVertical className="w-3.5 h-3.5" />
                 </div>
@@ -153,7 +157,11 @@ export function VerticalDepthRail({
                       onToggleVisibility(slotIdx);
                     }}
                     className="p-1 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover transition-colors cursor-pointer"
-                    title={slot?.visible ? "레이어 숨기기" : "레이어 보이기"}
+                    title={
+                      slot?.visible
+                        ? t("diff.hide_layer", "레이어 숨기기")
+                        : t("diff.show_layer", "레이어 보이기")
+                    }
                   >
                     {slot?.visible ? (
                       <Eye className="w-3.5 h-3.5 text-theme-text-secondary" />
@@ -171,7 +179,7 @@ export function VerticalDepthRail({
                         handleMove(filledPos, "up");
                       }}
                       className="p-0.5 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
-                      title="한 단계 위로 이동"
+                      title={t("diff.move_up", "한 단계 위로 이동")}
                     >
                       <ChevronUp className="w-3 h-3" />
                     </button>
@@ -183,7 +191,7 @@ export function VerticalDepthRail({
                         handleMove(filledPos, "down");
                       }}
                       className="p-0.5 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
-                      title="한 단계 아래로 이동"
+                      title={t("diff.move_down", "한 단계 아래로 이동")}
                     >
                       <ChevronDown className="w-3 h-3" />
                     </button>
@@ -195,7 +203,7 @@ export function VerticalDepthRail({
         />
 
         <div className="text-[10px] text-theme-text-muted px-1 flex items-center justify-between font-mono mt-auto pt-2">
-          <span>▼ 최하위 레이어</span>
+          <span>{t("diff.bottom_layer", "▼ 최하위 레이어")}</span>
           <span>(3000)</span>
         </div>
       </div>

@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { Unplug, Trash2 } from "lucide-react";
+import { Badge } from "./common";
 import { cn } from "../utils/cn";
 import type { FontInstallStatus, FontVersionStatus } from "../types/font";
 
@@ -29,15 +31,13 @@ export function FontFormatBadge({
   const displayFormat = compact ? getShortFormat(format) : format;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center px-1.5 py-0.5 rounded bg-theme-badge text-theme-text-badge font-mono border border-theme-border text-[10px] select-none shrink-0",
-        className
-      )}
-      title={format}
+    <Badge
+      size="xs"
+      variant="default"
+      className={cn("font-mono text-[10px] bg-theme-badge text-theme-text-badge shrink-0", className)}
     >
-      {displayFormat}
-    </span>
+      <span title={format}>{displayFormat}</span>
+    </Badge>
   );
 }
 
@@ -52,81 +52,103 @@ export function FontInstallStatusBadge({
   compact = false,
   className = "",
 }: FontInstallStatusBadgeProps) {
+  const { t } = useTranslation();
+
   switch (status) {
     case "installed_system":
       return (
-        <span
-          className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded bg-theme-badge text-theme-text-muted font-medium border border-theme-border text-[9px] select-none shrink-0",
-            className
-          )}
-          title="OS 시스템 보호 폰트"
+        <Badge
+          size="xs"
+          variant="default"
+          className={cn("text-[9px] bg-theme-badge text-theme-text-muted shrink-0", className)}
         >
-          {compact ? "시스템" : "시스템 설치"}
-        </span>
+          <span title={t("badge.system_tooltip", "OS 시스템 보호 폰트")}>
+            {compact
+              ? t("badge.system", "시스템")
+              : t("badge.system_full", "시스템 설치")}
+          </span>
+        </Badge>
       );
     case "installed_user":
       return (
-        <span
-          className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/30 text-[9px] select-none shrink-0",
-            className
-          )}
-          title="사용자 OS 설치 폰트"
+        <Badge
+          size="xs"
+          variant="success"
+          className={cn("text-[9px] shrink-0", className)}
         >
-          {compact ? "설치됨" : "사용자 설치"}
-        </span>
+          <span title={t("badge.user_tooltip", "사용자 OS 설치 폰트")}>
+            {compact
+              ? t("badge.user", "설치됨")
+              : t("badge.user_full", "사용자 설치")}
+          </span>
+        </Badge>
       );
     case "activated":
       return (
-        <span
-          className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded bg-theme-accent-subtle text-theme-accent font-medium border border-theme-accent/40 text-[9px] select-none shrink-0",
-            className
-          )}
-          title="현재 세션에 임시 활성화된 폰트"
+        <Badge
+          size="xs"
+          variant="accent"
+          className={cn("text-[9px] shrink-0", className)}
         >
-          {compact ? "활성" : "임시활성화"}
-        </span>
+          <span title={t("badge.activated_tooltip", "현재 세션에 임시 활성화된 폰트")}>
+            {compact
+              ? t("badge.activated", "활성")
+              : t("badge.activated_full", "임시활성화")}
+          </span>
+        </Badge>
       );
     case "unplugged":
       return (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/30 text-[9px] select-none shrink-0",
-            className
-          )}
-          title="원본 파일 연결 끊김 (외장 하드 미연결 또는 파일 부재)"
+        <Badge
+          size="xs"
+          variant="warning"
+          icon={<Unplug className="w-2.5 h-2.5" />}
+          className={cn("text-[9px] shrink-0", className)}
         >
-          <Unplug className="w-2.5 h-2.5" />
-          {compact ? "끊김" : "연결 끊김"}
-        </span>
+          <span
+            title={t(
+              "badge.unplugged_tooltip",
+              "원본 파일 연결 끊김 (외장 하드 미연결 또는 파일 부재)"
+            )}
+          >
+            {compact
+              ? t("badge.unplugged", "끊김")
+              : t("badge.unplugged_full", "연결 끊김")}
+          </span>
+        </Badge>
       );
     case "deleted":
       return (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-medium border border-rose-500/30 text-[9px] select-none shrink-0",
-            className
-          )}
-          title="출처 폴더가 앱에서 제거된 폰트 (서재 보존)"
+        <Badge
+          size="xs"
+          variant="danger"
+          icon={<Trash2 className="w-2.5 h-2.5" />}
+          className={cn("text-[9px] shrink-0", className)}
         >
-          <Trash2 className="w-2.5 h-2.5" />
-          {compact ? "제거됨" : "폴더 제거됨"}
-        </span>
+          <span
+            title={t(
+              "badge.deleted_tooltip",
+              "출처 폴더가 앱에서 제거된 폰트 (서재 보존)"
+            )}
+          >
+            {compact
+              ? t("badge.deleted", "제거됨")
+              : t("badge.deleted_full", "폴더 제거됨")}
+          </span>
+        </Badge>
       );
     case "uninstalled":
     default:
       return (
-        <span
-          className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 font-medium border border-zinc-500/20 text-[9px] select-none shrink-0",
-            className
-          )}
-          title="디스크/서재 보관 (미설치)"
+        <Badge
+          size="xs"
+          variant="muted"
+          className={cn("text-[9px] shrink-0", className)}
         >
-          미설치
-        </span>
+          <span title={t("badge.uninstalled_tooltip", "디스크/서재 보관 (미설치)")}>
+            {t("badge.uninstalled", "미설치")}
+          </span>
+        </Badge>
       );
   }
 }
@@ -142,38 +164,51 @@ export function FontVersionBadge({
   compact = false,
   className = "",
 }: FontVersionBadgeProps) {
+  const { t } = useTranslation();
+
   if (!versionStatus || versionStatus === "none" || versionStatus === "up_to_date") {
     return null;
   }
 
   if (versionStatus === "update_available") {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30 text-[9px] select-none shrink-0",
-          className
-        )}
-        title="시스템에 설치된 폰트보다 최신 버전입니다"
+      <Badge
+        size="xs"
+        variant="warning"
+        className={cn("text-[9px] font-semibold shrink-0", className)}
       >
-        {compact ? "신버전" : "업데이트 가능"}
-      </span>
+        <span
+          title={t(
+            "badge.newer_version_tooltip",
+            "시스템에 설치된 폰트보다 최신 버전입니다"
+          )}
+        >
+          {compact
+            ? t("badge.newer_version", "신버전")
+            : t("badge.newer_version_full", "업데이트 가능")}
+        </span>
+      </Badge>
     );
   }
 
   if (versionStatus === "outdated") {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 dark:text-rose-400 font-medium border border-rose-500/20 text-[9px] select-none shrink-0",
-          className
-        )}
-        title="시스템에 더 최신 버전이 이미 설치되어 있습니다"
+      <Badge
+        size="xs"
+        variant="danger"
+        className={cn("text-[9px] shrink-0", className)}
       >
-        구버전
-      </span>
+        <span
+          title={t(
+            "badge.older_version_tooltip",
+            "시스템에 더 최신 버전이 이미 설치되어 있습니다"
+          )}
+        >
+          {t("badge.older_version", "구버전")}
+        </span>
+      </Badge>
     );
   }
 
   return null;
 }
-

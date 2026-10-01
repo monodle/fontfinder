@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { FontMetadata, FontSet } from "../types/font";
 import {
@@ -17,6 +18,7 @@ import {
   Search,
   Minus,
   Split,
+  Info,
 } from "lucide-react";
 import { fontService } from "../services/fontService";
 import { isFontFavorite } from "../utils/fontSortUtils";
@@ -39,10 +41,13 @@ interface ContextMenuProps {
   onBulkFavorite?: (fontIds: string[], add: boolean) => void;
   onBulkAddToSet?: (setId: number, fontIds: string[]) => void;
   onBulkRemoveFromSet?: (setId: number, fontIds: string[]) => void;
+  onRequestUninstall?: (fonts: FontMetadata[]) => void;
+  onRequestRemoveFromSet?: (setId: number, fonts: FontMetadata[]) => void;
   onRefreshList?: () => void;
   onActionFeedback?: (msg: string) => void;
   onClearSelection?: () => void;
   onOpenDiff?: (fonts: FontMetadata[]) => void;
+  onOpenFontInfo?: (fonts: FontMetadata[]) => void;
 }
 
 export function ContextMenu({
@@ -63,10 +68,13 @@ export function ContextMenu({
   onBulkFavorite,
   onBulkAddToSet,
   onBulkRemoveFromSet,
+  onRequestUninstall,
+  onRequestRemoveFromSet,
   onRefreshList,
   onActionFeedback,
   onClearSelection,
   onOpenDiff,
+  onOpenFontInfo,
 }: ContextMenuProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -131,7 +139,7 @@ export function ContextMenu({
 
     // 실제 렌더링된 서브메뉴 크기 (마운트 전이면 예상 크기 사용)
     const submenuRect = submenuRef.current?.getBoundingClientRect();
-    const submenuWidth = submenuRect?.width || 208;
+    const submenuWidth = submenuRect && submenuRect.width > 0 ? submenuRect.width : 216;
     const submenuHeight = submenuRect && submenuRect.height > 0
       ? submenuRect.height
       : getEstimatedSubmenuHeight();
@@ -192,30 +200,38 @@ export function ContextMenu({
     });
   }, [getEstimatedSubmenuHeight]);
 
-  const openSubmenu = () => {
+  const openSubmenu = useCallback(() => {
     if (submenuTimerRef.current) {
       clearTimeout(submenuTimerRef.current);
       submenuTimerRef.current = null;
     }
     updateSubmenuPosition();
     setIsSubmenuOpen(true);
-  };
+  }, [updateSubmenuPosition]);
 
-  const closeSubmenuWithDelay = () => {
+  const closeSubmenuWithDelay = useCallback((delay = 220) => {
     if (submenuTimerRef.current) {
       clearTimeout(submenuTimerRef.current);
     }
     submenuTimerRef.current = setTimeout(() => {
       setIsSubmenuOpen(false);
-    }, 150);
-  };
+    }, delay);
+  }, []);
 
-  const keepSubmenuOpen = () => {
+  const closeSubmenuImmediately = useCallback(() => {
     if (submenuTimerRef.current) {
       clearTimeout(submenuTimerRef.current);
       submenuTimerRef.current = null;
     }
-  };
+    setIsSubmenuOpen(false);
+  }, []);
+
+  const keepSubmenuOpen = useCallback(() => {
+    if (submenuTimerRef.current) {
+      clearTimeout(submenuTimerRef.current);
+      submenuTimerRef.current = null;
+    }
+  }, []);
 
   // 서브메뉴 열림 상태 또는 목록 변경 시 실제 DOM 측정 후 위치 동기화
   useLayoutEffect(() => {
@@ -406,6 +422,11 @@ export function ContextMenu({
 
   const handleRemoveFromCurrentSet = () => {
     if (currentSetId === null || currentSetId === undefined) return;
+    if (onRequestRemoveFromSet) {
+      onRequestRemoveFromSet(currentSetId, isMulti ? fonts : [primaryFont]);
+      onClose();
+      return;
+    }
     if (!isMulti) {
       onRemoveFromSet?.(currentSetId, primaryFont.id);
     } else {
@@ -474,6 +495,11 @@ export function ContextMenu({
 
   const handleUninstallAll = async () => {
     if (uninstallableFonts.length === 0) return;
+    if (onRequestUninstall) {
+      onRequestUninstall(uninstallableFonts);
+      onClose();
+      return;
+    }
     try {
       const paths = uninstallableFonts.map((f) => f.file_path);
       const count = await fontService.uninstallFonts(paths);
@@ -499,198 +525,303 @@ export function ContextMenu({
   const isInCurrentSet = currentSetId !== null && currentSetId !== undefined;
 
   return (
-    <div
-      ref={menuRef}
-      className="fixed z-50 w-56 rounded-xl bg-theme-surface border border-theme-border shadow-xl shadow-black/20 p-1.5 text-xs text-theme-text select-none"
-      style={{ left: `${adjustedX}px`, top: `${adjustedY}px` }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* 1. Header Info */}
-      <div className="px-2.5 py-1.5 border-b border-theme-border-subtle mb-1">
-        {isMulti ? (
-          <div className="flex items-center gap-1.5 text-theme-accent">
-            <Layers className="w-3.5 h-3.5" />
-            <p className="font-semibold text-xs truncate">
-              {t("context_menu.selected_count", { count: fonts.length })}
-            </p>
-          </div>
-        ) : (
+    <>
+      <div
+        ref={menuRef}
+        className="fixed z-50 w-56 rounded-xl bg-theme-surface border border-theme-border shadow-xl shadow-black/20 p-1.5 text-xs text-theme-text select-none"
+        style={{ left: `${adjustedX}px`, top: `${adjustedY}px` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 1. Header Info */}
+        <div className="px-2.5 py-1.5 border-b border-theme-border-subtle mb-1">
+          {isMulti ? (
+            <div className="flex items-center gap-1.5 text-theme-accent">
+              <Layers className="w-3.5 h-3.5" />
+              <p className="font-semibold text-xs truncate">
+                {t("context_menu.selected_count", { count: fonts.length })}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="font-semibold text-xs text-theme-text truncate">
+                {primaryFont.family_name}
+              </p>
+              <p className="text-[10px] text-theme-text-muted truncate font-mono">
+                {primaryFont.subfamily_name} · {primaryFont.format}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* 2. 즐겨찾기 관련: 사용 가능한 폰트가 있을 때만 */}
+        {fonts.some((f) => isFontUsable(f)) && (
           <>
-            <p className="font-semibold text-xs text-theme-text truncate">
-              {primaryFont.family_name}
-            </p>
-            <p className="text-[10px] text-theme-text-muted truncate font-mono">
-              {primaryFont.subfamily_name} · {primaryFont.format}
-            </p>
+            <button
+              onClick={handleFavoriteAction}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Heart
+                className={`w-3.5 h-3.5 ${
+                  isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted"
+                }`}
+              />
+              <span>
+                {isMulti
+                  ? isFavorite
+                    ? t("context_menu.bulk_favorite_remove", { count: fonts.length })
+                    : t("context_menu.bulk_favorite_add", { count: fonts.length })
+                  : isFavorite
+                    ? t("context_menu.favorite_remove")
+                    : t("context_menu.favorite_add")}
+              </span>
+            </button>
+            <div className="my-1 border-t border-theme-border-subtle" />
+          </>
+        )}
+
+        {/* 3. 시스템 관련 (임시 활성화, 시스템 설치, 시스템 제거, 시스템 보호) */}
+        {/* 3-1. 임시 활성화: 외부 폰트만 활성화 가능 */}
+        {(!isMulti ? isPrimaryActivatable : hasActivatable) && (
+          <button
+            onClick={handleActivateToggle}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+          >
+            {isActivated ? (
+              <ZapOff className="w-3.5 h-3.5 text-theme-accent" />
+            ) : (
+              <Zap className="w-3.5 h-3.5 text-theme-accent" />
+            )}
+            <span>
+              {isMulti
+                ? isActivated
+                  ? t("context_menu.bulk_deactivate", { count: activatableFonts.length })
+                  : t("context_menu.bulk_activate", { count: activatableFonts.length })
+                : isActivated
+                  ? t("context_menu.deactivate")
+                  : t("context_menu.activate")}
+            </span>
+          </button>
+        )}
+
+        {/* 3-2. 시스템 설치 (미설치 폰트) */}
+        {isMulti ? (
+          hasInstallable && (
+            <button
+              onClick={handleInstallAll}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-theme-text-muted" />
+              <span>{t("context_menu.bulk_install", { count: installableFonts.length })}</span>
+            </button>
+          )
+        ) : (
+          isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && (
+            <button
+              onClick={handleInstallAll}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-theme-text-muted" />
+              <span>{t("context_menu.install")}</span>
+            </button>
+          )
+        )}
+
+        {/* 3-3. 시스템에서 글꼴 제거 (사용자 설치 폰트) */}
+        {isMulti ? (
+          hasUninstallable && (
+            <button
+              onClick={handleUninstallAll}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{t("context_menu.bulk_uninstall", { count: uninstallableFonts.length })}</span>
+            </button>
+          )
+        ) : (
+          isFontUsable(primaryFont) && primaryFont.source === "user" && (
+            <button
+              onClick={handleUninstallAll}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{t("context_menu.uninstall")}</span>
+            </button>
+          )
+        )}
+
+        {/* 3-4. 시스템 보호 글꼴 안내 (시스템 내장 폰트) */}
+        {isMulti ? (
+          isAllSystem && (
+            <div
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
+              title={t("context_menu.system_protected_title")}
+              onMouseEnter={closeSubmenuImmediately}
+            >
+              <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
+              <span>{t("context_menu.system_protected_count", { count: fonts.length })}</span>
+            </div>
+          )
+        ) : (
+          primaryFont.source === "system" && (
+            <div
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
+              title={t("context_menu.system_protected_title")}
+              onMouseEnter={closeSubmenuImmediately}
+            >
+              <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
+              <span>{t("context_menu.system_protected_label")}</span>
+            </div>
+          )
+        )}
+
+        {/* 시스템 동작 항목이 하나라도 있을 때 구분선 표시 */}
+        {((!isMulti ? isPrimaryActivatable : hasActivatable) ||
+          (isMulti ? hasInstallable : (isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user")) ||
+          (isMulti ? hasUninstallable : (isFontUsable(primaryFont) && primaryFont.source === "user")) ||
+          (isMulti ? isAllSystem : primaryFont.source === "system")) && (
+          <div className="my-1 border-t border-theme-border-subtle" />
+        )}
+
+        {/* 4. 서재 관련 (서재 세트 등록 2depth 서브메뉴, 현재 서재에서 제거) */}
+        {/* 4-1. 서재 세트 등록 (2depth 서브메뉴 트리거): 사용 가능한 폰트가 있을 때만 표시 */}
+        {fonts.some((f) => isFontUsable(f)) && (
+          <div
+            ref={triggerRef}
+            onMouseEnter={openSubmenu}
+            onMouseLeave={() => closeSubmenuWithDelay(220)}
+            className="relative"
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isSubmenuOpen) {
+                  setIsSubmenuOpen(false);
+                } else {
+                  openSubmenu();
+                }
+              }}
+              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                isSubmenuOpen ? "bg-theme-hover text-theme-text" : "hover:bg-theme-hover text-theme-text"
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate min-w-0">
+                <Tag className="w-3.5 h-3.5 text-theme-accent shrink-0" />
+                <span className="truncate">
+                  {isMulti
+                    ? t("context_menu.bulk_add_to_set", { count: fonts.length })
+                    : t("context_menu.add_to_set")}
+                </span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {/* 4-2. 현재 서재 세트에서 제거 */}
+        {isInCurrentSet && (
+          <button
+            onClick={handleRemoveFromCurrentSet}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+          >
+            <Minus className="w-3.5 h-3.5 text-rose-500" />
+            <span>
+              {isMulti
+                ? t("context_menu.bulk_remove_from_set", { count: fonts.length })
+                : t("context_menu.remove_from_set")}
+            </span>
+          </button>
+        )}
+
+        {(fonts.some((f) => isFontUsable(f)) || isInCurrentSet) && (
+          <div className="my-1 border-t border-theme-border-subtle" />
+        )}
+
+        {/* 4.5 전문가용 글리프 Diff 비교 모달 */}
+        {onOpenDiff && (
+          <>
+            <button
+              onClick={handleDiffClick}
+              onMouseEnter={closeSubmenuImmediately}
+              disabled={fonts.length === 0}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
+            >
+              <Split className="w-3.5 h-3.5 text-theme-accent" />
+              <span>{diffLabel}</span>
+            </button>
+            <div className="my-1 border-t border-theme-border-subtle" />
+          </>
+        )}
+
+        {/* 5. 정보 및 탐색 관련 (이름 복사, 경로 복사, 파일 탐색기 열기) */}
+        <button
+          onClick={handleCopyName}
+          onMouseEnter={closeSubmenuImmediately}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+        >
+          <Copy className="w-3.5 h-3.5 text-theme-text-muted" />
+          <span>{isMulti ? t("context_menu.copy_names", { count: fonts.length }) : t("context_menu.copy_name")}</span>
+        </button>
+
+        <button
+          onClick={handleCopyPath}
+          onMouseEnter={closeSubmenuImmediately}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+        >
+          <Check className="w-3.5 h-3.5 text-theme-text-muted" />
+          <span>{isMulti ? t("context_menu.copy_paths", { count: fonts.length }) : t("context_menu.copy_path")}</span>
+        </button>
+
+        {!isMulti && isFontUsable(primaryFont) && (
+          <button
+            onClick={handleShowInFolder}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted" />
+            <span>{t("context_menu.show_in_folder")}</span>
+          </button>
+        )}
+
+        {/* 6. 최하단 폰트 정보 보기 */}
+        {fonts.length > 0 && (
+          <>
+            <div className="my-1 border-t border-theme-border-subtle" />
+            <button
+              onClick={() => {
+                onClose();
+                onOpenFontInfo?.(fonts);
+              }}
+              onMouseEnter={closeSubmenuImmediately}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5 text-theme-accent" />
+              <span>
+                {isMulti
+                  ? t("context_menu.view_font_info_n", {
+                      count: fonts.length,
+                      defaultValue: `폰트 정보 보기 (${fonts.length}개)`,
+                    })
+                  : t("context_menu.view_font_info", "폰트 정보 보기")}
+              </span>
+            </button>
           </>
         )}
       </div>
 
-      {/* 2. 즐겨찾기 관련: 사용 가능한 폰트가 있을 때만 */}
-      {fonts.some((f) => isFontUsable(f)) && (
-        <>
-          <button
-            onClick={handleFavoriteAction}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-          >
-            <Heart
-              className={`w-3.5 h-3.5 ${
-                isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted"
-              }`}
-            />
-            <span>
-              {isMulti
-                ? isFavorite
-                  ? t("context_menu.bulk_favorite_remove", { count: fonts.length })
-                  : t("context_menu.bulk_favorite_add", { count: fonts.length })
-                : isFavorite
-                  ? t("context_menu.favorite_remove")
-                  : t("context_menu.favorite_add")}
-            </span>
-          </button>
-          <div className="my-1 border-t border-theme-border-subtle" />
-        </>
-      )}
-
-      {/* 3. 시스템 관련 (임시 활성화, 시스템 설치, 시스템 제거, 시스템 보호) */}
-      {/* 3-1. 임시 활성화: 외부 폰트만 활성화 가능 */}
-      {(!isMulti ? isPrimaryActivatable : hasActivatable) && (
-        <button
-          onClick={handleActivateToggle}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-        >
-          {isActivated ? (
-            <ZapOff className="w-3.5 h-3.5 text-theme-accent" />
-          ) : (
-            <Zap className="w-3.5 h-3.5 text-theme-accent" />
-          )}
-          <span>
-            {isMulti
-              ? isActivated
-                ? t("context_menu.bulk_deactivate", { count: activatableFonts.length })
-                : t("context_menu.bulk_activate", { count: activatableFonts.length })
-              : isActivated
-                ? t("context_menu.deactivate")
-                : t("context_menu.activate")}
-          </span>
-        </button>
-      )}
-
-      {/* 3-2. 시스템 설치 (미설치 폰트) */}
-      {isMulti ? (
-        hasInstallable && (
-          <button
-            onClick={handleInstallAll}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-            <span>{t("context_menu.bulk_install", { count: installableFonts.length })}</span>
-          </button>
-        )
-      ) : (
-        isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && (
-          <button
-            onClick={handleInstallAll}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-            <span>{t("context_menu.install")}</span>
-          </button>
-        )
-      )}
-
-      {/* 3-3. 시스템에서 글꼴 제거 (사용자 설치 폰트) */}
-      {isMulti ? (
-        hasUninstallable && (
-          <button
-            onClick={handleUninstallAll}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>{t("context_menu.bulk_uninstall", { count: uninstallableFonts.length })}</span>
-          </button>
-        )
-      ) : (
-        isFontUsable(primaryFont) && primaryFont.source === "user" && (
-          <button
-            onClick={handleUninstallAll}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>{t("context_menu.uninstall")}</span>
-          </button>
-        )
-      )}
-
-      {/* 3-4. 시스템 보호 글꼴 안내 (시스템 내장 폰트) */}
-      {isMulti ? (
-        isAllSystem && (
-          <div
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
-            title={t("context_menu.system_protected_title")}
-          >
-            <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
-            <span>{t("context_menu.system_protected_count", { count: fonts.length })}</span>
-          </div>
-        )
-      ) : (
-        primaryFont.source === "system" && (
-          <div
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
-            title={t("context_menu.system_protected_title")}
-          >
-            <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
-            <span>{t("context_menu.system_protected_label")}</span>
-          </div>
-        )
-      )}
-
-      {/* 시스템 동작 항목이 하나라도 있을 때 구분선 표시 */}
-      {((!isMulti ? isPrimaryActivatable : hasActivatable) ||
-        (isMulti ? hasInstallable : (isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user")) ||
-        (isMulti ? hasUninstallable : (isFontUsable(primaryFont) && primaryFont.source === "user")) ||
-        (isMulti ? isAllSystem : primaryFont.source === "system")) && (
-        <div className="my-1 border-t border-theme-border-subtle" />
-      )}
-
-      {/* 4. 서재 관련 (서재 세트 등록 2depth 서브메뉴, 현재 서재에서 제거) */}
-      {/* 4-1. 서재 세트 등록 (2depth 서브메뉴): 사용 가능한 폰트가 있을 때만 표시 */}
-      {fonts.some((f) => isFontUsable(f)) && (
-        <div
-          ref={triggerRef}
-          onMouseEnter={openSubmenu}
-          onMouseLeave={closeSubmenuWithDelay}
-          className="relative"
-        >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isSubmenuOpen) {
-              setIsSubmenuOpen(false);
-            } else {
-              openSubmenu();
-            }
-          }}
-          className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
-            isSubmenuOpen ? "bg-theme-hover text-theme-text" : "hover:bg-theme-hover text-theme-text"
-          }`}
-        >
-          <div className="flex items-center gap-2 truncate min-w-0">
-            <Tag className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
-            <span className="truncate">
-              {isMulti
-                ? t("context_menu.bulk_add_to_set", { count: fonts.length })
-                : t("context_menu.add_to_set")}
-            </span>
-          </div>
-          <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
-        </button>
-
-        {isSubmenuOpen && (
+      {/* 2depth 서브메뉴: 부모 Stacking Context 영향 없이 독립적으로 렌더링되도록 Portal 사용 */}
+      {isSubmenuOpen &&
+        createPortal(
           <div
             ref={submenuRef}
             onMouseEnter={keepSubmenuOpen}
-            onMouseLeave={closeSubmenuWithDelay}
+            onMouseLeave={() => closeSubmenuWithDelay(220)}
             onClick={(e) => e.stopPropagation()}
             className="fixed z-50 w-52 rounded-xl bg-theme-surface border border-theme-border shadow-2xl shadow-black/25 p-1.5 text-xs text-theme-text select-none animate-in fade-in duration-100"
             style={{
@@ -738,7 +869,14 @@ export function ContextMenu({
                       }
                     >
                       <div className="flex items-center gap-2 truncate min-w-0">
-                        <Tag className="w-3 h-3 text-theme-accent shrink-0 group-hover:scale-110 transition-transform" />
+                        {set.color ? (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs border border-white/20"
+                            style={{ backgroundColor: set.color }}
+                          />
+                        ) : (
+                          <Tag className="w-3 h-3 text-theme-accent shrink-0 group-hover:scale-110 transition-transform" />
+                        )}
                         <span className="truncate">{set.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -759,71 +897,9 @@ export function ContextMenu({
                 })
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
-      </div>
-      )}
-
-      {/* 4-2. 현재 서재 세트에서 제거 */}
-      {isInCurrentSet && (
-        <button
-          onClick={handleRemoveFromCurrentSet}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-        >
-          <Minus className="w-3.5 h-3.5 text-rose-500" />
-          <span>
-            {isMulti
-              ? t("context_menu.bulk_remove_from_set", { count: fonts.length })
-              : t("context_menu.remove_from_set")}
-          </span>
-        </button>
-      )}
-
-      {(fonts.some((f) => isFontUsable(f)) || isInCurrentSet) && (
-        <div className="my-1 border-t border-theme-border-subtle" />
-      )}
-
-      {/* 4.5 전문가용 글리프 Diff 비교 모달 */}
-      {onOpenDiff && (
-        <>
-          <button
-            onClick={handleDiffClick}
-            disabled={fonts.length === 0}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-          >
-            <Split className="w-3.5 h-3.5 text-theme-accent" />
-            <span>{diffLabel}</span>
-          </button>
-          <div className="my-1 border-t border-theme-border-subtle" />
-        </>
-      )}
-
-      {/* 5. 정보 및 탐색 관련 (이름 복사, 경로 복사, 파일 탐색기 열기) */}
-      <button
-        onClick={handleCopyName}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-      >
-        <Copy className="w-3.5 h-3.5 text-theme-text-muted" />
-        <span>{isMulti ? t("context_menu.copy_names", { count: fonts.length }) : t("context_menu.copy_name")}</span>
-      </button>
-
-      <button
-        onClick={handleCopyPath}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-      >
-        <Check className="w-3.5 h-3.5 text-theme-text-muted" />
-        <span>{isMulti ? t("context_menu.copy_paths", { count: fonts.length }) : t("context_menu.copy_path")}</span>
-      </button>
-
-      {!isMulti && isFontUsable(primaryFont) && (
-        <button
-          onClick={handleShowInFolder}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-        >
-          <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted" />
-          <span>{t("context_menu.show_in_folder")}</span>
-        </button>
-      )}
-    </div>
+    </>
   );
 }

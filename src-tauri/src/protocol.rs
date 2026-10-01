@@ -425,19 +425,39 @@ fn sanitize_single_face_tables(buffer: &mut [u8], base_offset: usize) {
         buffer[base_offset + 5],
     ]) as usize;
 
-    let mut entry_offset = base_offset + 12;
-    for _ in 0..num_tables {
-        if entry_offset + 16 > buffer.len() {
-            break;
-        }
+    let table_dir_len = num_tables * 16;
+    let table_dir_start = base_offset + 12;
+    let table_dir_end = table_dir_start + table_dir_len;
 
-        let tag = &buffer[entry_offset..entry_offset + 4];
-        if tag == b"kern" {
-            // Chromium OTS는 알려지지 않은 태그를 파싱 오류 없이 조용히 DROP합니다.
-            buffer[entry_offset..entry_offset + 4].copy_from_slice(b"drop");
-        }
+    if table_dir_end > buffer.len() {
+        return;
+    }
 
-        entry_offset += 16;
+    // 16바이트 엔트리 수집 및 kern 태그 검사
+    let mut has_kern = false;
+    let mut entries = Vec::with_capacity(num_tables);
+
+    for i in 0..num_tables {
+        let entry_start = table_dir_start + i * 16;
+        let mut entry = [0u8; 16];
+        entry.copy_from_slice(&buffer[entry_start..entry_start + 16]);
+
+        if &entry[0..4] == b"kern" {
+            // Chromium/WebKit OTS가 파싱 오류 없이 조용히 무시하도록 태그를 'drop'으로 치환
+            entry[0..4].copy_from_slice(b"drop");
+            has_kern = true;
+        }
+        entries.push(entry);
+    }
+
+    // kern 태그가 치환된 경우, OpenType 규격(Table Record entries must be sorted in ascending order by tag)을
+    // 만족하도록 엔트리들을 태그 오름차순으로 재정렬하여 WebKit/OTS 거부를 원천 차단
+    if has_kern {
+        entries.sort_by_key(|e| [e[0], e[1], e[2], e[3]]);
+        for (i, entry) in entries.iter().enumerate() {
+            let entry_start = table_dir_start + i * 16;
+            buffer[entry_start..entry_start + 16].copy_from_slice(entry);
+        }
     }
 }
 
@@ -447,13 +467,13 @@ mod tests {
 
     #[test]
     fn test_sanitize_font_buffer() {
-        // Mock TTF header with 'kern' and 'cmap'
+        // Mock TTF header with 'glyf' and 'kern' (tests reordering: 'drop' < 'glyf')
         let mut data = vec![
             0x00, 0x01, 0x00, 0x00, // sfntVersion
             0x00, 0x02,             // numTables = 2
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // searchRange etc
-            // Table 1: cmap
-            b'c', b'm', b'a', b'p',
+            // Table 1: glyf ('g' > 'd')
+            b'g', b'l', b'y', b'f',
             0x00, 0x00, 0x00, 0x01, // checkSum
             0x00, 0x00, 0x00, 0x20, // offset
             0x00, 0x00, 0x00, 0x10, // length
@@ -466,8 +486,9 @@ mod tests {
 
         sanitize_font_buffer(&mut data);
 
-        assert_eq!(&data[12..16], b"cmap");
-        assert_eq!(&data[28..32], b"drop"); // 'kern' should be changed to 'drop'
+        // 'drop' comes before 'glyf' in ASCII order, so it must be re-sorted to table 1
+        assert_eq!(&data[12..16], b"drop");
+        assert_eq!(&data[28..32], b"glyf");
 
         // Real font test if file exists
         let real_path = "/tmp/font_test/GangwonEduModu-Bold.ttf";

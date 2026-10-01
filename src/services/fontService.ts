@@ -5,9 +5,16 @@ import {
   DbFolder,
   ActivatedFontRecord,
   FolderStatus,
+  FontDetailedInfo,
 } from "../types/font";
 
 export const fontService = {
+  async getFontDetails(filePath: string, fontIndex: number = 0): Promise<FontDetailedInfo> {
+    return await invoke<FontDetailedInfo>("get_font_details", {
+      filePath,
+      fontIndex,
+    });
+  },
   async getCachedFonts(): Promise<FontMetadata[]> {
     return await invoke<FontMetadata[]>("get_cached_fonts");
   },

@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Sliders, Search, X, Bold, Italic, Underline, Split } from "lucide-react";
+import { Sliders, Split, Bold, Italic, Underline } from "lucide-react";
 import { PreviewSettings } from "../../types/font";
 import { ColorPresetPicker } from "../ColorPresetPicker";
 import { TextAlignDropdown } from "../TextAlignDropdown";
 import { ViewModeControl } from "../ViewModeControl";
 import { GridColumnsSelector } from "../GridColumnsSelector";
 import { ListRefreshButton } from "../ListRefreshButton";
+import { SearchInput } from "../common/SearchInput";
 
 interface HeaderToolbarProps {
   searchQuery: string;
@@ -73,40 +74,14 @@ export function HeaderToolbar({
         </button>
 
         {/* 필터 검색창 */}
-        <div className="relative flex-1 max-w-xs md:max-w-sm min-w-[140px]">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-theme-text-muted" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                if (searchQuery) {
-                  onSearchChange("");
-                } else {
-                  e.currentTarget.blur();
-                }
-              }
-            }}
-            placeholder={t("toolbar.search_placeholder")}
-            className="w-full bg-theme-input border border-theme-border rounded-lg pl-8 pr-7 py-1.5 text-xs text-theme-text placeholder-theme-text-muted focus:outline-none focus:border-theme-accent transition-colors shadow-2xs"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                onSearchChange("");
-                searchInputRef?.current?.focus();
-              }}
-              className="absolute right-2 top-2 p-0.5 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover cursor-pointer"
-              title="검색 지우기 (Esc)"
-              aria-label="Clear search"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          inputRef={searchInputRef}
+          value={searchQuery}
+          onChange={onSearchChange}
+          placeholder={t("toolbar.search_placeholder")}
+          size="sm"
+          className="flex-1 max-w-xs md:max-w-sm min-w-[140px]"
+        />
 
         {/* 글꼴 비교(Diff) 버튼: [글꼴 검색...] 우측, [새로고침(⟳)] 좌측 (기본 활성화) */}
         {onOpenDiff && (
@@ -125,7 +100,7 @@ export function HeaderToolbar({
                 })
                 : t("toolbar.diff_tooltip", "전문가용 글리프 Diff 비교")
             }
-            aria-label="Font Glyph Diff"
+            aria-label={t("diff.title", "글꼴 글리프 비교")}
           >
             <Split className="w-3.5 h-3.5 text-theme-accent shrink-0" />
             <span>
@@ -169,7 +144,7 @@ export function HeaderToolbar({
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
             title={t("toolbar.bold", "굵게 (Bold)")}
-            aria-label="Bold"
+            aria-label={t("toolbar.bold", "굵게")}
             aria-pressed={previewSettings.isBold}
           >
             <Bold className="w-3.5 h-3.5" />
@@ -182,7 +157,7 @@ export function HeaderToolbar({
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
             title={t("toolbar.italic", "기울임 (Italic)")}
-            aria-label="Italic"
+            aria-label={t("toolbar.italic", "기울임")}
             aria-pressed={previewSettings.isItalic}
           >
             <Italic className="w-3.5 h-3.5" />
@@ -195,7 +170,7 @@ export function HeaderToolbar({
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
             title={t("toolbar.underline", "밑줄 (Underline)")}
-            aria-label="Underline"
+            aria-label={t("toolbar.underline", "밑줄")}
             aria-pressed={previewSettings.isUnderline}
           >
             <Underline className="w-3.5 h-3.5" />

@@ -103,6 +103,8 @@ export interface CustomFolder {
   color: string;
   count: number;
   isMissing?: boolean;
+  isScanning?: boolean;
+  scanProgress?: { current: number; total: number };
 }
 
 export interface FolderStatus {
@@ -111,6 +113,96 @@ export interface FolderStatus {
   name: string;
   color: string;
   exists: boolean;
+}
+
+export interface FontNameRecord {
+  name_id: number;
+  name_key: string;
+  value: string;
+  language_id?: number;
+  language_tag?: string;
+}
+
+export interface FontMetricsRecord {
+  units_per_em: number;
+  ascender: number;
+  descender: number;
+  line_gap: number;
+  win_ascent?: number | null;
+  win_descent?: number | null;
+  cap_height?: number | null;
+  x_height?: number | null;
+  italic_angle: number;
+  underline_position: number;
+  underline_thickness: number;
+  is_monospaced: boolean;
+  bbox_xmin: number;
+  bbox_ymin: number;
+  bbox_xmax: number;
+  bbox_ymax: number;
+}
+
+export interface FontOs2Record {
+  version: number;
+  weight_class: number;
+  width_class: number;
+  fs_type: number;
+  fs_type_label: string;
+  fs_selection: number;
+  s_family_class: number;
+  family_class_name: string;
+  panose: number[];
+  vendor_id: string;
+}
+
+export interface FontLanguageCoverage {
+  total_glyph_count: number;
+  encoded_char_count: number;
+  has_latin_basic: boolean;
+  latin_basic_count?: number;
+  has_latin_extended: boolean;
+  latin_extended_count?: number;
+  hangul_syllable_count: number;
+  hangul_type: "none" | "basic_ks_2350" | "full_11172" | "partial";
+  has_hangul_jamo: boolean;
+  cjk_ideograph_count: number;
+  has_japanese_kana: boolean;
+  japanese_kana_count?: number;
+  has_cyrillic: boolean;
+  has_greek: boolean;
+  has_arabic: boolean;
+  supported_scripts: string[];
+}
+
+export interface FontVariableAxis {
+  tag: string;
+  name: string;
+  min_value: number;
+  default_value: number;
+  max_value: number;
+}
+
+export interface FontVariableInfo {
+  is_variable: boolean;
+  axes: FontVariableAxis[];
+}
+
+export interface FontDetailedInfo {
+  id: string;
+  file_path: string;
+  file_name: string;
+  file_size: number;
+  font_index: number;
+  format: FontFormat;
+  style_classification: string;
+  created_timestamp?: number | null;
+  modified_timestamp?: number | null;
+  names: FontNameRecord[];
+  metrics: FontMetricsRecord;
+  os2?: FontOs2Record | null;
+  coverage: FontLanguageCoverage;
+  opentype_features: string[];
+  variable?: FontVariableInfo | null;
 }
 
 

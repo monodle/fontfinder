@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BookmarkPlus,
@@ -40,6 +40,7 @@ export function LibraryItemModal({
   onSubmitFolderColor,
 }: LibraryItemModalProps) {
   const { t } = useTranslation();
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(initialName);
   const [selectedColor, setSelectedColor] = useState(
     initialColor || getRandomLibraryColor()
@@ -49,21 +50,32 @@ export function LibraryItemModal({
     initialColor || selectedColor
   );
 
-  // 모달이 열릴 때 초기값 설정
+  // 모달이 열릴 때 초기값 설정 및 세트 이름 입력창 포커스
   useEffect(() => {
-    if (isOpen) {
-      if (mode === "create_set") {
-        setName("");
-        const rand = getRandomLibraryColor();
-        setSelectedColor(rand);
-        setCustomHex(rand);
-      } else {
-        setName(initialName);
-        const color = initialColor || getRandomLibraryColor();
-        setSelectedColor(color);
-        setCustomHex(color);
-      }
-      setActiveTab("all");
+    if (!isOpen) return;
+
+    if (mode === "create_set") {
+      setName("");
+      const rand = getRandomLibraryColor();
+      setSelectedColor(rand);
+      setCustomHex(rand);
+    } else {
+      setName(initialName);
+      const color = initialColor || getRandomLibraryColor();
+      setSelectedColor(color);
+      setCustomHex(color);
+    }
+    setActiveTab("all");
+
+    // 색상 초기화 및 렌더링 이후 세트 이름 입력창으로 포커스 이동
+    if (mode !== "edit_folder") {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+        if (mode === "edit_set") {
+          nameInputRef.current?.select();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, mode, initialName, initialColor]);
 
@@ -110,28 +122,30 @@ export function LibraryItemModal({
   }, [activeTab]);
 
   const categoryTabs: { id: PaletteCategory; label: string }[] = [
-    { id: "all", label: "전체 50종" },
-    { id: "warm", label: "웜톤 (Warm)" },
-    { id: "nature", label: "네이처 (Green)" },
-    { id: "cool", label: "오션 (Blue)" },
-    { id: "purple", label: "바이올렛 (Purple)" },
-    { id: "neutral", label: "차분함 (Muted)" },
+    { id: "all", label: t("library_modal.tab_all_colors", "전체 50종") },
+    { id: "warm", label: t("library_modal.tab_warm", "웜톤 (Warm)") },
+    { id: "nature", label: t("library_modal.tab_nature", "네이처 (Green)") },
+    { id: "cool", label: t("library_modal.tab_cool", "오션 (Blue)") },
+    { id: "purple", label: t("library_modal.tab_purple", "바이올렛 (Purple)") },
+    { id: "neutral", label: t("library_modal.tab_neutral", "차분함 (Muted)") },
   ];
 
   // 현재 색상 명칭
   const currentPreset = LIBRARY_LABEL_COLOR_PRESETS.find(
     (p) => p.color.toLowerCase() === selectedColor.toLowerCase()
   );
-  const colorDisplayName = currentPreset ? currentPreset.label : "커스텀 색상";
+  const colorDisplayName = currentPreset
+    ? currentPreset.label
+    : t("library_modal.custom_color_name", "커스텀 색상");
 
   const isLight = isLightColor(selectedColor);
   const displayName =
     name.trim() ||
     (mode === "edit_folder"
-      ? initialName || "폴더"
+      ? initialName || t("library_modal.default_folder_name", "폴더")
       : mode === "create_set"
-      ? "새 서재 세트"
-      : "서재 세트");
+      ? t("library_modal.default_new_set_name", "새 서재 세트")
+      : t("library_modal.default_set_name", "서재 세트"));
   const shortName = displayName.slice(0, 2);
 
   // 모드별 텍스트 및 아이콘 매핑
@@ -224,7 +238,9 @@ export function LibraryItemModal({
             </div>
             <div className="min-w-0">
               <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider block">
-                {mode === "edit_folder" ? "감시 폴더" : "서재 세트"}
+                {mode === "edit_folder"
+                  ? t("library_modal.folder_label", "감시 폴더")
+                  : t("library_modal.set_label", "서재 세트")}
               </span>
               <span className="text-sm font-bold text-theme-text truncate block">
                 {displayName}
@@ -272,11 +288,11 @@ export function LibraryItemModal({
             <div className="relative">
               <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
               <input
+                ref={nameInputRef}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("sidebar.new_set_placeholder")}
-                autoFocus={mode === "create_set"}
                 className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-3.5 py-2 text-xs text-theme-text placeholder:text-theme-text-muted transition-all outline-none"
               />
             </div>

@@ -6,6 +6,7 @@ import { fontService } from "../services/fontService";
 import { getRandomLibraryColor } from "../config/colorPresets";
 import { isPathInFolder } from "../utils/pathUtils";
 import { isFontFavorite } from "../utils/fontSortUtils";
+import { deduplicateFonts } from "../utils/fontDeduplication";
 
 interface UseFontActionsProps {
   fonts: FontMetadata[];
@@ -289,9 +290,9 @@ export function useFontActions({
   ]);
 
   // 일괄 삭제
-  const handleBulkUninstall = useCallback(async () => {
-    const selectedFonts = filteredFonts.filter((f) => selectedFontIds.has(f.id));
-    const uninstallable = selectedFonts.filter((f) => f.source === "user");
+  const handleBulkUninstall = useCallback(async (targetFonts?: FontMetadata[]) => {
+    const candidateFonts = targetFonts || filteredFonts.filter((f) => selectedFontIds.has(f.id));
+    const uninstallable = candidateFonts.filter((f) => f.source === "user");
     if (uninstallable.length === 0) {
       showToast(t("toast.no_user_selected_uninstall"));
       return;
@@ -521,48 +522,82 @@ export function useFontActions({
 
         setIsLoading(true);
 
-        const newFoldersToAdd: CustomFolder[] = [];
-        const allNewFonts: FontMetadata[] = [];
-        let lastAddedPath = "";
-
-        for (const dir of newDirs) {
-          const folderFonts = await fontService.scanDirectory(dir.path);
+        // 1. 낙관적 UI (Optimistic UI): 사이드바에 '스캔 중' 상태로 폴더 즉시 추가
+        const optimisticFolders: CustomFolder[] = newDirs.map((dir) => {
           const folderName = dir.name || dir.path.split(/[\\/]/).pop() || dir.path;
-          const randomColor = getRandomLibraryColor();
-          const dbFolder = await fontService.addFolder(dir.path, folderName, randomColor);
-
-          newFoldersToAdd.push({
-            id: dbFolder.id,
+          return {
             path: dir.path,
             name: folderName,
-            color: dbFolder.color || randomColor,
-            count: folderFonts.length,
-          });
-
-          allNewFonts.push(...folderFonts);
-          lastAddedPath = dir.path;
-          await fontService.watchFolder(dir.path);
-        }
-
-        // 3. 서재 목록 및 순서 저장
-        const nextFolders = [
-          ...customFoldersRef.current.filter((f) => !newDirs.some((d) => d.path === f.path)),
-          ...newFoldersToAdd,
-        ];
-        setCustomFolders(nextFolders);
-        void fontService.setSetting("folder_order", JSON.stringify(nextFolders.map((f) => f.path)));
-
-        // 4. 전체 폰트 목록에 새 폰트 병합
-        setFonts((prev) => {
-          const existingFontPaths = new Set(prev.map((f) => f.file_path));
-          const freshFonts = allNewFonts.filter((f) => !existingFontPaths.has(f.file_path));
-          return [...prev, ...freshFonts];
+            color: getRandomLibraryColor(),
+            count: 0,
+            isScanning: true,
+          };
         });
 
-        // 5. 마지막 추가된 폴더로 카테고리 전환
-        if (lastAddedPath) {
-          setActiveCategory(`folder:${lastAddedPath}`);
+        setCustomFolders((prev) => [
+          ...prev.filter((f) => !newDirs.some((d) => d.path === f.path)),
+          ...optimisticFolders,
+        ]);
+
+        // 사용자가 스캔 과정을 바로 확인할 수 있도록 마지막 추가 폴더로 즉시 포커스
+        if (optimisticFolders.length > 0) {
+          setActiveCategory(`folder:${optimisticFolders[optimisticFolders.length - 1].path}`);
         }
+
+        const newFoldersToAdd: CustomFolder[] = [];
+        const allNewFonts: FontMetadata[] = [];
+
+        for (const dir of newDirs) {
+          const folderName = dir.name || dir.path.split(/[\\/]/).pop() || dir.path;
+          const matchingOptimistic = optimisticFolders.find((f) => f.path === dir.path);
+          const folderColor = matchingOptimistic?.color || getRandomLibraryColor();
+
+          try {
+            const folderFonts = await fontService.scanDirectory(dir.path);
+            const dbFolder = await fontService.addFolder(dir.path, folderName, folderColor);
+            const uniqueFolderCount = deduplicateFonts(folderFonts, activatedFontIds).length;
+
+            const finalizedFolder: CustomFolder = {
+              id: dbFolder.id,
+              path: dir.path,
+              name: folderName,
+              color: dbFolder.color || folderColor,
+              count: uniqueFolderCount,
+              isScanning: false,
+              scanProgress: undefined,
+            };
+
+            newFoldersToAdd.push(finalizedFolder);
+            allNewFonts.push(...folderFonts);
+
+            // 해당 폴더 상태 개별 즉시 완료 반영
+            setCustomFolders((prev) =>
+              prev.map((f) => (f.path === dir.path ? finalizedFolder : f))
+            );
+
+            // 해당 폴더의 폰트 즉시 목록에 병합
+            if (folderFonts.length > 0) {
+              setFonts((prev) => {
+                const existingFontPaths = new Set(prev.map((f) => f.file_path));
+                const freshFonts = folderFonts.filter((f) => !existingFontPaths.has(f.file_path));
+                return freshFonts.length > 0 ? [...prev, ...freshFonts] : prev;
+              });
+            }
+
+            await fontService.watchFolder(dir.path);
+          } catch (dirErr) {
+            console.error(`폴더(${dir.path}) 스캔/추가 실패:`, dirErr);
+            // 실패 시 낙관적 임시 폴더 제거
+            setCustomFolders((prev) => prev.filter((f) => f.path !== dir.path));
+            throw dirErr;
+          }
+        }
+
+        // 전체 서재 폴더 순서 저장
+        setCustomFolders((prev) => {
+          void fontService.setSetting("folder_order", JSON.stringify(prev.map((f) => f.path)));
+          return prev;
+        });
 
         // 6. 완료 토스트 알림
         if (newFoldersToAdd.length === 1) {
@@ -584,7 +619,7 @@ export function useFontActions({
         setIsLoading(false);
       }
     },
-    [customFoldersRef, getRandomLibraryColor, setActiveCategory, setCustomFolders, setFonts, setIsLoading, showToast, t]
+    [activatedFontIds, customFoldersRef, getRandomLibraryColor, setActiveCategory, setCustomFolders, setFonts, setIsLoading, showToast, t]
   );
 
   // 폴더 추가 다이얼로그
@@ -615,23 +650,34 @@ export function useFontActions({
       if (!hasFonts) {
         try {
           setIsLoading(true);
+          setCustomFolders((prev) =>
+            prev.map((f) => (f.path === folderPath ? { ...f, isScanning: true } : f))
+          );
           const folderFonts = await fontService.scanDirectory(folderPath);
           setFonts((prev) => {
             const existingPaths = new Set(prev.map((f) => f.file_path));
             const newOnes = folderFonts.filter((f) => !existingPaths.has(f.file_path));
             return [...prev, ...newOnes];
           });
+          const uniqueCount = deduplicateFonts(folderFonts, activatedFontIds).length;
           setCustomFolders((prev) =>
-            prev.map((f) => (f.path === folderPath ? { ...f, count: folderFonts.length } : f))
+            prev.map((f) =>
+              f.path === folderPath
+                ? { ...f, count: uniqueCount, isScanning: false, scanProgress: undefined }
+                : f
+            )
           );
         } catch (err) {
           console.error("폴더 재스캔 실패:", err);
+          setCustomFolders((prev) =>
+            prev.map((f) => (f.path === folderPath ? { ...f, isScanning: false } : f))
+          );
         } finally {
           setIsLoading(false);
         }
       }
     },
-    [fonts, setActiveCategory, setCustomFolders, setFonts, setIsLoading]
+    [activatedFontIds, fonts, setActiveCategory, setCustomFolders, setFonts, setIsLoading]
   );
 
   // 커스텀 폴더 제거

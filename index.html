@@ -12,15 +12,18 @@
     (function () {
       try {
         var saved = localStorage.getItem("fontfinder_user_settings") || localStorage.getItem("fontfinder_user_settings");
-        var theme = "light";
+        var theme = "glass";
         if (saved) {
           var parsed = JSON.parse(saved);
           if (parsed && parsed.theme) theme = parsed.theme;
         } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-          theme = "dark";
+          theme = "nord";
         }
         document.documentElement.setAttribute("data-theme", theme);
-        if (theme !== "light") {
+        var isLight = theme === "light" || theme === "clean-white" || theme === "glass";
+        if (isLight) {
+          document.documentElement.classList.remove("dark");
+        } else {
           document.documentElement.classList.add("dark");
         }
 

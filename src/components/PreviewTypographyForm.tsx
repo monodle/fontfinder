@@ -12,6 +12,8 @@ import {
   Palette,
 } from "lucide-react";
 import { ColorPresetPicker } from "./ColorPresetPicker";
+import { RangeSliderControl } from "./common/RangeSliderControl";
+import { SegmentedControl } from "./common/SegmentedControl";
 
 export interface TypographyStyleValues {
   text: string;
@@ -304,10 +306,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title="Bold"
+                title={t("toolbar.bold", "굵게")}
               >
                 <Bold className="w-3.5 h-3.5" />
-                <span>Bold</span>
+                <span>{t("toolbar.bold", "굵게")}</span>
               </button>
 
               <button
@@ -318,10 +320,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title="Italic"
+                title={t("toolbar.italic", "기울임")}
               >
                 <Italic className="w-3.5 h-3.5" />
-                <span>Italic</span>
+                <span>{t("toolbar.italic", "기울임")}</span>
               </button>
 
               <button
@@ -332,10 +334,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title="Underline"
+                title={t("toolbar.underline", "밑줄")}
               >
                 <Underline className="w-3.5 h-3.5" />
-                <span>Underline</span>
+                <span>{t("toolbar.underline", "밑줄")}</span>
               </button>
             </div>
           </div>
@@ -347,44 +349,16 @@ export function PreviewTypographyForm({
                 ? t("style_modal.styles_and_align_title")
                 : t("settings.default_text_align")}
             </span>
-            <div className="flex items-center gap-1.5 bg-theme-input border border-theme-border rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => onChange("textAlign", "left")}
-                className={`flex-1 flex items-center justify-center py-1 rounded transition-colors cursor-pointer ${
-                  values.textAlign === "left"
-                    ? "bg-theme-accent text-theme-accent-text"
-                    : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
-                }`}
-                title={t("settings.align_left")}
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange("textAlign", "center")}
-                className={`flex-1 flex items-center justify-center py-1 rounded transition-colors cursor-pointer ${
-                  values.textAlign === "center"
-                    ? "bg-theme-accent text-theme-accent-text"
-                    : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
-                }`}
-                title={t("settings.align_center")}
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange("textAlign", "right")}
-                className={`flex-1 flex items-center justify-center py-1 rounded transition-colors cursor-pointer ${
-                  values.textAlign === "right"
-                    ? "bg-theme-accent text-theme-accent-text"
-                    : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
-                }`}
-                title={t("settings.align_right")}
-              >
-                <AlignRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <SegmentedControl
+              options={[
+                { value: "left", icon: <AlignLeft className="w-3.5 h-3.5" />, title: t("settings.align_left") },
+                { value: "center", icon: <AlignCenter className="w-3.5 h-3.5" />, title: t("settings.align_center") },
+                { value: "right", icon: <AlignRight className="w-3.5 h-3.5" />, title: t("settings.align_right") },
+              ]}
+              value={values.textAlign}
+              onChange={(align) => onChange("textAlign", align)}
+              size="sm"
+            />
           </div>
         </div>
 
@@ -400,50 +374,37 @@ export function PreviewTypographyForm({
           </div>
 
           {/* Letter Spacing */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-theme-text-secondary">
-                {isSessionMode
-                  ? t("style_modal.letter_spacing_label")
-                  : t("settings.default_letter_spacing")}
-              </span>
-              <span className="font-mono font-semibold text-theme-accent bg-theme-accent-subtle px-1.5 py-0.5 rounded text-[10px]">
-                {values.letterSpacing}px
-              </span>
-            </div>
-            <input
-              type="range"
-              min={-2}
-              max={12}
-              step={0.5}
-              value={values.letterSpacing}
-              onChange={(e) => onChange("letterSpacing", Number(e.target.value))}
-              className="w-full accent-theme-accent cursor-pointer"
-            />
-          </div>
+          <RangeSliderControl
+            label={
+              isSessionMode
+                ? t("style_modal.letter_spacing_label")
+                : t("settings.default_letter_spacing")
+            }
+            value={values.letterSpacing}
+            onChange={(val) => onChange("letterSpacing", val)}
+            min={-2}
+            max={12}
+            step={0.5}
+            unit="px"
+            showNumberInput={false}
+          />
 
           {/* Line Height */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-theme-text-secondary">
-                {isSessionMode
-                  ? t("style_modal.line_height_label")
-                  : t("settings.default_line_height")}
-              </span>
-              <span className="font-mono font-semibold text-theme-accent bg-theme-accent-subtle px-1.5 py-0.5 rounded text-[10px]">
-                {values.lineHeight.toFixed(2)}x
-              </span>
-            </div>
-            <input
-              type="range"
-              min={1.0}
-              max={2.5}
-              step={0.05}
-              value={values.lineHeight}
-              onChange={(e) => onChange("lineHeight", Number(e.target.value))}
-              className="w-full accent-theme-accent cursor-pointer"
-            />
-          </div>
+          <RangeSliderControl
+            label={
+              isSessionMode
+                ? t("style_modal.line_height_label")
+                : t("settings.default_line_height")
+            }
+            value={values.lineHeight}
+            onChange={(val) => onChange("lineHeight", val)}
+            min={1.0}
+            max={2.5}
+            step={0.05}
+            unit="x"
+            formatValue={(val) => val.toFixed(2)}
+            showNumberInput={false}
+          />
 
           {/* Text Transform (세션 모드) */}
           {isSessionMode && (

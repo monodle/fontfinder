@@ -34,7 +34,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     initialSettings.language || i18n.language || "en"
   );
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(
-    initialSettings.theme || "light"
+    initialSettings.theme || "glass"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 

@@ -7,6 +7,15 @@ import {
 } from "../config/appConfig";
 import { fontService } from "./fontService";
 import { detectInitialLanguage } from "../i18n";
+import {
+  FontSortSettings,
+  DEFAULT_SORT_SETTINGS,
+  DEFAULT_SORT_BLOCK_ORDER,
+  FontSortBlock,
+  FontSortMode,
+  FontSortField,
+  FontSortOrder,
+} from "../types/sort";
 
 export interface CustomAppSettings {
   defaultCategory: LibraryCategory;
@@ -15,6 +24,7 @@ export interface CustomAppSettings {
   minFontSize: number;
   maxFontSize: number;
   defaultViewMode: "list" | "grid";
+  defaultFontDetailMode: "detailed" | "simple";
   defaultGridColumns: number;
   defaultVariableWeight: number;
   defaultTextColor: string;
@@ -25,16 +35,74 @@ export interface CustomAppSettings {
   defaultIsBold?: boolean;
   defaultIsItalic?: boolean;
   defaultIsUnderline?: boolean;
+  fontSortSettings?: FontSortSettings;
   language: string;
   theme: AppTheme;
+}
+
+export function sanitizeFontSortSettings(raw: unknown): FontSortSettings {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_SORT_SETTINGS, customPriority: [...DEFAULT_SORT_BLOCK_ORDER] };
+  }
+
+  const obj = raw as Record<string, unknown>;
+  const validModes: FontSortMode[] = ["smart", "name", "custom"];
+  const validFields: FontSortField[] = ["fontName", "fileName"];
+  const validOrders: FontSortOrder[] = ["asc", "desc"];
+  const validBlocks: FontSortBlock[] = ["favorites", "activated", "deactivated", "unplugged"];
+
+  const mode: FontSortMode = validModes.includes(obj.mode as FontSortMode)
+    ? (obj.mode as FontSortMode)
+    : DEFAULT_SORT_SETTINGS.mode;
+
+  const nameField: FontSortField = validFields.includes(obj.nameField as FontSortField)
+    ? (obj.nameField as FontSortField)
+    : DEFAULT_SORT_SETTINGS.nameField;
+
+  const nameOrder: FontSortOrder = validOrders.includes(obj.nameOrder as FontSortOrder)
+    ? (obj.nameOrder as FontSortOrder)
+    : DEFAULT_SORT_SETTINGS.nameOrder;
+
+  const customField: FontSortField = validFields.includes(obj.customField as FontSortField)
+    ? (obj.customField as FontSortField)
+    : DEFAULT_SORT_SETTINGS.customField;
+
+  const customOrder: FontSortOrder = validOrders.includes(obj.customOrder as FontSortOrder)
+    ? (obj.customOrder as FontSortOrder)
+    : DEFAULT_SORT_SETTINGS.customOrder;
+
+  let customPriority: FontSortBlock[] = [];
+  if (Array.isArray(obj.customPriority)) {
+    const filtered = obj.customPriority.filter((b): b is FontSortBlock =>
+      validBlocks.includes(b as FontSortBlock)
+    );
+    // 누락된 블록 보충
+    for (const b of validBlocks) {
+      if (!filtered.includes(b)) {
+        filtered.push(b);
+      }
+    }
+    customPriority = filtered;
+  } else {
+    customPriority = [...DEFAULT_SORT_BLOCK_ORDER];
+  }
+
+  return {
+    mode,
+    nameField,
+    nameOrder,
+    customPriority,
+    customField,
+    customOrder,
+  };
 }
 
 function getInitialThemeByOS(): AppTheme {
   if (typeof window !== "undefined" && window.matchMedia) {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return isDark ? "dark" : "light";
+    return isDark ? "nord" : "glass";
   }
-  return "light";
+  return "glass";
 }
 
 function createDefaultSettings(lang?: string, theme?: AppTheme): CustomAppSettings {
@@ -47,6 +115,7 @@ function createDefaultSettings(lang?: string, theme?: AppTheme): CustomAppSettin
     minFontSize: appConfig.preview.minFontSize,
     maxFontSize: appConfig.preview.maxFontSize,
     defaultViewMode: appConfig.preview.defaultViewMode,
+    defaultFontDetailMode: appConfig.preview.defaultFontDetailMode,
     defaultGridColumns: appConfig.preview.defaultGridColumns,
     defaultVariableWeight: appConfig.variableFont.defaultWeight,
     defaultTextColor: "",
@@ -57,6 +126,7 @@ function createDefaultSettings(lang?: string, theme?: AppTheme): CustomAppSettin
     defaultIsBold: false,
     defaultIsItalic: false,
     defaultIsUnderline: false,
+    fontSortSettings: { ...DEFAULT_SORT_SETTINGS, customPriority: [...DEFAULT_SORT_BLOCK_ORDER] },
     language: resolvedLang,
     theme: resolvedTheme,
   };
@@ -78,7 +148,7 @@ function isLightTheme(theme: AppTheme): boolean {
 }
 
 export function applyTheme(theme: AppTheme): void {
-  const validTheme = VALID_THEMES.includes(theme) ? theme : "clean-white";
+  const validTheme = VALID_THEMES.includes(theme) ? theme : "glass";
   document.documentElement.setAttribute("data-theme", validTheme);
   // data-theme-mode: dark계열과 light계열 구분용
   const isLight = isLightTheme(validTheme);
@@ -117,6 +187,8 @@ export const settingsService = {
           minFontSize: Math.max(8, Number(parsed.minFontSize) || defaultSettings.minFontSize),
           maxFontSize: Math.max(20, Number(parsed.maxFontSize) || defaultSettings.maxFontSize),
           defaultFontSize: Math.max(8, Number(parsed.defaultFontSize) || defaultSettings.defaultFontSize),
+          defaultViewMode: parsed.defaultViewMode === "grid" ? "grid" : "list",
+          defaultFontDetailMode: parsed.defaultFontDetailMode === "simple" ? "simple" : "detailed",
           defaultGridColumns: Math.min(5, Math.max(2, Number(parsed.defaultGridColumns) || defaultSettings.defaultGridColumns)),
           defaultVariableWeight: Math.min(900, Math.max(100, Number(parsed.defaultVariableWeight) || defaultSettings.defaultVariableWeight)),
           defaultTextColor: typeof parsed.defaultTextColor === "string" ? parsed.defaultTextColor : "",
@@ -127,6 +199,7 @@ export const settingsService = {
           defaultIsBold: Boolean(parsed.defaultIsBold),
           defaultIsItalic: Boolean(parsed.defaultIsItalic),
           defaultIsUnderline: Boolean(parsed.defaultIsUnderline),
+          fontSortSettings: sanitizeFontSortSettings(parsed.fontSortSettings),
         };
         applyTheme(settings.theme);
         return settings;
@@ -154,6 +227,8 @@ export const settingsService = {
           minFontSize: Math.max(8, Number(parsed.minFontSize) || defaultSettings.minFontSize),
           maxFontSize: Math.max(20, Number(parsed.maxFontSize) || defaultSettings.maxFontSize),
           defaultFontSize: Math.max(8, Number(parsed.defaultFontSize) || defaultSettings.defaultFontSize),
+          defaultViewMode: parsed.defaultViewMode === "grid" ? "grid" : "list",
+          defaultFontDetailMode: parsed.defaultFontDetailMode === "simple" ? "simple" : "detailed",
           defaultGridColumns: Math.min(5, Math.max(2, Number(parsed.defaultGridColumns) || defaultSettings.defaultGridColumns)),
           defaultVariableWeight: Math.min(900, Math.max(100, Number(parsed.defaultVariableWeight) || defaultSettings.defaultVariableWeight)),
           defaultTextColor: typeof parsed.defaultTextColor === "string" ? parsed.defaultTextColor : "",
@@ -164,6 +239,7 @@ export const settingsService = {
           defaultIsBold: Boolean(parsed.defaultIsBold),
           defaultIsItalic: Boolean(parsed.defaultIsItalic),
           defaultIsUnderline: Boolean(parsed.defaultIsUnderline),
+          fontSortSettings: sanitizeFontSortSettings(parsed.fontSortSettings),
         };
         applyTheme(merged.theme);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
@@ -176,7 +252,7 @@ export const settingsService = {
     // 저장된 설정이 없는 최초 시작 시: OS 네이티브 테마(Windows 레지스트리/시스템 테마)를 정확히 판별하여 반영
     try {
       const osTheme = await fontService.getSystemTheme();
-      const initialTheme: AppTheme = osTheme === "dark" ? "dark" : "light";
+      const initialTheme: AppTheme = osTheme === "dark" ? "nord" : "glass";
       const initialSettings: CustomAppSettings = {
         ...defaultSettings,
         theme: initialTheme,
@@ -193,6 +269,7 @@ export const settingsService = {
     const validSettings: CustomAppSettings = {
       ...settings,
       theme: validTheme,
+      fontSortSettings: sanitizeFontSortSettings(settings.fontSortSettings),
     };
     applyTheme(validTheme);
     const jsonStr = JSON.stringify(validSettings);
@@ -214,6 +291,7 @@ export const settingsService = {
       ...defaults,
       language: targetLang,
       theme: targetTheme,
+      fontSortSettings: { ...DEFAULT_SORT_SETTINGS, customPriority: [...DEFAULT_SORT_BLOCK_ORDER] },
     };
 
     await this.saveSettings(mergedSettings);

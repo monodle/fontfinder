@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { ModalDialog } from "./ModalDialog";
+import { Button } from "./common";
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -76,25 +77,23 @@ export function ConfirmModal({
 
         {/* 액션 버튼 */}
         <div className="flex items-center justify-center gap-2.5 w-full mt-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-theme-text-secondary hover:text-theme-text bg-theme-surface border border-theme-border hover:bg-theme-hover transition-colors cursor-pointer"
           >
             {cancelText || t("common.cancel", "취소")}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={isDanger ? "danger" : "primary"}
+            size="md"
+            fullWidth
             autoFocus
             onClick={handleConfirm}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer ${
-              isDanger
-                ? "bg-red-600 hover:bg-red-500 active:bg-red-700"
-                : "bg-theme-accent hover:bg-theme-accent-hover text-theme-accent-text"
-            }`}
           >
             {confirmText || (isDanger ? t("common.delete", "삭제") : t("common.confirm", "확인"))}
-          </button>
+          </Button>
         </div>
       </div>
     </ModalDialog>

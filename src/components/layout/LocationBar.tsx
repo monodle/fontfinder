@@ -14,6 +14,10 @@ import {
   Heart,
 } from "lucide-react";
 import { CustomFolder, FontSet } from "../../types/font";
+import { FontDetailMode } from "../font-card/types";
+import { DetailModeControl } from "../DetailModeControl";
+import { SortModeControl } from "../SortModeControl";
+import { FontSortSettings } from "../../types/sort";
 
 interface LocationBarProps {
   activeCategory: string;
@@ -21,6 +25,10 @@ interface LocationBarProps {
   sets: FontSet[];
   fontsCount: number;
   selectedCount?: number;
+  detailMode?: FontDetailMode;
+  onDetailModeChange?: (mode: FontDetailMode) => void;
+  sortSettings?: FontSortSettings;
+  onSortSettingsChange?: (settings: FontSortSettings) => void;
   onOpenFolder: (path: string) => void;
   onRelinkFolder?: (path: string) => void;
 }
@@ -31,6 +39,10 @@ export function LocationBar({
   sets,
   fontsCount,
   selectedCount = 0,
+  detailMode = "detailed",
+  onDetailModeChange,
+  sortSettings,
+  onSortSettingsChange,
   onOpenFolder,
   onRelinkFolder,
 }: LocationBarProps) {
@@ -59,6 +71,21 @@ export function LocationBar({
       </span>
     );
   };
+
+  const renderRightControls = () => (
+    <div className="flex items-center gap-2.5 shrink-0">
+      {renderFontCount()}
+      {sortSettings && onSortSettingsChange && (
+        <SortModeControl
+          sortSettings={sortSettings}
+          onChange={onSortSettingsChange}
+        />
+      )}
+      {onDetailModeChange && (
+        <DetailModeControl detailMode={detailMode} onChange={onDetailModeChange} />
+      )}
+    </div>
+  );
 
   // 1. 감시 폴더인 경우
   if (activeCategory.startsWith("folder:")) {
@@ -126,7 +153,7 @@ export function LocationBar({
               )}
             </div>
           ) : (
-            renderFontCount()
+            renderRightControls()
           )}
         </div>
       </div>
@@ -159,9 +186,7 @@ export function LocationBar({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {renderFontCount()}
-        </div>
+        {renderRightControls()}
       </div>
     );
   }
@@ -208,9 +233,7 @@ export function LocationBar({
         </span>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {renderFontCount()}
-      </div>
+      {renderRightControls()}
     </div>
   );
 }

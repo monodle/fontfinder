@@ -70,7 +70,7 @@ export function ContextualActionBar({
           type="button"
           onClick={onSelectAll}
           className="px-2.5 py-1.5 rounded-lg bg-theme-card hover:bg-theme-card-hover border border-theme-border/80 hover:border-theme-accent/50 transition-colors text-xs font-semibold text-theme-text cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
-          title="Cmd/Ctrl + A"
+          title={`${t("action_bar.select_all")} (Cmd/Ctrl + A)`}
         >
           <CheckSquare className="w-3.5 h-3.5 text-theme-accent" />
           <span className="hidden sm:inline">{t("action_bar.select_all")}</span>
@@ -132,7 +132,7 @@ export function ContextualActionBar({
             type="button"
             onClick={onOpenDiff}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-accent/15 hover:bg-theme-accent/25 text-theme-accent border border-theme-accent/40 transition-all text-xs font-semibold cursor-pointer shadow-2xs shrink-0"
-            title="전문가용 글리프 Diff 비교"
+            title={t("toolbar.diff_tooltip", "전문가용 글리프 Diff 비교")}
           >
             <Split className="w-3.5 h-3.5" />
             <span>{selectedCount > 5 ? "Diff" : `Diff (${selectedCount})`}</span>
