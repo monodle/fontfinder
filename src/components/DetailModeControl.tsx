@@ -29,7 +29,7 @@ export function DetailModeControl({
         ? t("settings.font_detail_simple", "간단히 보기")
         : undefined,
       description: isCardButton
-        ? t("settings.font_detail_simple_desc", "즐겨찾기, 폰트명, 굵기 및 문구 내용을 최대한 시원하게 표시합니다.")
+        ? t("settings.font_detail_simple_desc", "폰트명, 굵기 및 문구 내용을 최대한 시원하게 표시합니다.")
         : undefined,
       icon: <AlignLeft className={isCardButton ? "w-4 h-4 text-theme-accent" : "w-3.5 h-3.5"} />,
       title: t("toolbar.detail_mode_simple", { defaultValue: "간단히 보기" }),

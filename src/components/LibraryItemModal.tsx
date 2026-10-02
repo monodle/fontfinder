@@ -8,8 +8,10 @@ import {
   Check,
   Plus,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import { ModalDialog } from "./ModalDialog";
+import { FontSet } from "../types/font";
 import {
   LIBRARY_LABEL_COLOR_PRESETS,
   getRandomLibraryColor,
@@ -24,7 +26,11 @@ export interface LibraryItemModalProps {
   mode: LibraryModalMode;
   initialName?: string;
   initialColor?: string;
-  onSubmitSet?: (name: string, color: string) => void;
+  initialParentId?: number | null;
+  currentSetId?: number;
+  availableParents?: FontSet[];
+  hasChildren?: boolean;
+  onSubmitSet?: (name: string, color: string, parentId?: number | null) => void;
   onSubmitFolderColor?: (color: string) => void;
 }
 
@@ -36,12 +42,17 @@ export function LibraryItemModal({
   mode,
   initialName = "",
   initialColor,
+  initialParentId = null,
+  currentSetId,
+  availableParents = [],
+  hasChildren = false,
   onSubmitSet,
   onSubmitFolderColor,
 }: LibraryItemModalProps) {
   const { t } = useTranslation();
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(initialName);
+  const [parentId, setParentId] = useState<number | null>(initialParentId);
   const [selectedColor, setSelectedColor] = useState(
     initialColor || getRandomLibraryColor()
   );
@@ -56,11 +67,13 @@ export function LibraryItemModal({
 
     if (mode === "create_set") {
       setName("");
+      setParentId(initialParentId);
       const rand = getRandomLibraryColor();
       setSelectedColor(rand);
       setCustomHex(rand);
     } else {
       setName(initialName);
+      setParentId(initialParentId);
       const color = initialColor || getRandomLibraryColor();
       setSelectedColor(color);
       setCustomHex(color);
@@ -77,7 +90,7 @@ export function LibraryItemModal({
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, mode, initialName, initialColor]);
+  }, [isOpen, mode, initialName, initialColor, initialParentId]);
 
   const handleSelectColor = (color: string) => {
     setSelectedColor(color);
@@ -107,7 +120,7 @@ export function LibraryItemModal({
 
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSubmitSet?.(trimmed, selectedColor);
+    onSubmitSet?.(trimmed, selectedColor, parentId);
     onClose();
   };
 
@@ -281,20 +294,64 @@ export function LibraryItemModal({
 
         {/* 2. 이름 입력 (세트 모드일 때만 활성화) */}
         {mode !== "edit_folder" ? (
-          <div>
-            <label className="block text-xs font-semibold text-theme-text mb-1.5">
-              {t("sidebar.set_name_label", "세트 이름")}
-            </label>
-            <div className="relative">
-              <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
-              <input
-                ref={nameInputRef}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("sidebar.new_set_placeholder")}
-                className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-3.5 py-2 text-xs text-theme-text placeholder:text-theme-text-muted transition-all outline-none"
-              />
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-theme-text mb-1.5">
+                {t("sidebar.set_name_label", "세트 이름")}
+              </label>
+              <div className="relative">
+                <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("sidebar.new_set_placeholder")}
+                  className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-3.5 py-2 text-xs text-theme-text placeholder:text-theme-text-muted transition-all outline-none"
+                />
+              </div>
+            </div>
+
+            {/* 상위 세트(위치) 선택 드롭다운 (2depth 제한) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-theme-text">
+                  {t("sidebar.set_location_label", "위치 (상위 서재 세트)")}
+                </label>
+                <span className="text-[10px] text-theme-text-muted font-mono">
+                  {parentId
+                    ? t("sidebar.depth_2", "2depth (하위 세트)")
+                    : t("sidebar.depth_1", "1depth (최상위 카테고리)")}
+                </span>
+              </div>
+
+              {hasChildren ? (
+                <div className="px-3 py-2 rounded-xl bg-theme-input/40 border border-theme-border/60 text-xs text-theme-text-muted flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[11px]">
+                    <Folder className="w-3.5 h-3.5 text-theme-accent shrink-0" />
+                    <span>{t("sidebar.parent_has_children_locked", "최상위 (하위 세트를 포함하고 있어 1depth로 고정됨)")}</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Folder className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+                  <select
+                    value={parentId ?? ""}
+                    onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-8 py-2 text-xs text-theme-text transition-all outline-none cursor-pointer appearance-none"
+                  >
+                    <option value="">{t("sidebar.set_parent_root", "📁 최상위 (1depth 카테고리)")}</option>
+                    {availableParents
+                      .filter((p) => p.parent_id == null && p.id !== currentSetId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {`📁 ${p.name}`}
+                        </option>
+                      ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
+                </div>
+              )}
             </div>
           </div>
         ) : (

@@ -20,11 +20,18 @@ import {
   PanelLeftOpen,
   Coffee,
   Loader2,
+  ChevronRight,
+  ChevronDown,
+  CornerDownRight,
+  ArrowUpToLine,
+  Search,
+  X,
 } from "lucide-react";
 import type { SettingsTab } from "../SettingsModal";
 import { FontSet, CustomFolder } from "../../types/font";
 import appIcon from "@/assets/128x128.png";
 import { SortableSidebarList } from "../SortableSidebarList";
+import { SortableTreeSetList, FlatSetItem } from "../SortableTreeSetList";
 import { LibraryItemModal } from "../LibraryItemModal";
 import { ConfirmModal } from "../ConfirmModal";
 import { ListRefreshButton } from "../ListRefreshButton";
@@ -64,10 +71,11 @@ interface SidebarProps {
   onRelinkFolder?: (folderPath: string) => void;
   onReorderFolders: (folders: CustomFolder[]) => void;
   onSelectSet: (setId: number) => void;
-  onCreateSet: (name: string, color?: string) => void;
+  onCreateSet: (name: string, color?: string, parentId?: number | null) => void;
   onDeleteSet: (setId: number) => void;
   onReorderSets: (sets: FontSet[]) => void;
-  onUpdateSet?: (setId: number, name: string, color: string) => void;
+  onUpdateSet?: (setId: number, name: string, color: string, parentId?: number | null) => void;
+  onUpdateSetParent?: (setId: number, parentId: number | null) => void;
   onUpdateSetColor?: (setId: number, color: string) => void;
   onUpdateFolderColor?: (folderId: number, color: string) => void;
 }
@@ -95,21 +103,171 @@ export function Sidebar({
   onDeleteSet,
   onReorderSets,
   onUpdateSet,
+  onUpdateSetParent,
   onUpdateSetColor,
   onUpdateFolderColor,
 }: SidebarProps) {
   const { t } = useTranslation();
   const [modalTarget, setModalTarget] = useState<
-    | { mode: "create_set" }
-    | { mode: "edit_set"; id: number; name: string; color: string }
+    | { mode: "create_set"; initialParentId?: number | null }
+    | { mode: "edit_set"; id: number; name: string; color: string; parent_id?: number | null }
     | { mode: "edit_folder"; id: number; name: string; color: string }
     | null
   >(null);
   const [deleteTarget, setDeleteTarget] = useState<
     | { type: "folder"; path: string; name: string }
-    | { type: "set"; id: number; name: string }
+    | { type: "set"; id: number; name: string; childNames?: string[] }
     | null
   >(null);
+
+  // 1depth 세트 접기/펼치기 상태 관리
+  const [collapsedSetIds, setCollapsedSetIds] = useState<Set<number>>(new Set());
+
+  const toggleCollapseSet = (setId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsedSetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(setId)) {
+        next.delete(setId);
+      } else {
+        next.add(setId);
+      }
+      return next;
+    });
+  };
+
+  // 계층형 세트 트리 구성 (고아 세트 자동 최상위 1depth 복구 및 방어)
+  const setTree = useMemo(() => {
+    const parentSets = sets.filter((s) => s.parent_id == null);
+    const parentIdSet = new Set(parentSets.map((p) => p.id));
+    const childrenMap = new Map<number, FontSet[]>();
+    const orphanSets: FontSet[] = [];
+
+    for (const s of sets) {
+      if (s.parent_id != null) {
+        if (parentIdSet.has(s.parent_id)) {
+          const list = childrenMap.get(s.parent_id) ?? [];
+          list.push(s);
+          childrenMap.set(s.parent_id, list);
+        } else {
+          // 부모가 없어진 고아 세트: 최상위(1depth)로 안전하게 자동 복구하여 절대 유실되지 않음
+          orphanSets.push({ ...s, parent_id: null });
+        }
+      }
+    }
+
+    const allParents = [...parentSets, ...orphanSets];
+    return allParents.map((parent) => ({
+      parent,
+      children: childrenMap.get(parent.id) ?? [],
+    }));
+  }, [sets]);
+
+  // 통합 드래그 앤 드롭을 위한 평면화 세트 목록
+  const flatSetList = useMemo<FlatSetItem[]>(() => {
+    const flat: FlatSetItem[] = [];
+
+    for (const { parent, children } of setTree) {
+      flat.push({
+        set: parent,
+        depth: 1,
+        parentId: null,
+        hasChildren: children.length > 0,
+        isCollapsed: false,
+      });
+
+      if (children.length > 0) {
+        for (const child of children) {
+          flat.push({
+            set: child,
+            depth: 2,
+            parentId: parent.id,
+            hasChildren: false,
+            isCollapsed: false,
+          });
+        }
+      }
+    }
+
+    return flat;
+  }, [setTree]);
+
+  // 서재 세트 검색 상태 관리
+  const [setSearchQuery, setSetSearchQuery] = useState("");
+  const [isSetSearchOpen, setIsSetSearchOpen] = useState(false);
+
+  // 검색어에 따른 세트 트리 필터링 (확정 기획안 적용: 2depth 일치 시 1depth 부모 맥락 노출, 1depth 일치 시 1depth 단독 노출)
+  const displayFlatSetList = useMemo<FlatSetItem[]>(() => {
+    const q = setSearchQuery.trim().toLowerCase();
+    if (!q) return flatSetList;
+
+    const result: FlatSetItem[] = [];
+
+    for (const { parent, children } of setTree) {
+      const isParentMatch = parent.name.toLowerCase().includes(q);
+      const matchingChildren = children.filter((c) => c.name.toLowerCase().includes(q));
+
+      if (isParentMatch) {
+        // 1depth가 검색어와 일치: 1depth만 단독 노출 (기획안 확정)
+        result.push({
+          set: parent,
+          depth: 1,
+          parentId: null,
+          hasChildren: false,
+          isCollapsed: false,
+        });
+      } else if (matchingChildren.length > 0) {
+        // 2depth가 검색어와 일치: 1depth 부모 맥락도 함께 노출하고 일치하는 자식들 표시 (기획안 확정)
+        result.push({
+          set: parent,
+          depth: 1,
+          parentId: null,
+          hasChildren: true,
+          isCollapsed: false,
+        });
+        for (const child of matchingChildren) {
+          result.push({
+            set: child,
+            depth: 2,
+            parentId: parent.id,
+            hasChildren: false,
+            isCollapsed: false,
+          });
+        }
+      }
+    }
+
+    return result;
+  }, [flatSetList, setSearchQuery, setTree]);
+
+  // 통합 계층 드래그 앤 드롭 핸들러 (1depth <-> 2depth 자유 이동 및 즉시 DB 동기화)
+  const handleDropTreeItem = (movedSetId: number, newParentId: number | null, newFlatList: FlatSetItem[]) => {
+    // 1. 부모가 변경되었으면 DB sets.parent_id 영구 갱신
+    const prevItem = sets.find((s) => s.id === movedSetId);
+    if (prevItem && prevItem.parent_id !== newParentId) {
+      onUpdateSetParent?.(movedSetId, newParentId);
+    }
+
+    // 2. 전체 새로운 순서 계산 (접혀있던 숨김 자식 세트까지 포함하여 정합성 유지)
+    const newSets: FontSet[] = [];
+    const seenIds = new Set<number>();
+
+    for (const item of newFlatList) {
+      newSets.push({
+        ...item.set,
+        parent_id: item.set.id === movedSetId ? newParentId : item.set.parent_id,
+      });
+      seenIds.add(item.set.id);
+    }
+
+    for (const s of sets) {
+      if (!seenIds.has(s.id)) {
+        newSets.push(s);
+      }
+    }
+
+    onReorderSets(newSets);
+  };
 
   const categories = useMemo(
     () => [
@@ -205,7 +363,7 @@ export function Sidebar({
 
       {/* Sidebar Nav Items */}
       <div
-        className={`flex-1 overflow-y-auto overflow-x-hidden text-xs ${isCollapsed ? "p-1.5 space-y-2" : "p-3 space-y-4"
+        className={`flex-1 overflow-y-scroll overflow-x-hidden text-xs ${isCollapsed ? "p-1.5 space-y-2" : "pl-3 pr-2 py-3 space-y-4"
           }`}
       >
         {/* Library Section */}
@@ -475,7 +633,7 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Sets & Collections (SQLite-backed) */}
+        {/* Sets & Collections (2depth 폴더화 및 계층 지원) */}
         <div>
           {isCollapsed ? (
             <div className="space-y-1">
@@ -488,24 +646,74 @@ export function Sidebar({
               >
                 <Tag className="w-3.5 h-3.5" />
               </button>
-              {sets.map((set) => {
-                const isActive = activeCategory === `set:${set.id}`;
+              {setTree.map(({ parent, children }) => {
+                const isParentActive = activeCategory === `set:${parent.id}`;
+                const hasChild = children.length > 0;
+                const isCollapsedSet = collapsedSetIds.has(parent.id);
+
                 return (
-                  <button
-                    key={set.id}
-                    type="button"
-                    onClick={() => onSelectSet(set.id)}
-                    title={`${set.name} (${set.count})`}
-                    className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer ${isActive
-                      ? "bg-theme-active text-theme-accent shadow-2xs"
-                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
-                      }`}
-                  >
-                    <span
-                      style={{ backgroundColor: set.color || "#6366f1" }}
-                      className="w-3 h-3 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
-                    />
-                  </button>
+                  <div key={parent.id} className="space-y-0.5">
+                    {/* 1depth 부모 버튼 */}
+                    <div className="relative group/parent flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => onSelectSet(parent.id)}
+                        title={`${parent.name} (${parent.count})${hasChild ? ` · ${t("sidebar.children_count", { count: children.length, defaultValue: `하위 ${children.length}개` })}` : ""}`}
+                        className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
+                          isParentActive
+                            ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
+                            : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                        }`}
+                      >
+                        <span
+                          style={{ backgroundColor: parent.color || "#6366f1" }}
+                          className="w-3 h-3 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
+                        />
+                        {/* 하위 세트가 있을 때 우측 하단 미니 접기/펼치기 토글 버튼 */}
+                        {hasChild && (
+                          <span
+                            onClick={(e) => toggleCollapseSet(parent.id, e)}
+                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-theme-surface border border-theme-border flex items-center justify-center text-theme-text-muted hover:text-theme-accent hover:border-theme-accent transition-colors shadow-2xs"
+                            title={isCollapsedSet ? t("sidebar.expand", "하위 세트 펼치기") : t("sidebar.collapse", "하위 세트 접기")}
+                          >
+                            {isCollapsedSet ? (
+                              <ChevronRight className="w-2.5 h-2.5" />
+                            ) : (
+                              <ChevronDown className="w-2.5 h-2.5" />
+                            )}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* 2depth 자식 세트 버튼들 (펼쳐져 있을 때 미니 인디케이터와 함께 계층 표시) */}
+                    {hasChild && !isCollapsedSet && (
+                      <div className="space-y-0.5 py-0.5">
+                        {children.map((child) => {
+                          const isChildActive = activeCategory === `set:${child.id}`;
+                          return (
+                            <button
+                              key={child.id}
+                              type="button"
+                              onClick={() => onSelectSet(child.id)}
+                              title={`↳ ${parent.name} > ${child.name} (${child.count})`}
+                              className={`w-7 h-6 mx-auto flex items-center justify-center gap-0.5 rounded transition-colors cursor-pointer ${
+                                isChildActive
+                                  ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
+                                  : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                              }`}
+                            >
+                              <CornerDownRight className="w-2.5 h-2.5 text-theme-text-muted/60 shrink-0" />
+                              <span
+                                style={{ backgroundColor: child.color || "#6366f1" }}
+                                className="w-2 h-2 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -516,14 +724,54 @@ export function Sidebar({
                   <Tag className="w-3.5 h-3.5" />
                   <span>{t("sidebar.sets")}</span>
                 </span>
-                <button
-                  onClick={() => setModalTarget({ mode: "create_set" })}
-                  className="hover:text-theme-accent p-0.5 text-theme-text-secondary transition-colors cursor-pointer"
-                  title={t("sidebar.create_set")}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSetSearchOpen((prev) => !prev);
+                      if (isSetSearchOpen) setSetSearchQuery("");
+                    }}
+                    className={`hover:text-theme-accent p-0.5 transition-colors cursor-pointer rounded ${
+                      isSetSearchOpen || setSearchQuery ? "text-theme-accent" : "text-theme-text-secondary"
+                    }`}
+                    title={t("sidebar.search_sets", "서재 세트 검색")}
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalTarget({ mode: "create_set" })}
+                    className="hover:text-theme-accent p-0.5 text-theme-text-secondary transition-colors cursor-pointer"
+                    title={t("sidebar.create_set")}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
+
+              {/* 세트 검색창 */}
+              {(isSetSearchOpen || setSearchQuery) && (
+                <div className="relative mb-2 px-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-theme-text-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    value={setSearchQuery}
+                    onChange={(e) => setSetSearchQuery(e.target.value)}
+                    placeholder={t("sidebar.search_sets", "서재 세트 검색...")}
+                    className="w-full pl-7 pr-6 py-1 text-[11px] bg-theme-hover/70 border border-theme-border rounded-md text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:border-theme-accent"
+                    autoFocus
+                  />
+                  {setSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSetSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-theme-text-muted hover:text-theme-text p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
 
               {sets.length === 0 ? (
                 <div
@@ -532,70 +780,178 @@ export function Sidebar({
                 >
                   <p>{t("sidebar.new_set_empty")}</p>
                 </div>
+              ) : displayFlatSetList.length === 0 && setSearchQuery ? (
+                <div className="px-2 py-3 text-center text-theme-text-muted text-[11px]">
+                  <p>{t("sidebar.no_matching_sets", "일치하는 세트가 없습니다.")}</p>
+                </div>
               ) : (
-                <SortableSidebarList
-                  items={sets}
-                  getId={(s) => s.id}
+                /* 1depth / 2depth 통합 트리 드래그 정렬 (X/Y 좌표 감지 + 명확한 깊이 인디케이터 + 데이터 무손실) */
+                <SortableTreeSetList
+                  items={displayFlatSetList}
+                  onDropItem={handleDropTreeItem}
                   onItemClick={(set) => onSelectSet(set.id)}
-                  onReorder={onReorderSets}
-                  renderItem={(set, { isDragging, dropPosition }) => (
-                    <div
-                      className={`relative group w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-30 scale-[0.98] bg-theme-active" : ""
-                        } ${dropPosition === "before"
-                          ? "border-t-2 border-theme-accent bg-theme-accent-subtle/50"
-                          : dropPosition === "after"
-                            ? "border-b-2 border-theme-accent bg-theme-accent-subtle/50"
-                            : ""
-                        } ${activeCategory === `set:${set.id}`
-                          ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
-                          : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
-                        }`}
-                    >
-                      <span className="flex items-center gap-2 truncate pointer-events-none">
-                        <GripVertical className="w-3.5 h-3.5 text-theme-text-muted group-hover:text-theme-accent transition-colors shrink-0" />
-                        <span
-                          style={{ backgroundColor: set.color || "#6366f1" }}
-                          className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
-                        />
-                        <span className="truncate">{set.name}</span>
-                      </span>
+                  renderItem={(flatItem, { isDragging, isInsideTarget }) => {
+                    const { set: itemSet, depth } = flatItem;
+                    const isActive = activeCategory === `set:${itemSet.id}`;
 
-                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setModalTarget({
-                              mode: "edit_set",
-                              id: set.id,
-                              name: set.name,
-                              color: set.color || "#6366f1",
-                            });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
-                          title={t("sidebar.edit_set_title", "서재 세트 수정")}
+                    if (depth === 1) {
+                      return (
+                        <div
+                          key={itemSet.id}
+                          className={`relative group w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${
+                            isDragging ? "opacity-30 scale-[0.98] bg-theme-active ring-1 ring-theme-accent" : ""
+                          } ${
+                            isInsideTarget
+                              ? "bg-theme-accent/20 text-theme-accent ring-2 ring-theme-accent shadow-sm"
+                              : isActive
+                                ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
+                                : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                          }`}
                         >
-                          <Palette className="w-3 h-3" />
-                        </button>
-                        <span className="text-[11px] font-mono opacity-80 pointer-events-none">
-                          {set.count}
+                          <span className="flex items-center gap-1.5 truncate pointer-events-none min-w-0">
+                            <GripVertical className="w-3 h-3 text-theme-text-muted group-hover:text-theme-accent transition-colors shrink-0" />
+                            <span
+                              style={{ backgroundColor: itemSet.color || "#6366f1" }}
+                              className="w-2 h-2 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
+                            />
+                            <span className="truncate text-[11px] font-medium">{itemSet.name}</span>
+                          </span>
+
+                          <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                            {/* 하위 세트 바로 추가 버튼 */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalTarget({
+                                  mode: "create_set",
+                                  initialParentId: itemSet.id,
+                                });
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
+                              title={t("sidebar.add_subset", "하위 세트 추가")}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                            {/* 수정 버튼 */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalTarget({
+                                  mode: "edit_set",
+                                  id: itemSet.id,
+                                  name: itemSet.name,
+                                  color: itemSet.color || "#6366f1",
+                                  parent_id: itemSet.parent_id,
+                                });
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
+                              title={t("sidebar.edit_set_title", "서재 세트 수정")}
+                            >
+                              <Palette className="w-3 h-3" />
+                            </button>
+                            <span className="text-[11px] font-mono opacity-80 pointer-events-none px-1 min-w-[20px] text-right">
+                              {itemSet.count}
+                            </span>
+                            {/* 삭제 버튼 */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const ch = sets.filter((s) => s.parent_id === itemSet.id);
+                                setDeleteTarget({
+                                  type: "set",
+                                  id: itemSet.id,
+                                  name: itemSet.name,
+                                  childNames: ch.map((c) => c.name),
+                                });
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-red-500 transition-opacity cursor-pointer"
+                              title={t("sidebar.delete_set")}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // depth === 2 (하위 세트)
+                    return (
+                      <div
+                        key={itemSet.id}
+                        className={`relative group flex items-center justify-between ml-3.5 w-[calc(100%-0.875rem)] pl-2 border-l border-theme-border/60 py-1.5 pr-2 rounded-r-lg text-xs font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${
+                          isDragging ? "opacity-30 scale-[0.98] bg-theme-active ring-1 ring-theme-accent" : ""
+                        } ${
+                          isActive
+                            ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
+                            : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 truncate pointer-events-none min-w-0">
+                          <GripVertical className="w-3 h-3 text-theme-text-muted/70 group-hover:text-theme-accent transition-colors shrink-0" />
+                          <CornerDownRight className="w-2.5 h-2.5 text-theme-text-muted/60 shrink-0" />
+                          <span
+                            style={{ backgroundColor: itemSet.color || "#6366f1" }}
+                            className="w-2 h-2 rounded-full shrink-0 ring-1 ring-theme-surface shadow-2xs"
+                          />
+                          <span className="truncate text-[11px] font-medium">{itemSet.name}</span>
                         </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget({
-                              type: "set",
-                              id: set.id,
-                              name: set.name,
-                            });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-red-500 transition-opacity cursor-pointer"
-                          title={t("sidebar.delete_set")}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+
+                        <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalTarget({
+                                mode: "edit_set",
+                                id: itemSet.id,
+                                name: itemSet.name,
+                                color: itemSet.color || "#6366f1",
+                                parent_id: itemSet.parent_id,
+                              });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
+                            title={t("sidebar.edit_set_title", "서재 세트 수정")}
+                          >
+                            <Palette className="w-3 h-3" />
+                          </button>
+                          {onUpdateSetParent && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateSetParent(itemSet.id, null);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
+                              title={t("sidebar.promote_to_root", "최상위(1depth)로 꺼내기")}
+                            >
+                              <ArrowUpToLine className="w-3 h-3" />
+                            </button>
+                          )}
+                          <span className="text-[11px] font-mono opacity-80 pointer-events-none px-1 min-w-[20px] text-right">
+                            {itemSet.count}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({
+                                type: "set",
+                                id: itemSet.id,
+                                name: itemSet.name,
+                              });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-red-500 transition-opacity cursor-pointer"
+                            title={t("sidebar.delete_set")}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  }}
                 />
               )}
             </>
@@ -669,12 +1025,25 @@ export function Sidebar({
           mode={modalTarget.mode}
           initialName={modalTarget.mode !== "create_set" ? modalTarget.name : ""}
           initialColor={modalTarget.mode !== "create_set" ? modalTarget.color : undefined}
-          onSubmitSet={(name, color) => {
+          initialParentId={
+            modalTarget.mode === "create_set"
+              ? modalTarget.initialParentId ?? null
+              : modalTarget.mode === "edit_set"
+                ? modalTarget.parent_id ?? null
+                : null
+          }
+          currentSetId={modalTarget.mode === "edit_set" ? modalTarget.id : undefined}
+          availableParents={sets.filter((s) => s.parent_id == null)}
+          hasChildren={
+            modalTarget.mode === "edit_set" &&
+            sets.some((s) => s.parent_id === modalTarget.id)
+          }
+          onSubmitSet={(name, color, parentId) => {
             if (modalTarget.mode === "create_set") {
-              onCreateSet(name, color);
+              onCreateSet(name, color, parentId);
             } else if (modalTarget.mode === "edit_set") {
               if (onUpdateSet) {
-                onUpdateSet(modalTarget.id, name, color);
+                onUpdateSet(modalTarget.id, name, color, parentId);
               } else {
                 onUpdateSetColor?.(modalTarget.id, color);
               }
@@ -712,10 +1081,17 @@ export function Sidebar({
                 name: deleteTarget.name,
                 defaultValue: `'${deleteTarget.name}' 폴더를 서재에서 제거하시겠습니까?`,
               })
-              : t("sidebar.delete_set_confirm", {
-                name: deleteTarget.name,
-                defaultValue: `'${deleteTarget.name}' 서재 세트를 삭제하시겠습니까?`,
-              })
+              : deleteTarget.childNames && deleteTarget.childNames.length > 0
+                ? t("sidebar.delete_set_with_children_confirm", {
+                    name: deleteTarget.name,
+                    count: deleteTarget.childNames.length,
+                    children: deleteTarget.childNames.join(", "),
+                    defaultValue: `'${deleteTarget.name}' 서재 세트를 삭제하시겠습니까?\n포함된 하위 세트 ${deleteTarget.childNames.length}개(${deleteTarget.childNames.join(", ")})도 함께 삭제됩니다.\n(폰트 원본 파일은 삭제되지 않습니다)`,
+                  })
+                : t("sidebar.delete_set_confirm", {
+                    name: deleteTarget.name,
+                    defaultValue: `'${deleteTarget.name}' 서재 세트를 삭제하시겠습니까?\n(폰트 원본 파일은 삭제되지 않습니다)`,
+                  })
           }
           confirmText={t("common.delete", { defaultValue: "삭제" })}
           cancelText={t("common.cancel", { defaultValue: "취소" })}

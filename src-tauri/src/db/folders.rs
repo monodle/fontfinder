@@ -67,18 +67,10 @@ impl Database {
            AND NOT EXISTS (
              SELECT 1 FROM set_fonts sf
              WHERE sf.font_id = font_cache.id
-                OR (font_cache.file_hash IS NOT NULL AND (
-                    sf.font_id = font_cache.file_hash
-                    OR sf.font_id LIKE font_cache.file_hash || ':%'
-                ))
            )
            AND NOT EXISTS (
              SELECT 1 FROM favorites fv
              WHERE fv.font_id = font_cache.id
-                OR (font_cache.file_hash IS NOT NULL AND (
-                    fv.font_id = font_cache.file_hash
-                    OR fv.font_id LIKE font_cache.file_hash || ':%'
-                ))
            )",
         params![path, like],
       )?;
@@ -103,26 +95,19 @@ impl Database {
       };
       let old_like = format!("{}%", old_normalized);
 
+      // 폰트 고유 ID는 불변이므로, 캐시 및 활성화 테이블의 file_path 문자열만 갱신
       tx.execute(
-        "UPDATE set_fonts SET font_id = ?2 || substr(font_id, length(?1) + 1) WHERE font_id LIKE ?3",
-        params![old_path, new_path, old_like],
-      )?;
-
-      tx.execute(
-        "UPDATE tag_fonts SET font_id = ?2 || substr(font_id, length(?1) + 1) WHERE font_id LIKE ?3",
-        params![old_path, new_path, old_like],
-      )?;
-
-      tx.execute(
-        "UPDATE favorites SET font_id = ?2 || substr(font_id, length(?1) + 1) WHERE font_id LIKE ?3",
+        "UPDATE font_cache
+         SET file_path = ?2 || substr(file_path, length(?1) + 1),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE file_path = ?1 OR file_path LIKE ?3",
         params![old_path, new_path, old_like],
       )?;
 
       tx.execute(
         "UPDATE activated_fonts
-         SET font_id = ?2 || substr(font_id, length(?1) + 1),
-             file_path = ?2 || substr(file_path, length(?1) + 1)
-         WHERE file_path LIKE ?3",
+         SET file_path = ?2 || substr(file_path, length(?1) + 1)
+         WHERE file_path = ?1 OR file_path LIKE ?3",
         params![old_path, new_path, old_like],
       )?;
     }
@@ -141,10 +126,7 @@ impl Database {
       };
       let like = format!("{}%", normalized);
       tx.execute("DELETE FROM watched_folders WHERE path = ?1", params![path])?;
-      tx.execute("DELETE FROM set_fonts WHERE font_id = ?1 OR font_id LIKE ?2", params![path, like])?;
-      tx.execute("DELETE FROM tag_fonts WHERE font_id = ?1 OR font_id LIKE ?2", params![path, like])?;
-      tx.execute("DELETE FROM favorites WHERE font_id = ?1 OR font_id LIKE ?2", params![path, like])?;
-      tx.execute("DELETE FROM activated_fonts WHERE file_path = ?1 OR file_path LIKE ?2", params![path, like])?;
+      // font_cache 삭제 시 CASCADE로 set_fonts, tag_fonts, favorites, activated_fonts가 자동 정리됨
       tx.execute("DELETE FROM font_cache WHERE file_path = ?1 OR file_path LIKE ?2", params![path, like])?;
     }
     tx.commit()?;

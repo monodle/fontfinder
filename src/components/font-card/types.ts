@@ -14,7 +14,7 @@ export interface FontItemProps {
   isActivated?: boolean;
   columns?: number;
   onSelect: (font: FontMetadata, e: React.MouseEvent) => void;
-  onToggleFavorite?: (fontId: string) => void;
+  onToggleFavorite?: (fontId: number) => void;
   onToggleActivate?: (font: FontMetadata) => void;
   onContextMenu?: (e: React.MouseEvent, font: FontMetadata) => void;
   onSelectLibrary?: (tag: FontLibraryTag, e: React.MouseEvent) => void;
@@ -37,7 +37,7 @@ export interface FontCardRenderProps {
   isCompact: boolean;
   isUltraCompact: boolean;
   onSelect: (font: FontMetadata, e: React.MouseEvent) => void;
-  onToggleFavorite?: (fontId: string) => void;
+  onToggleFavorite?: (fontId: number) => void;
   onContextMenu?: (e: React.MouseEvent, font: FontMetadata) => void;
   onSelectLibrary?: (tag: FontLibraryTag, e: React.MouseEvent) => void;
   handleActivate: (e: React.MouseEvent) => void;

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { FontMetadata, FontSet } from "../types/font";
 import {
   Copy,
+  Folder,
   FolderOpen,
   Heart,
   Zap,
@@ -19,28 +20,36 @@ import {
   Minus,
   Split,
   Info,
+  CornerDownRight,
 } from "lucide-react";
 import { fontService } from "../services/fontService";
 import { isFontFavorite } from "../utils/fontSortUtils";
+
+interface SetGroupItem {
+  parent: FontSet;
+  children: FontSet[];
+  isParentMatching: boolean;
+  isContextOnlyParent: boolean;
+}
 
 interface ContextMenuProps {
   x: number;
   y: number;
   fonts: FontMetadata[];
   sets: FontSet[];
-  favoriteIds: Set<string>;
-  activatedFontIds?: Set<string>;
+  favoriteIds: Set<number>;
+  activatedFontIds?: Set<number>;
   currentSetId?: number | null;
-  setMap?: Map<number, Set<string>>;
+  setMap?: Map<number, Set<number>>;
   onClose: () => void;
-  onToggleFavorite: (fontId: string) => void;
+  onToggleFavorite: (fontId: number) => void;
   onToggleActivate?: (font: FontMetadata) => void;
-  onBulkActivate?: (fontIds: string[], activate: boolean) => void;
-  onAddToSet: (setId: number, fontId: string) => void;
-  onRemoveFromSet?: (setId: number, fontId: string) => void;
-  onBulkFavorite?: (fontIds: string[], add: boolean) => void;
-  onBulkAddToSet?: (setId: number, fontIds: string[]) => void;
-  onBulkRemoveFromSet?: (setId: number, fontIds: string[]) => void;
+  onBulkActivate?: (fontIds: number[], activate: boolean) => void;
+  onAddToSet: (setId: number, fontId: number) => void;
+  onRemoveFromSet?: (setId: number, fontId: number) => void;
+  onBulkFavorite?: (fontIds: number[], add: boolean) => void;
+  onBulkAddToSet?: (setId: number, fontIds: number[]) => void;
+  onBulkRemoveFromSet?: (setId: number, fontIds: number[]) => void;
   onRequestUninstall?: (fonts: FontMetadata[]) => void;
   onRequestRemoveFromSet?: (setId: number, fonts: FontMetadata[]) => void;
   onRefreshList?: () => void;
@@ -113,24 +122,92 @@ export function ContextMenu({
   const submenuRef = useRef<HTMLDivElement>(null);
   const submenuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filteredSets = useMemo(() => {
+  const structuredSetGroups = useMemo<SetGroupItem[]>(() => {
     const query = setSearchQuery.trim().toLowerCase();
-    if (!query) return sets;
-    return sets.filter((s) => s.name.toLowerCase().includes(query));
+    const parents = sets.filter((s) => s.parent_id == null);
+    const childrenMap = new Map<number, FontSet[]>();
+    for (const s of sets) {
+      if (s.parent_id != null) {
+        const list = childrenMap.get(s.parent_id) ?? [];
+        list.push(s);
+        childrenMap.set(s.parent_id, list);
+      }
+    }
+
+    if (!query) {
+      // 검색어가 없을 때는 전체 1depth 및 그 하위 2depth 계층 노출
+      return parents.map((p) => ({
+        parent: p,
+        children: childrenMap.get(p.id) ?? [],
+        isParentMatching: true,
+        isContextOnlyParent: false,
+      }));
+    }
+
+    // 검색어 필터링 규칙:
+    // 1) 2depth 일치 시: 상위 1depth 부모를 맥락 헤더로 함께 노출
+    // 2) 1depth 일치 시: 1depth만 단독 노출 (하위 2depth 자식은 숨김)
+    // 3) 둘 다 일치 시: 1depth와 일치하는 2depth만 함께 노출
+    const groups: SetGroupItem[] = [];
+
+    for (const parent of parents) {
+      const parentMatches = parent.name.toLowerCase().includes(query);
+      const allChildren = childrenMap.get(parent.id) ?? [];
+      const matchingChildren = allChildren.filter((c) =>
+        c.name.toLowerCase().includes(query)
+      );
+
+      if (parentMatches && matchingChildren.length === 0) {
+        // 1depth만 매칭된 경우: 1depth만 단독 노출 (자식 숨김)
+        groups.push({
+          parent,
+          children: [],
+          isParentMatching: true,
+          isContextOnlyParent: false,
+        });
+      } else if (!parentMatches && matchingChildren.length > 0) {
+        // 2depth만 매칭된 경우: 부모를 맥락 헤더로 함께 노출
+        groups.push({
+          parent,
+          children: matchingChildren,
+          isParentMatching: false,
+          isContextOnlyParent: true,
+        });
+      } else if (parentMatches && matchingChildren.length > 0) {
+        // 둘 다 매칭된 경우: 부모 및 일치하는 자식 모두 노출
+        groups.push({
+          parent,
+          children: matchingChildren,
+          isParentMatching: true,
+          isContextOnlyParent: false,
+        });
+      }
+    }
+
+    return groups;
   }, [sets, setSearchQuery]);
+
+  // 화면에 렌더링될 총 항목 개수 계산
+  const totalVisibleSetCount = useMemo(() => {
+    let count = 0;
+    for (const g of structuredSetGroups) {
+      count += 1 + g.children.length;
+    }
+    return count;
+  }, [structuredSetGroups]);
 
   // 서브메뉴 예상 높이 계산 (마운트 전 초기 배치 및 측정 전 폴백용)
   const getEstimatedSubmenuHeight = useCallback(() => {
     const hasSearch = sets.length >= 5;
     const searchHeight = hasSearch ? 36 : 0;
     const padding = 14; // p-1.5(상하 6*2) + border(1*2)
-    const count = filteredSets.length;
+    const count = totalVisibleSetCount;
     let listHeight = 44; // 세트 없음 안내 높이
     if (count > 0) {
-      listHeight = Math.min(224, count * 34);
+      listHeight = Math.min(260, count * 34);
     }
     return searchHeight + listHeight + padding;
-  }, [sets.length, filteredSets.length]);
+  }, [sets.length, totalVisibleSetCount]);
 
   const updateSubmenuPosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -238,7 +315,7 @@ export function ContextMenu({
     if (isSubmenuOpen) {
       updateSubmenuPosition();
     }
-  }, [isSubmenuOpen, filteredSets.length, updateSubmenuPosition]);
+  }, [isSubmenuOpen, totalVisibleSetCount, updateSubmenuPosition]);
 
   // 창 크기 변경 시 위치 재조정
   useEffect(() => {
@@ -391,24 +468,12 @@ export function ContextMenu({
       if (!idsInSet || idsInSet.size === 0) return "none";
 
       if (!isMulti) {
-        const hashKey = primaryFont.file_hash
-          ? `${primaryFont.file_hash}:${primaryFont.font_index}`
-          : primaryFont.id;
-        const has =
-          idsInSet.has(hashKey) ||
-          idsInSet.has(primaryFont.id) ||
-          (primaryFont.file_hash ? idsInSet.has(primaryFont.file_hash) : false);
-        return has ? "all" : "none";
+        return idsInSet.has(primaryFont.id) ? "all" : "none";
       }
 
       let matchCount = 0;
       for (const f of fonts) {
-        const hashKey = f.file_hash ? `${f.file_hash}:${f.font_index}` : f.id;
-        if (
-          idsInSet.has(hashKey) ||
-          idsInSet.has(f.id) ||
-          (f.file_hash && idsInSet.has(f.file_hash))
-        ) {
+        if (idsInSet.has(f.id)) {
           matchCount++;
         }
       }
@@ -829,8 +894,8 @@ export function ContextMenu({
               top: `${submenuPosition.top}px`,
             }}
           >
-            {/* 세트가 5개 이상일 때 검색 인풋 표시 */}
-            {sets.length >= 5 && (
+            {/* 세트 검색 인풋 표시 */}
+            {sets.length >= 1 && (
               <div className="relative mb-1.5 px-0.5">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-theme-text-muted pointer-events-none" />
                 <input
@@ -844,55 +909,115 @@ export function ContextMenu({
               </div>
             )}
 
-            {/* 서재 세트 목록 */}
-            <div className="max-h-56 overflow-y-auto space-y-0.5 custom-scrollbar">
+            {/* 서재 세트 계층 목록 (3depth 팝업 없이 단일 패널 내 인덴트 계층 표시) */}
+            <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar px-0.5">
               {sets.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
                   {t("context_menu.no_sets")}
                 </div>
-              ) : filteredSets.length === 0 ? (
+              ) : structuredSetGroups.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
                   {t("context_menu.no_matching_sets")}
                 </div>
               ) : (
-                filteredSets.map((set) => {
-                  const state = getSetMembershipState(set.id);
+                structuredSetGroups.map((group) => {
+                  const parentState = getSetMembershipState(group.parent.id);
                   return (
-                    <button
-                      key={set.id}
-                      onClick={() => handleSetAction(set.id)}
-                      className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer group hover:bg-theme-hover text-theme-text"
-                      title={
-                        state === "all"
-                          ? t("context_menu.already_in_set", "이미 등록되어 있습니다")
-                          : t("context_menu.add_to_set", "서재 세트 등록")
-                      }
-                    >
-                      <div className="flex items-center gap-2 truncate min-w-0">
-                        {set.color ? (
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs border border-white/20"
-                            style={{ backgroundColor: set.color }}
-                          />
-                        ) : (
-                          <Tag className="w-3 h-3 text-theme-accent shrink-0 group-hover:scale-110 transition-transform" />
-                        )}
-                        <span className="truncate">{set.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {state === "all" && (
-                          <Check className="w-3.5 h-3.5 text-theme-accent stroke-[2.5]" />
-                        )}
-                        {state === "some" && (
-                          <Minus className="w-3.5 h-3.5 text-theme-accent stroke-[2.5]" />
-                        )}
-                        {set.count !== undefined && (
-                          <span className="text-[10px] text-theme-text-muted bg-theme-hover/80 px-1.5 py-0.5 rounded font-mono">
-                            {set.count}
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                    <div key={group.parent.id} className="space-y-0.5">
+                      {/* 1depth 부모 노드 */}
+                      {group.isContextOnlyParent ? (
+                        <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5 text-[10px] font-semibold text-theme-text-muted select-none">
+                          <Folder className="w-3 h-3 text-theme-text-muted/70 shrink-0" />
+                          <span className="truncate">{group.parent.name}</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetAction(group.parent.id)}
+                          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer group hover:bg-theme-hover text-theme-text font-medium"
+                          title={
+                            parentState === "all"
+                              ? t("context_menu.already_in_set", "이미 등록되어 있습니다")
+                              : t("context_menu.add_to_set", "서재 세트 등록")
+                          }
+                        >
+                          <div className="flex items-center gap-1.5 truncate min-w-0">
+                            {group.children.length > 0 ? (
+                              <Folder className="w-3.5 h-3.5 text-theme-accent shrink-0" />
+                            ) : group.parent.color ? (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs border border-white/20"
+                                style={{ backgroundColor: group.parent.color }}
+                              />
+                            ) : (
+                              <Tag className="w-3 h-3 text-theme-accent shrink-0" />
+                            )}
+                            <span className="truncate text-xs">{group.parent.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {parentState === "all" && (
+                              <Check className="w-3.5 h-3.5 text-theme-accent stroke-[2.5]" />
+                            )}
+                            {parentState === "some" && (
+                              <Minus className="w-3.5 h-3.5 text-theme-accent stroke-[2.5]" />
+                            )}
+                            {group.parent.count !== undefined && (
+                              <span className="text-[10px] text-theme-text-muted bg-theme-hover/80 px-1.5 py-0.5 rounded font-mono">
+                                {group.parent.count}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      )}
+
+                      {/* 2depth 자식 노드 목록 (들여쓰기 및 꺾쇠 인디케이터) */}
+                      {group.children.length > 0 && (
+                        <div className="ml-3 pl-2 border-l border-theme-border/60 space-y-0.5">
+                          {group.children.map((child) => {
+                            const childState = getSetMembershipState(child.id);
+                            return (
+                              <button
+                                key={child.id}
+                                type="button"
+                                onClick={() => handleSetAction(child.id)}
+                                className="w-full flex items-center justify-between gap-1.5 px-2 py-1 rounded-md text-left transition-colors cursor-pointer group hover:bg-theme-hover text-theme-text/90 hover:text-theme-text"
+                                title={
+                                  childState === "all"
+                                    ? t("context_menu.already_in_set", "이미 등록되어 있습니다")
+                                    : t("context_menu.add_to_set", "서재 세트 등록")
+                                }
+                              >
+                                <div className="flex items-center gap-1.5 truncate min-w-0">
+                                  <CornerDownRight className="w-2.5 h-2.5 text-theme-text-muted/60 shrink-0" />
+                                  {child.color ? (
+                                    <span
+                                      className="w-2 h-2 rounded-full shrink-0 shadow-2xs border border-white/20"
+                                      style={{ backgroundColor: child.color }}
+                                    />
+                                  ) : (
+                                    <Tag className="w-2.5 h-2.5 text-theme-accent/80 shrink-0" />
+                                  )}
+                                  <span className="truncate text-[11px]">{child.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {childState === "all" && (
+                                    <Check className="w-3 h-3 text-theme-accent stroke-[2.5]" />
+                                  )}
+                                  {childState === "some" && (
+                                    <Minus className="w-3 h-3 text-theme-accent stroke-[2.5]" />
+                                  )}
+                                  {child.count !== undefined && (
+                                    <span className="text-[9px] text-theme-text-muted bg-theme-hover/60 px-1 py-0.2 rounded font-mono">
+                                      {child.count}
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })
               )}

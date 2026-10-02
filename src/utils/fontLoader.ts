@@ -18,7 +18,7 @@ function hashString(str: string): string {
  * CSS font-family에서 충돌이 없도록 고유 해시 식별자 생성
  */
 export function getCustomFontFamily(font: FontMetadata): string {
-  return `font_f_${hashString(font.id)}`;
+  return `font_f_${hashString(String(font.id))}`;
 }
 
 /**
@@ -50,10 +50,10 @@ function buildLocalFallbackStack(font: FontMetadata): string {
  * @param fontId 폰트 고유 ID
  * @param margin 뷰포트 상하좌우 안전 여유 마진 (픽셀, 기본 250px)
  */
-export function isFontVisibleInViewport(fontId: string, margin = 250): boolean {
+export function isFontVisibleInViewport(fontId: string | number, margin = 250): boolean {
   if (typeof document === "undefined") return false;
 
-  const selector = `[data-font-card-id="${CSS.escape(fontId)}"]`;
+  const selector = `[data-font-card-id="${CSS.escape(String(fontId))}"]`;
   const elements = document.querySelectorAll(selector);
   if (!elements || elements.length === 0) return false;
 
@@ -93,11 +93,11 @@ interface ActiveFontEntry {
  */
 class FontCacheManager {
   // 현재 document.fonts에 마운트되어 있는 FontFace 엔트리
-  private activeFonts = new Map<string, ActiveFontEntry>();
+  private activeFonts = new Map<string | number, ActiveFontEntry>();
   // 로딩 진행 중인 프로미스 맵 (중복 네트워크 요청 방지)
-  private loadingPromises = new Map<string, Promise<string>>();
+  private loadingPromises = new Map<string | number, Promise<string>>();
   // 화면 밖(언마운트)으로 벗어난 폰트들의 LRU 대기 큐 (fontId -> unmounted timestamp)
-  private unmountedQueue = new Map<string, number>();
+  private unmountedQueue = new Map<string | number, number>();
 
   // 4K/5K 5열 그리드 환경을 위해 화면 밖 예비 캐시 용량을 넉넉하게 400개로 설정
   private readonly maxUnmountedCapacity = 400;
@@ -106,7 +106,7 @@ class FontCacheManager {
   /**
    * 폰트 컴포넌트 마운트 시 참조 카운트 증가 (Pinning: 절대 언마운트 금지)
    */
-  public retain(fontId: string): void {
+  public retain(fontId: string | number): void {
     const entry = this.activeFonts.get(fontId);
     if (entry) {
       entry.refCount++;
@@ -118,7 +118,7 @@ class FontCacheManager {
   /**
    * 폰트 컴포넌트 언마운트 시 참조 카운트 감소
    */
-  public release(fontId: string): void {
+  public release(fontId: string | number): void {
     const entry = this.activeFonts.get(fontId);
     if (!entry) return;
 
@@ -271,11 +271,11 @@ export async function loadFontIntoDocument(font: FontMetadata): Promise<string> 
   return await fontCacheManager.loadFont(font);
 }
 
-export function retainFont(fontId: string): void {
+export function retainFont(fontId: string | number): void {
   fontCacheManager.retain(fontId);
 }
 
-export function releaseFont(fontId: string): void {
+export function releaseFont(fontId: string | number): void {
   fontCacheManager.release(fontId);
 }
 

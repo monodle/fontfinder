@@ -18,6 +18,7 @@ mod font_cache;
 mod tests;
 
 pub use models::*;
+pub use font_cache::FontCacheEntry;
 
 pub struct Database {
   conn: Mutex<Connection>,

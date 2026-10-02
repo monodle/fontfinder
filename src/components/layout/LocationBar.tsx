@@ -164,12 +164,22 @@ export function LocationBar({
   if (activeCategory.startsWith("set:")) {
     const setId = Number(activeCategory.replace("set:", ""));
     const set = sets.find((s) => s.id === setId);
+    const parentSet = set?.parent_id ? sets.find((s) => s.id === set.parent_id) : null;
     const setName = set?.name || t("sidebar.set", { defaultValue: "세트" });
     const setColor = set?.color || "#8b5cf6";
 
     return (
       <div className="h-9 px-4 bg-theme-surface/70 border-b border-theme-border flex items-center justify-between gap-3 text-xs shrink-0 select-none backdrop-blur-xs transition-colors">
         <div className="flex items-center gap-2 min-w-0 flex-1">
+          {parentSet && (
+            <>
+              <div className="flex items-center gap-1.5 shrink-0 text-theme-text-muted">
+                <Folder className="w-3.5 h-3.5 text-theme-accent" />
+                <span className="truncate max-w-[140px] font-medium">{parentSet.name}</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+            </>
+          )}
           <div className="flex items-center gap-1.5 shrink-0">
             <span
               style={{ backgroundColor: setColor }}
@@ -182,7 +192,9 @@ export function LocationBar({
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
           <span className="text-[11px] text-theme-text-muted truncate">
-            {t("sidebar.custom_set_desc", { defaultValue: "사용자 지정 세트 컬렉션" })}
+            {parentSet
+              ? t("sidebar.subset_desc", { defaultValue: "하위 서재 세트" })
+              : t("sidebar.custom_set_desc", { defaultValue: "사용자 지정 세트 컬렉션" })}
           </span>
         </div>
 

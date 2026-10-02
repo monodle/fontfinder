@@ -43,10 +43,10 @@ export function useFontLibrary({
   }, [customFolders]);
 
   const [sets, setSets] = useState<FontSet[]>([]);
-  const [setMap, setSetMap] = useState<Map<number, Set<string>>>(new Map());
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [activatedFontIds, setActivatedFontIds] = useState<Set<string>>(new Set());
-  const [setFontIds, setSetFontIds] = useState<Set<string>>(new Set());
+  const [setMap, setSetMap] = useState<Map<number, Set<number>>>(new Map());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [activatedFontIds, setActivatedFontIds] = useState<Set<number>>(new Set());
+  const [setFontIds, setSetFontIds] = useState<Set<number>>(new Set());
   const [unpluggedFonts, setUnpluggedFonts] = useState<FontMetadata[]>([]);
   const [scanProgress, setScanProgress] = useState<{ current: number; total: number } | null>(null);
 
@@ -128,8 +128,8 @@ export function useFontLibrary({
       setSets(fetchedSets);
 
       // 모든 세트의 폰트 ID 목록을 단일 쿼리로 일괄 로드하여 1+N 쿼리/IPC 방지
-      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>));
-      const newSetMap = new Map<number, Set<string>>();
+      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>));
+      const newSetMap = new Map<number, Set<number>>();
       for (const s of fetchedSets) {
         const ids = allSetFonts[s.id] ?? [];
         newSetMap.set(s.id, new Set(ids));
@@ -140,7 +140,7 @@ export function useFontLibrary({
       const curCategory = activeCategoryRef.current;
       if (curCategory.startsWith("set:")) {
         const currentSetId = Number(curCategory.replace("set:", ""));
-        const currentIds = newSetMap.get(currentSetId) ?? new Set<string>();
+        const currentIds = newSetMap.get(currentSetId) ?? new Set<number>();
         setSetFontIds(new Set(currentIds));
       }
       return fetchedSets;
@@ -405,7 +405,7 @@ export function useFontLibrary({
       return;
     }
 
-    const currentFontKeys = new Set<string>();
+    const currentFontIds = new Set<number>();
     for (const f of fonts) {
       // 시스템/사용자 폰트이거나 현재 등록된 감시 폴더(customFolders)에 실제로 속한 외부 폰트만 유효 활성 키로 간주
       const isValidActive =
@@ -414,53 +414,29 @@ export function useFontLibrary({
         customFolders.some((cf) => !cf.isMissing && isPathInFolder(f.file_path, cf.path));
 
       if (isValidActive) {
-        currentFontKeys.add(f.id);
-        if (f.file_hash) {
-          currentFontKeys.add(`${f.file_hash}:${f.font_index}`);
-          currentFontKeys.add(f.file_hash);
-        }
+        currentFontIds.add(f.id);
       }
     }
 
-    const allPreservedKeys = new Set<string>();
+    const allPreservedIds = new Set<number>();
     setMap.forEach((idSet) => {
-      idSet.forEach((id) => allPreservedKeys.add(id));
+      idSet.forEach((id) => allPreservedIds.add(id));
     });
-    favoriteIds.forEach((id) => allPreservedKeys.add(id));
+    favoriteIds.forEach((id) => allPreservedIds.add(id));
 
-    const missingKeys = Array.from(allPreservedKeys).filter((k) => !currentFontKeys.has(k));
-    if (missingKeys.length === 0) {
+    const missingIds = Array.from(allPreservedIds).filter((id) => !currentFontIds.has(id));
+    if (missingIds.length === 0) {
       setUnpluggedFonts([]);
       return;
     }
 
-    const searchKeys = Array.from(
-      new Set(
-        missingKeys.flatMap((k) => {
-          const idx = k.lastIndexOf(":");
-          const base = idx > 0 ? k.substring(0, idx) : k;
-          return [k, base];
-        })
-      )
-    );
-
-    void fontService.getCachedFontsByHashes(searchKeys).then((cached) => {
-      const seenGhostHashes = new Set<string>();
+    void fontService.getCachedFontsByIds(missingIds).then((cached) => {
       const ghostFonts: FontMetadata[] = [];
       for (const cm of cached) {
-        const hashKey = cm.file_hash ? `${cm.file_hash}:${cm.font_index}` : cm.id;
-        if (seenGhostHashes.has(hashKey)) continue;
-        seenGhostHashes.add(hashKey);
-
         const matchedSets: FontLibraryTag[] = [];
         for (const s of sets) {
           const idsInSet = setMap.get(s.id);
-          if (
-            idsInSet &&
-            (idsInSet.has(hashKey) ||
-              idsInSet.has(cm.id) ||
-              (cm.file_hash && idsInSet.has(cm.file_hash)))
-          ) {
+          if (idsInSet && idsInSet.has(cm.id)) {
             matchedSets.push({
               id: s.id,
               name: s.name,
@@ -483,7 +459,6 @@ export function useFontLibrary({
 
         ghostFonts.push({
           ...cm,
-          id: hashKey,
           isMissing: true,
           install_status,
           version_status: "none" as const,
@@ -496,7 +471,7 @@ export function useFontLibrary({
 
   // 중복 폰트 식별 (고유 키 기준으로 동일한 폰트가 둘 이상의 물리 파일에 존재하는 경우)
   const duplicateFontIds = useMemo(() => {
-    const keyMap = new Map<string, string[]>();
+    const keyMap = new Map<string, number[]>();
     for (const font of fonts) {
       const key = getFontUniqueKey(font);
       if (!keyMap.has(key)) {
@@ -504,7 +479,7 @@ export function useFontLibrary({
       }
       keyMap.get(key)!.push(font.id);
     }
-    const duplicates = new Set<string>();
+    const duplicates = new Set<number>();
     for (const ids of keyMap.values()) {
       if (ids.length > 1) {
         ids.forEach((id) => duplicates.add(id));
@@ -529,14 +504,14 @@ export function useFontLibrary({
 
   // 폰트 상태(설치, 임시활성화, 미설치, 버전상태) 및 소속 서재(libraries) 동적 매핑
   const processedFonts = useMemo(() => {
-    // 1. 동일 해시(hashKey)가 위치한 모든 등록 폴더를 중복 없이 수집
+    // 1. 동일 지문/경로를 가진 폴더 매핑
     const hashToFoldersMap = new Map<string, Set<CustomFolder>>();
     for (const f of fonts) {
-      const hashKey = f.file_hash ? `${f.file_hash}:${f.font_index}` : f.id;
-      if (!hashToFoldersMap.has(hashKey)) {
-        hashToFoldersMap.set(hashKey, new Set());
+      const key = f.fast_hash || f.file_path;
+      if (!hashToFoldersMap.has(key)) {
+        hashToFoldersMap.set(key, new Set());
       }
-      const folderSet = hashToFoldersMap.get(hashKey)!;
+      const folderSet = hashToFoldersMap.get(key)!;
       for (const folder of customFolders) {
         if (isPathInFolder(f.file_path, folder.path)) {
           folderSet.add(folder);
@@ -554,20 +529,13 @@ export function useFontLibrary({
     }
 
     return fonts.map((font): FontMetadata => {
-      const hashKey = font.file_hash ? `${font.file_hash}:${font.font_index}` : font.id;
-
       // 1. 소속 서재(세트 & 감시 폴더) 계산
       const libraries: FontLibraryTag[] = [];
 
-      // 세트 매핑 (해시 키 및 id 동시 지원)
+      // 세트 매핑 (정수 ID로 단일 매핑)
       for (const set of sets) {
         const fontIdsInSet = setMap.get(set.id);
-        if (
-          fontIdsInSet &&
-          (fontIdsInSet.has(hashKey) ||
-            fontIdsInSet.has(font.id) ||
-            (font.file_hash && fontIdsInSet.has(font.file_hash)))
-        ) {
+        if (fontIdsInSet && fontIdsInSet.has(font.id)) {
           libraries.push({
             id: set.id,
             name: set.name,
@@ -577,8 +545,9 @@ export function useFontLibrary({
         }
       }
 
-      // 등록 폴더 매핑 (동일 폰트가 위치한 모든 등록 폴더 표시)
-      const matchedFolders = hashToFoldersMap.get(hashKey);
+      // 등록 폴더 매핑
+      const folderKey = font.fast_hash || font.file_path;
+      const matchedFolders = hashToFoldersMap.get(folderKey);
       if (matchedFolders && matchedFolders.size > 0) {
         for (const folder of matchedFolders) {
           libraries.push({
@@ -721,26 +690,27 @@ export function useFontLibrary({
     return map;
   }, [customFolders, processedFonts, activatedFontIds]);
 
-  // 2. 서재 세트별 실시간 고유(Unique) 폰트 수 동적 계산
+  // 2. 서재 세트별 실시간 고유(Unique) 폰트 수 동적 계산 (1depth는 직속 2depth 하위 세트 통합 합산)
   const setCounts = useMemo(() => {
     const map = new Map<number, number>();
     for (const set of sets) {
-      const idsInSet = setMap.get(set.id);
-      if (!idsInSet || idsInSet.size === 0) {
+      const isParent = set.parent_id == null;
+      const childIds = isParent ? sets.filter((s) => s.parent_id === set.id).map((s) => s.id) : [];
+      const targetIds = [set.id, ...childIds];
+
+      const idsInSet = new Set<number>();
+      for (const tId of targetIds) {
+        const sIds = setMap.get(tId);
+        if (sIds) {
+          sIds.forEach((id) => idsInSet.add(id));
+        }
+      }
+
+      if (idsInSet.size === 0) {
         map.set(set.id, 0);
         continue;
       }
-      const matchesSet = (font: FontMetadata) => {
-        const hashKey = font.file_hash ? `${font.file_hash}:${font.font_index}` : font.id;
-        if (idsInSet.has(hashKey) || idsInSet.has(font.id)) return true;
-        if (font.file_hash) {
-          if (idsInSet.has(font.file_hash)) return true;
-          for (const id of idsInSet) {
-            if (id.startsWith(font.file_hash)) return true;
-          }
-        }
-        return false;
-      };
+      const matchesSet = (font: FontMetadata) => idsInSet.has(font.id);
 
       const activeInSet = processedFonts.filter(matchesSet);
       const unpluggedInSet = unpluggedFonts.filter(matchesSet);
@@ -786,12 +756,7 @@ export function useFontLibrary({
       );
       result = deduplicateFonts(activatedFonts, activatedFontIds);
     } else if (activeCategory === "favorites") {
-      const matchesFavorite = (f: FontMetadata) => {
-        const hashKey = f.file_hash ? `${f.file_hash}:${f.font_index}` : f.id;
-        if (favoriteIds.has(f.id) || favoriteIds.has(hashKey)) return true;
-        if (f.file_hash && favoriteIds.has(f.file_hash)) return true;
-        return false;
-      };
+      const matchesFavorite = (f: FontMetadata) => favoriteIds.has(f.id);
 
       const activeFavs = processedFonts.filter(matchesFavorite);
       const unpluggedFavs = unpluggedFonts.filter(matchesFavorite);
@@ -801,20 +766,22 @@ export function useFontLibrary({
       result = processedFonts.filter((f) => duplicateFontIds.has(f.id));
     } else if (activeCategory.startsWith("set:")) {
       const setId = Number(activeCategory.replace("set:", ""));
-      const setMapIds = setMap.get(setId);
-      const idsInSet = setMapIds ?? setFontIds ?? new Set<string>();
+      // 1depth 세트인 경우 직속 2depth 자식 세트들의 폰트 ID까지 모두 합산 (Rollup 집계)
+      const childSetIds = sets.filter((s) => s.parent_id === setId).map((s) => s.id);
+      const targetSetIds = [setId, ...childSetIds];
 
-      const matchesSet = (font: FontMetadata) => {
-        const hashKey = font.file_hash ? `${font.file_hash}:${font.font_index}` : font.id;
-        if (idsInSet.has(hashKey) || idsInSet.has(font.id)) return true;
-        if (font.file_hash) {
-          if (idsInSet.has(font.file_hash)) return true;
-          for (const id of idsInSet) {
-            if (id.startsWith(font.file_hash)) return true;
-          }
+      const idsInSet = new Set<number>();
+      for (const sId of targetSetIds) {
+        const sIds = setMap.get(sId);
+        if (sIds) {
+          sIds.forEach((id) => idsInSet.add(id));
         }
-        return false;
-      };
+      }
+      if (idsInSet.size === 0 && setFontIds) {
+        setFontIds.forEach((id) => idsInSet.add(id));
+      }
+
+      const matchesSet = (font: FontMetadata) => idsInSet.has(font.id);
 
       const activeInSet = processedFonts.filter(matchesSet);
       const unpluggedInSet = unpluggedFonts.filter(matchesSet);
@@ -887,14 +854,34 @@ export function useFontLibrary({
     }
   }, [activeCategory, loadDbState, onToast, t]);
 
-  // 서재 세트 수정 (이름 및 색상 동시 변경)
-  const handleUpdateSet = useCallback(async (setId: number, name: string, color: string) => {
+  // 서재 세트 수정 (이름, 색상, 상위 세트 변경 지원)
+  const handleUpdateSet = useCallback(async (setId: number, name: string, color: string, parentId?: number | null) => {
     try {
-      await fontService.updateSet(setId, name, color);
-      setSets((prev) => prev.map((s) => (s.id === setId ? { ...s, name, color } : s)));
+      await fontService.updateSet(setId, name, color, parentId);
+      setSets((prev) =>
+        prev.map((s) =>
+          s.id === setId
+            ? { ...s, name, color, parent_id: parentId !== undefined ? parentId : s.parent_id }
+            : s
+        )
+      );
       return true;
     } catch (err) {
       console.error("세트 수정 실패:", err);
+      return false;
+    }
+  }, []);
+
+  // 서재 세트 부모 변경 (드래그 앤 드롭 계층 이동 전용)
+  const handleUpdateSetParent = useCallback(async (setId: number, parentId: number | null) => {
+    try {
+      await fontService.updateSetParent(setId, parentId);
+      setSets((prev) =>
+        prev.map((s) => (s.id === setId ? { ...s, parent_id: parentId } : s))
+      );
+      return true;
+    } catch (err) {
+      console.error("세트 부모 변경 실패:", err);
       return false;
     }
   }, []);
@@ -923,10 +910,10 @@ export function useFontLibrary({
     }
   }, []);
 
-  // 서재 세트 신규 생성 (색상 지원)
-  const handleCreateSet = useCallback(async (name: string, color?: string) => {
+  // 서재 세트 신규 생성 (색상 및 상위 세트 지원)
+  const handleCreateSet = useCallback(async (name: string, color?: string, parentId?: number | null) => {
     try {
-      const newSet = await fontService.createSet(name, color);
+      const newSet = await fontService.createSet(name, color, parentId);
       setSets((prev) => [newSet, ...prev]);
       return newSet;
     } catch (err) {
@@ -973,6 +960,7 @@ export function useFontLibrary({
     handleRelinkFolder,
     handleRemoveFolderWithData,
     handleUpdateSet,
+    handleUpdateSetParent,
     handleUpdateSetColor,
     handleUpdateFolderColor,
     handleCreateSet,

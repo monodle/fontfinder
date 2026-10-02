@@ -80,7 +80,7 @@ pub async fn scan_directory(
 
 #[derive(Debug, serde::Deserialize)]
 pub struct BulkFontItem {
-    pub font_id: String,
+    pub font_id: i64,
     pub path: String,
 }
 
@@ -88,7 +88,7 @@ pub struct BulkFontItem {
 pub async fn activate_font(
     state: State<'_, AppState>,
     path: String,
-    font_id: Option<String>,
+    font_id: i64,
 ) -> Result<(), String> {
     let path_clone = path.clone();
     tokio::task::spawn_blocking(move || {
@@ -98,8 +98,7 @@ pub async fn activate_font(
     .await
     .map_err(|e| e.to_string())??;
 
-    let f_id = font_id.unwrap_or_else(|| path.clone());
-    let _ = state.db.record_activated_font(&f_id, &path);
+    let _ = state.db.record_activated_font(font_id, &path);
     Ok(())
 }
 
@@ -107,7 +106,7 @@ pub async fn activate_font(
 pub async fn deactivate_font(
     state: State<'_, AppState>,
     path: String,
-    font_id: Option<String>,
+    font_id: i64,
 ) -> Result<(), String> {
     let path_clone = path.clone();
     tokio::task::spawn_blocking(move || {
@@ -117,8 +116,7 @@ pub async fn deactivate_font(
     .await
     .map_err(|e| e.to_string())??;
 
-    let f_id = font_id.unwrap_or_else(|| path.clone());
-    let _ = state.db.remove_activated_font(&f_id);
+    let _ = state.db.remove_activated_font(font_id);
     Ok(())
 }
 
@@ -129,7 +127,7 @@ pub async fn activate_fonts(
 ) -> Result<usize, String> {
     let raw_items = items
         .iter()
-        .map(|it| (it.font_id.clone(), it.path.clone()))
+        .map(|it| (it.font_id, it.path.clone()))
         .collect::<Vec<_>>();
 
     let (count, success_items) = tokio::task::spawn_blocking(move || {
@@ -160,7 +158,7 @@ pub async fn deactivate_fonts(
 ) -> Result<usize, String> {
     let raw_items = items
         .iter()
-        .map(|it| (it.font_id.clone(), it.path.clone()))
+        .map(|it| (it.font_id, it.path.clone()))
         .collect::<Vec<_>>();
 
     let (count, deactivated_ids) = tokio::task::spawn_blocking(move || {
@@ -262,8 +260,8 @@ pub async fn uninstall_fonts(paths: Vec<String>) -> Result<usize, String> {
 
 // --- Sets IPC ---
 #[tauri::command]
-pub fn create_set(name: String, color: Option<String>, state: State<'_, AppState>) -> Result<FontSet, String> {
-    state.db.create_set(&name, color.as_deref()).map_err(|e| e.to_string())
+pub fn create_set(name: String, color: Option<String>, parent_id: Option<i64>, state: State<'_, AppState>) -> Result<FontSet, String> {
+    state.db.create_set(&name, color.as_deref(), parent_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -272,8 +270,13 @@ pub fn update_set_color(set_id: i64, color: String, state: State<'_, AppState>) 
 }
 
 #[tauri::command]
-pub fn update_set(set_id: i64, name: String, color: String, state: State<'_, AppState>) -> Result<(), String> {
-    state.db.update_set(set_id, &name, &color).map_err(|e| e.to_string())
+pub fn update_set(set_id: i64, name: String, color: String, parent_id: Option<i64>, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.update_set(set_id, &name, &color, parent_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_set_parent(set_id: i64, parent_id: Option<i64>, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.update_set_parent(set_id, parent_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -287,48 +290,48 @@ pub fn delete_set(set_id: i64, state: State<'_, AppState>) -> Result<(), String>
 }
 
 #[tauri::command]
-pub fn add_font_to_set(set_id: i64, font_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    state.db.add_font_to_set(set_id, &font_id).map_err(|e| e.to_string())
+pub fn add_font_to_set(set_id: i64, font_id: i64, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.add_font_to_set(set_id, font_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn remove_font_from_set(set_id: i64, font_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    state.db.remove_font_from_set(set_id, &font_id).map_err(|e| e.to_string())
+pub fn remove_font_from_set(set_id: i64, font_id: i64, state: State<'_, AppState>) -> Result<(), String> {
+    state.db.remove_font_from_set(set_id, font_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_set_font_ids(set_id: i64, state: State<'_, AppState>) -> Result<Vec<String>, String> {
+pub fn get_set_font_ids(set_id: i64, state: State<'_, AppState>) -> Result<Vec<i64>, String> {
     state.db.get_set_font_ids(set_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_all_set_font_ids(state: State<'_, AppState>) -> Result<std::collections::HashMap<i64, Vec<String>>, String> {
+pub fn get_all_set_font_ids(state: State<'_, AppState>) -> Result<std::collections::HashMap<i64, Vec<i64>>, String> {
     state.db.get_all_set_font_ids().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn add_fonts_to_set_bulk(set_id: i64, font_ids: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+pub fn add_fonts_to_set_bulk(set_id: i64, font_ids: Vec<i64>, state: State<'_, AppState>) -> Result<(), String> {
     state.db.add_fonts_to_set_bulk(set_id, &font_ids).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn remove_fonts_from_set_bulk(set_id: i64, font_ids: Vec<String>, state: State<'_, AppState>) -> Result<(), String> {
+pub fn remove_fonts_from_set_bulk(set_id: i64, font_ids: Vec<i64>, state: State<'_, AppState>) -> Result<(), String> {
     state.db.remove_fonts_from_set_bulk(set_id, &font_ids).map_err(|e| e.to_string())
 }
 
 // --- Favorites IPC ---
 #[tauri::command]
-pub fn toggle_favorite(font_id: String, state: State<'_, AppState>) -> Result<bool, String> {
-    state.db.toggle_favorite(&font_id).map_err(|e| e.to_string())
+pub fn toggle_favorite(font_id: i64, state: State<'_, AppState>) -> Result<bool, String> {
+    state.db.toggle_favorite(font_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn set_favorites_bulk(font_ids: Vec<String>, add: bool, state: State<'_, AppState>) -> Result<(), String> {
+pub fn set_favorites_bulk(font_ids: Vec<i64>, add: bool, state: State<'_, AppState>) -> Result<(), String> {
     state.db.set_favorites_bulk(&font_ids, add).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_favorite_font_ids(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+pub fn get_favorite_font_ids(state: State<'_, AppState>) -> Result<Vec<i64>, String> {
     state.db.get_favorite_font_ids().map_err(|e| e.to_string())
 }
 
@@ -507,6 +510,14 @@ pub fn get_cached_fonts_by_hashes(
     state: State<'_, AppState>,
 ) -> Result<Vec<FontMetadata>, String> {
     state.db.get_cached_fonts_by_hashes(&hashes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_cached_fonts_by_ids(
+    ids: Vec<i64>,
+    state: State<'_, AppState>,
+) -> Result<Vec<FontMetadata>, String> {
+    state.db.get_cached_fonts_by_ids(&ids).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -12,6 +12,7 @@
   --color-theme-hover: var(--theme-bg-hover);
   --color-theme-active: var(--theme-bg-active);
   --color-theme-badge: var(--theme-bg-badge);
+  --color-theme-popover: var(--theme-bg-surface);
 
   --color-theme-border: var(--theme-border);
   --color-theme-border-subtle: var(--theme-border-subtle);
@@ -408,7 +409,8 @@
   /* Glass Theme Context Menu & Popover Isolation */
   [data-theme="glass"] .fixed.z-50.bg-theme-surface,
   [data-theme="glass"] .absolute.z-50.bg-theme-surface,
-  [data-theme="glass"] [role="menu"] {
+  [data-theme="glass"] [role="menu"],
+  [data-theme="glass"] [role="listbox"] {
     background-color: rgba(255, 255, 255, 0.98) !important;
     backdrop-filter: blur(28px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
@@ -444,6 +446,7 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--theme-scrollbar-hover);
   }
+
 }
 
 @keyframes modalBackdropFadeIn {

@@ -115,7 +115,7 @@ export function TextAlignDropdown({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute right-0 top-full mt-1 w-32 bg-theme-popover border border-theme-border rounded-xl shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+          className="absolute right-0 top-full mt-1 w-32 bg-theme-surface border border-theme-border rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100"
         >
           {alignOptions.map((opt) => {
             const Icon = opt.icon;
@@ -128,7 +128,7 @@ export function TextAlignDropdown({
                 aria-selected={isSelected}
                 type="button"
                 onClick={() => handleSelect(opt.id)}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs transition-colors cursor-pointer text-left ${
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition-colors cursor-pointer text-left ${
                   isSelected
                     ? "bg-theme-accent/15 text-theme-accent font-semibold"
                     : "text-theme-text hover:bg-theme-hover"

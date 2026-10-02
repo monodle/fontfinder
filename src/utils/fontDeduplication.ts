@@ -27,7 +27,7 @@ export function getFontUniqueKey(font: FontMetadata): string {
  */
 function getRepresentativeScore(
   font: FontMetadata,
-  activatedFontIds: Set<string>
+  activatedFontIds: Set<number>
 ): number {
   let score = 0;
 
@@ -58,7 +58,7 @@ function getRepresentativeScore(
  */
 export function deduplicateFonts(
   fonts: FontMetadata[],
-  activatedFontIds: Set<string> = new Set()
+  activatedFontIds: Set<number> = new Set()
 ): FontMetadata[] {
   if (!fonts || fonts.length <= 1) {
     return fonts;

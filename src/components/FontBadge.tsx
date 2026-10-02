@@ -212,3 +212,33 @@ export function FontVersionBadge({
 
   return null;
 }
+
+export interface FontDuplicateBadgeProps {
+  count?: number;
+  compact?: boolean;
+  className?: string;
+}
+
+export function FontDuplicateBadge({
+  count = 1,
+  compact = false,
+  className = "",
+}: FontDuplicateBadgeProps) {
+  const { t } = useTranslation();
+
+  if (!count || count <= 1) {
+    return null;
+  }
+
+  return (
+    <Badge
+      size="xs"
+      variant="warning"
+      className={cn("text-[9px] font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0", className)}
+    >
+      <span title={t("badge.duplicate_tooltip", `동일한 폰트 파일이 ${count}개 존재합니다`)}>
+        {compact ? `×${count}` : t("badge.duplicate", `중복 ${count}`)}
+      </span>
+    </Badge>
+  );
+}

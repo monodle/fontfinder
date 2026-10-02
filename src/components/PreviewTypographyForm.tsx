@@ -357,7 +357,8 @@ export function PreviewTypographyForm({
               ]}
               value={values.textAlign}
               onChange={(align) => onChange("textAlign", align)}
-              size="sm"
+              size="md"
+              fullWidth
             />
           </div>
         </div>

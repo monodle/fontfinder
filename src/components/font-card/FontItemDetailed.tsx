@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Heart, Zap } from "lucide-react";
-import { FontFormatBadge, FontInstallStatusBadge, FontVersionBadge } from "../FontBadge";
+import { FontFormatBadge, FontInstallStatusBadge, FontVersionBadge, FontDuplicateBadge } from "../FontBadge";
 import { LibraryAvatarStack } from "../LibraryAvatarStack";
 import { formatFileSize } from "../../utils/fileSize";
 import { FontCardRenderProps } from "./types";
@@ -102,6 +102,9 @@ export function FontItemDetailed({
 
         {/* Right: Version + Status + Actions + Format + Glyphs */}
         <div className="flex items-center gap-1 shrink-0 text-[10px]">
+          {/* Duplicate Badge (중복 폰트 파일 알림) */}
+          <FontDuplicateBadge count={font.duplicate_count} compact={isCompact} />
+
           {/* Version Badge (신버전/구버전 알림) */}
           <FontVersionBadge versionStatus={font.version_status} compact={isCompact} />
 

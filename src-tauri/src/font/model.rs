@@ -20,11 +20,19 @@ pub enum FontSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontMetadata {
-    pub id: String,
+    #[serde(default)]
+    pub id: i64,
     pub file_path: String,
     pub file_name: String,
     pub file_size: u64,
+    #[serde(default)]
     pub file_hash: String,
+    #[serde(default)]
+    pub fast_hash: String,
+    #[serde(default)]
+    pub deep_hash: Option<String>,
+    #[serde(default)]
+    pub duplicate_count: u32,
     pub font_index: u32,
     pub family_name: String,
     pub subfamily_name: String,
@@ -131,7 +139,8 @@ pub struct FontVariableInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontDetailedInfo {
-    pub id: String,
+    #[serde(default)]
+    pub id: i64,
     pub file_path: String,
     pub file_name: String,
     pub file_size: u64,

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Heart, Zap } from "lucide-react";
+import { FontDuplicateBadge } from "../FontBadge";
 import { FontCardRenderProps } from "./types";
 
 export function FontItemSimple({
@@ -9,18 +9,14 @@ export function FontItemSimple({
   cardCustomStyle,
   textCustomStyle,
   isSelected,
-  isFavorite,
   isActivated,
-  isInstalled,
   isDeleted,
   isUnplugged,
   isDisconnected,
   isCompact,
   isUltraCompact,
   onSelect,
-  onToggleFavorite,
   onContextMenu,
-  handleActivate,
 }: FontCardRenderProps) {
   const { t } = useTranslation();
 
@@ -55,24 +51,9 @@ export function FontItemSimple({
           : "bg-theme-card border-theme-border-card shadow-2xs hover:bg-theme-card-hover hover:border-theme-border-card-hover hover:shadow-xs"
       }`}
     >
-      {/* 1. 간결한 헤더: 즐겨찾기 + 폰트 이름 + 폰트 Weight(Subfamily) */}
+      {/* 1. 간결한 헤더: 폰트 이름 + 폰트 Weight(Subfamily) + 중복 뱃지 */}
       <div className="flex items-center justify-between gap-1.5 mb-1.5 min-w-0 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {/* 즐겨찾기 버튼 */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite?.(font.id);
-            }}
-            className={`p-0.5 rounded hover:bg-theme-hover transition-colors shrink-0 cursor-pointer ${
-              isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted hover:text-rose-500"
-            }`}
-            title={isFavorite ? t("font_item.favorite_remove") : t("font_item.favorite_add")}
-          >
-            <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-rose-500 text-rose-500" : ""}`} />
-          </button>
-
           {/* 폰트 이름 */}
           <span className="font-semibold text-xs text-theme-text tracking-tight truncate group-hover:text-theme-accent transition-colors">
             {font.family_name}
@@ -89,26 +70,7 @@ export function FontItemSimple({
           </span>
         </div>
 
-        {/* 우측: 외부 폰트 임시 활성화 버튼 (미설치 외부 폰트인 경우만 간결하게 표시) */}
-        {!isInstalled && !isDisconnected && (
-          <button
-            type="button"
-            onClick={handleActivate}
-            className={`flex items-center gap-1 rounded font-mono border transition-all cursor-pointer p-0.5 px-1 text-[10px] ${
-              isActivated
-                ? "bg-theme-accent-subtle text-theme-accent border-theme-accent font-semibold shadow-2xs"
-                : "bg-theme-badge hover:bg-theme-hover text-theme-text-secondary border-theme-border opacity-70 hover:opacity-100"
-            }`}
-            title={isActivated ? t("font_item.activated_tooltip") : t("font_item.activate_tooltip")}
-          >
-            <Zap
-              className={`w-2.5 h-2.5 ${
-                isActivated ? "text-theme-accent fill-theme-accent" : "text-theme-text-muted"
-              }`}
-            />
-            {!isCompact && (isActivated ? t("font_item.activated_label") : t("font_item.activate_label"))}
-          </button>
-        )}
+        <FontDuplicateBadge count={font.duplicate_count} compact={isCompact} />
       </div>
 
       {/* 2. 문구 미리보기 영역 (하단 푸터 없이 최대 면적으로 시원하게 렌더링 - 상단 정렬) */}

@@ -8,8 +8,8 @@ interface UseFontSelectionProps {
 
 export function useFontSelection({ filteredFonts, activeCategory }: UseFontSelectionProps) {
   const [selectedFont, setSelectedFont] = useState<FontMetadata | null>(null);
-  const [selectedFontIds, setSelectedFontIds] = useState<Set<string>>(new Set());
-  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [selectedFontIds, setSelectedFontIds] = useState<Set<number>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<number | null>(null);
 
   // 선택 전체 해제
   const handleClearSelection = useCallback(() => {
@@ -58,7 +58,7 @@ export function useFontSelection({ filteredFonts, activeCategory }: UseFontSelec
       }
 
       // 2. Shift + 클릭: 마지막 선택 항목이 유효하고 선택된 항목이 있을 때만 연속 범위 선택 (비활성화 폰트 제외)
-      if (e.shiftKey && lastSelectedId && selectedFontIds.size > 0) {
+      if (e.shiftKey && lastSelectedId !== null && selectedFontIds.size > 0) {
         const lastIndex = filteredFonts.findIndex((f) => f.id === lastSelectedId);
         const currentIndex = filteredFonts.findIndex((f) => f.id === font.id);
 
@@ -107,7 +107,7 @@ export function useFontSelection({ filteredFonts, activeCategory }: UseFontSelec
 
   // 마우스 드래그 영역 선택 콜백
   const handleSelectionChange = useCallback(
-    (newIds: Set<string>) => {
+    (newIds: Set<number>) => {
       setSelectedFontIds(newIds);
       if (newIds.size === 0) {
         setLastSelectedId(null);

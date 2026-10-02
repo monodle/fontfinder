@@ -8,19 +8,15 @@ import {
 } from "../types/sort";
 
 export interface FontSortContext {
-  favoriteIds: Set<string>;
-  activatedFontIds: Set<string>;
+  favoriteIds: Set<number>;
+  activatedFontIds: Set<number>;
 }
 
 /**
- * 폰트 ID 및 파일 해시를 고려한 즐겨찾기 소속 판별
+ * 정수 폰트 ID 기반 즐겨찾기 소속 판별
  */
-export function isFontFavorite(font: FontMetadata, favoriteIds: Set<string>): boolean {
-  if (favoriteIds.has(font.id)) return true;
-  const hashKey = font.file_hash ? `${font.file_hash}:${font.font_index}` : font.id;
-  if (favoriteIds.has(hashKey)) return true;
-  if (font.file_hash && favoriteIds.has(font.file_hash)) return true;
-  return false;
+export function isFontFavorite(font: FontMetadata, favoriteIds: Set<number>): boolean {
+  return favoriteIds.has(font.id);
 }
 
 /**

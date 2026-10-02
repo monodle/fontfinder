@@ -185,11 +185,11 @@ function sanitizeSets(raw: unknown): BackupSet[] {
     const name = sanitizeString(item.name, 100);
     if (!name) continue;
 
-    const fontIds: string[] = [];
+    const fontIds: number[] = [];
     if (Array.isArray(item.fontIds)) {
       for (const fid of item.fontIds.slice(0, MAX_FONTS_PER_SET)) {
-        const cleanId = sanitizeString(fid, 512);
-        if (cleanId) fontIds.push(cleanId);
+        const num = Number(fid);
+        if (Number.isInteger(num) && num > 0) fontIds.push(num);
       }
     }
 
@@ -292,7 +292,7 @@ export const backupService = {
 
     if (selection.sets) {
       const sets = await fontService.getSets();
-      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>));
+      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>));
       payload.sets = sets.map((s) => ({
         name: s.name,
         color: s.color,
@@ -462,10 +462,10 @@ export const backupService = {
     if (selection.sets && backup.sets && backup.sets.length > 0) {
       const [currentSets, allSetFonts] = await Promise.all([
         fontService.getSets().catch(() => []),
-        fontService.getAllSetFontIds().catch(() => ({} as Record<number, string[]>)),
+        fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>)),
       ]);
       const setMap = new Map(currentSets.map((s) => [s.name, s]));
-      const existingSetFontsMap = new Map<number, Set<string>>(
+      const existingSetFontsMap = new Map<number, Set<number>>(
         Object.entries(allSetFonts).map(([k, v]) => [Number(k), new Set(v)])
       );
 
@@ -486,7 +486,7 @@ export const backupService = {
           }
 
           if (Array.isArray(setItem.fontIds) && setItem.fontIds.length > 0) {
-            const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<string>();
+            const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<number>();
             const toAdd = setItem.fontIds.filter((fontId) => !existingFontIds.has(fontId));
             if (toAdd.length > 0) {
               await fontService.addFontsToSetBulk(targetSetId, toAdd).catch(() => {});

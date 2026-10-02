@@ -9,7 +9,7 @@ impl Database {
     let mut stmt = conn.prepare("SELECT font_id, file_path FROM activated_fonts ORDER BY activated_at ASC")?;
     let rows = stmt.query_map([], |row| {
       Ok(ActivatedFontRecord {
-        font_id: row.get(0)?,
+        font_id: row.get::<_, i64>(0)?,
         file_path: row.get(1)?,
       })
     })?;
@@ -20,7 +20,7 @@ impl Database {
     Ok(records)
   }
 
-  pub fn record_activated_font(&self, font_id: &str, file_path: &str) -> AppResult<()> {
+  pub fn record_activated_font(&self, font_id: i64, file_path: &str) -> AppResult<()> {
     let conn = self.conn()?;
     conn.execute(
       "INSERT OR REPLACE INTO activated_fonts (font_id, file_path) VALUES (?1, ?2)",
@@ -29,13 +29,13 @@ impl Database {
     Ok(())
   }
 
-  pub fn remove_activated_font(&self, font_id: &str) -> AppResult<()> {
+  pub fn remove_activated_font(&self, font_id: i64) -> AppResult<()> {
     let conn = self.conn()?;
     conn.execute("DELETE FROM activated_fonts WHERE font_id = ?1", params![font_id])?;
     Ok(())
   }
 
-  pub fn record_activated_fonts(&self, items: &[(String, String)]) -> AppResult<()> {
+  pub fn record_activated_fonts(&self, items: &[(i64, String)]) -> AppResult<()> {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
@@ -50,12 +50,12 @@ impl Database {
     Ok(())
   }
 
-  pub fn remove_activated_fonts(&self, font_ids: &[String]) -> AppResult<()> {
+  pub fn remove_activated_fonts(&self, font_ids: &[i64]) -> AppResult<()> {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
       let mut stmt = tx.prepare_cached("DELETE FROM activated_fonts WHERE font_id = ?1")?;
-      for id in font_ids {
+      for &id in font_ids {
         stmt.execute(params![id])?;
       }
     }

@@ -18,6 +18,7 @@ export interface SegmentedControlProps<T extends string | number> {
   size?: "sm" | "md" | "lg";
   className?: string;
   disabled?: boolean;
+  fullWidth?: boolean;
   "aria-label"?: string;
 }
 
@@ -29,6 +30,7 @@ export function SegmentedControl<T extends string | number>({
   size = "md",
   className = "",
   disabled = false,
+  fullWidth = false,
   "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
   // 1. 카드/버튼 그리드 형태 (예: 환경설정 모달 내 2열 카드 버튼)
@@ -113,6 +115,7 @@ export function SegmentedControl<T extends string | number>({
       className={cn(
         "flex items-center bg-theme-badge/60 hover:bg-theme-badge border border-theme-border rounded-lg select-none transition-colors",
         sizeClasses[size],
+        fullWidth && "w-full",
         disabled && "opacity-50 pointer-events-none",
         className
       )}
@@ -133,6 +136,7 @@ export function SegmentedControl<T extends string | number>({
             className={cn(
               "flex items-center justify-center gap-1 rounded-md transition-all cursor-pointer font-medium",
               itemSizeClasses[size],
+              fullWidth && "flex-1",
               isSelected
                 ? "bg-theme-card text-theme-accent shadow-2xs font-semibold"
                 : "text-theme-text-secondary hover:text-theme-text",

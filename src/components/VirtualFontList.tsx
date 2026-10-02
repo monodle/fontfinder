@@ -15,12 +15,12 @@ interface VirtualFontListProps {
   viewMode: "list" | "grid";
   detailMode?: FontDetailMode;
   gridColumns?: number;
-  selectedFontIds: Set<string>;
-  favoriteIds?: Set<string>;
-  activatedFontIds?: Set<string>;
+  selectedFontIds: Set<number>;
+  favoriteIds?: Set<number>;
+  activatedFontIds?: Set<number>;
   onSelectFont: (font: FontMetadata, e: React.MouseEvent) => void;
-  onSelectionChange?: (selectedIds: Set<string>) => void;
-  onToggleFavorite?: (fontId: string) => void;
+  onSelectionChange?: (selectedIds: Set<number>) => void;
+  onToggleFavorite?: (fontId: number) => void;
   onToggleActivate?: (font: FontMetadata) => void;
   onContextMenu?: (e: React.MouseEvent, font: FontMetadata) => void;
   onSelectLibrary?: (tag: FontLibraryTag, e: React.MouseEvent) => void;
@@ -72,7 +72,7 @@ export function VirtualFontList({
   });
   const lastClientPosRef = useRef<{ clientX: number; clientY: number }>({ clientX: 0, clientY: 0 });
   const autoScrollAnimRef = useRef<number | null>(null);
-  const initialSelectedIdsRef = useRef<Set<string>>(new Set());
+  const initialSelectedIdsRef = useRef<Set<number>>(new Set());
 
   // 리스트 모드일 때는 1열, 그리드 모드일 때는 설정된 gridColumns (2~5) 배치
   const columns = viewMode === "grid" ? gridColumns : 1;
@@ -191,7 +191,7 @@ export function VirtualFontList({
           return boxLeft <= cRight && boxRight >= cLeft;
         };
 
-        const draggedFontIds = new Set<string>();
+        const draggedFontIds = new Set<number>();
 
         // 가상화로 DOM에서 제거된 항목도 정확하게 판정되도록 행 기반 수학적 교차 검사
         for (let r = 0; r < rowCount; r++) {

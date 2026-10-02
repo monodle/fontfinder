@@ -1,8 +1,9 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use sha2::{Digest, Sha256};
 use ttf_parser::{name_id, Face};
+use xxhash_rust::xxh3::Xxh3;
 
 use super::model::{
     FontDetailedInfo, FontFormat, FontLanguageCoverage, FontMetadata, FontMetricsRecord,
@@ -14,7 +15,97 @@ use crate::platform::Platform;
 pub struct FontParser;
 
 impl FontParser {
-    pub fn parse_file<P: AsRef<Path>>(path: P) -> AppResult<Vec<FontMetadata>> {
+    /// 1차 초고속 지문 (Fast Fingerprint):
+    /// 파일 앞 32KB 내 OpenType/TrueType Table Directory(체크섬, 길이) 및 파일 크기를 xxh3_128로 해싱
+    pub fn compute_fast_hash(header_data: &[u8], file_size: u64) -> String {
+        let mut hasher = Xxh3::new();
+
+        // OpenType 헤더 검사 (최소 12바이트)
+        let is_sfnt = if header_data.len() >= 12 {
+            let num_tables = u16::from_be_bytes([header_data[4], header_data[5]]) as usize;
+            let directory_size = 12 + num_tables * 16;
+            if num_tables > 0 && num_tables <= 100 && header_data.len() >= directory_size {
+                // Table Directory (각 16바이트: tag 4B, checksum 4B, offset 4B, length 4B)
+                // 글리프 내용을 일일이 읽지 않아도 헤더의 32비트 체크섬과 길이 정보로 고유성 보장
+                for i in 0..num_tables {
+                    let entry_start = 12 + i * 16;
+                    let tag = &header_data[entry_start..entry_start + 4];
+                    let checksum = &header_data[entry_start + 4..entry_start + 8];
+                    let length = &header_data[entry_start + 12..entry_start + 16];
+                    hasher.update(tag);
+                    hasher.update(checksum);
+                    hasher.update(length);
+                }
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !is_sfnt {
+            // TTC/WOFF 또는 일반 바이너리 Fallback: 읽어온 버퍼 전체 슬라이스 해싱
+            hasher.update(header_data);
+        }
+
+        // 파일 전체 크기 결합 (고유 시드)
+        hasher.update(&file_size.to_le_bytes());
+
+        let digest = hasher.digest128();
+        format!("{:032x}", digest)
+    }
+
+    /// 2차 온디맨드 정밀 지문 (Deep Fingerprint):
+    /// 16구간 분산(각 16KB)을 스트림 Seek으로 읽어 SHA-256 해싱 (메모리 256KB 제한, read_to_end 금지)
+    pub fn compute_deep_hash<P: AsRef<Path>>(path: P, file_size: u64) -> AppResult<String> {
+        let mut file = File::open(path)?;
+        let mut hasher = Sha256::new();
+        let block = 16_384; // 16KB
+        let total_sample_threshold = block * 16; // 256KB
+
+        if file_size <= total_sample_threshold as u64 {
+            let mut buffer = Vec::with_capacity(file_size as usize);
+            file.read_to_end(&mut buffer)?;
+            hasher.update(&buffer);
+        } else {
+            let mut chunk = vec![0u8; block];
+
+            // ① 시작 (헤더 16KB)
+            file.seek(SeekFrom::Start(0))?;
+            file.read_exact(&mut chunk)?;
+            hasher.update(&chunk);
+
+            // ② ~ ⑮ 중간 14개 균등 분산 지점 (각 16KB)
+            for i in 1..=14 {
+                let center = (file_size * i) / 15;
+                let start = center.saturating_sub((block / 2) as u64);
+                file.seek(SeekFrom::Start(start))?;
+                let n = file.read(&mut chunk)?;
+                hasher.update(&chunk[..n]);
+            }
+
+            // ⑯ 끝 (테일 16KB)
+            let tail_start = file_size.saturating_sub(block as u64);
+            file.seek(SeekFrom::Start(tail_start))?;
+            let n = file.read(&mut chunk)?;
+            hasher.update(&chunk[..n]);
+
+            // ⑰ 파일 전체 크기
+            hasher.update(&file_size.to_le_bytes());
+        }
+
+        let result = hasher.finalize();
+        let mut s = String::with_capacity(64);
+        for b in result {
+            use std::fmt::Write;
+            let _ = write!(&mut s, "{:02x}", b);
+        }
+        Ok(s)
+    }
+
+    /// 파일 앞 64~128KB 1회 순차 읽기만으로 1차 지문 + 메타데이터 추출 동시 종결
+    pub fn parse_file_fast<P: AsRef<Path>>(path: P) -> AppResult<(Vec<FontMetadata>, String)> {
         let path_ref = path.as_ref();
         if !path_ref.is_file() {
             return Err(AppError::InvalidPath(format!(
@@ -48,10 +139,32 @@ impl FontParser {
         };
 
         let mut file = File::open(path_ref)?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
+        // 앞 128KB 1회 순차 버퍼링
+        let prefix_limit = (131_072 as u64).min(file_size) as usize;
+        let mut prefix_buf = vec![0u8; prefix_limit];
+        file.read_exact(&mut prefix_buf)?;
 
-        Self::parse_bytes(&buffer, &file_path, &file_name, file_size, default_format)
+        // 1차 지문 계산 (앞 32KB 표본 + 파일 크기)
+        let sample_len = prefix_buf.len().min(32_768);
+        let fast_hash = Self::compute_fast_hash(&prefix_buf[..sample_len], file_size);
+
+        // 128KB 버퍼 내에서 Face 메타데이터 파싱 시도
+        match Self::parse_bytes_with_hash(&prefix_buf, &file_path, &file_name, file_size, default_format.clone(), &fast_hash) {
+            Ok(results) => Ok((results, fast_hash)),
+            Err(_) => {
+                // 메타데이터 테이블이 128KB 범위를 초과하는 특수 폰트 대상 Fallback:
+                file.seek(SeekFrom::Start(0))?;
+                let mut full_buf = Vec::with_capacity(file_size as usize);
+                file.read_to_end(&mut full_buf)?;
+                let results = Self::parse_bytes_with_hash(&full_buf, &file_path, &file_name, file_size, default_format, &fast_hash)?;
+                Ok((results, fast_hash))
+            }
+        }
+    }
+
+    pub fn parse_file<P: AsRef<Path>>(path: P) -> AppResult<Vec<FontMetadata>> {
+        let (fonts, _) = Self::parse_file_fast(path)?;
+        Ok(fonts)
     }
 
     pub fn parse_bytes(
@@ -61,53 +174,26 @@ impl FontParser {
         file_size: u64,
         format: FontFormat,
     ) -> AppResult<Vec<FontMetadata>> {
+        let sample_len = data.len().min(32_768);
+        let fast_hash = Self::compute_fast_hash(&data[..sample_len], file_size);
+        Self::parse_bytes_with_hash(data, file_path, file_name, file_size, format, &fast_hash)
+    }
+
+    pub fn parse_bytes_with_hash(
+        data: &[u8],
+        file_path: &str,
+        file_name: &str,
+        file_size: u64,
+        format: FontFormat,
+        fast_hash: &str,
+    ) -> AppResult<Vec<FontMetadata>> {
         let num_fonts = ttf_parser::fonts_in_collection(data).unwrap_or(1);
         let mut results = Vec::with_capacity(num_fonts as usize);
-
-        let file_hash = {
-            let mut hasher = Sha256::new();
-            let block = 16_384; // 16KB 초정밀 분산 블록 크기
-            let total_sample_threshold = block * 16; // 256KB
-
-            if data.len() <= total_sample_threshold {
-                // 256KB 이하 파일: 파일 전체 바이트 해싱
-                hasher.update(data);
-            } else {
-                // 256KB 초과 파일: 16개 균등 분산 지점 (약 6.25% 간격, 각 16KB) 샘플링
-                let len = data.len();
-
-                // ① 시작 (헤더 16KB)
-                hasher.update(&data[..block]);
-
-                // ② ~ ⑮ 중간 14개 균등 분할 지점 (각 16KB)
-                for i in 1..=14 {
-                    let center = (len * i) / 15;
-                    let start = center.saturating_sub(block / 2);
-                    let end = (start + block).min(len);
-                    hasher.update(&data[start..end]);
-                }
-
-                // ⑯ 끝 (테일 16KB)
-                hasher.update(&data[len.saturating_sub(block)..]);
-
-                // ⑰ 파일 전체 크기 (고유 시드)
-                hasher.update(&file_size.to_le_bytes());
-            }
-
-            let result = hasher.finalize();
-            let mut s = String::with_capacity(64);
-            for b in result {
-                use std::fmt::Write;
-                let _ = write!(&mut s, "{:02x}", b);
-            }
-            s
-        };
 
         for font_index in 0..num_fonts {
             let face = match Face::parse(data, font_index) {
                 Ok(f) => f,
                 Err(e) => {
-                    // 단일 폰트 파싱 실패 시 수집된 것이 있다면 반환하거나 에러 처리
                     if num_fonts == 1 {
                         return Err(AppError::FontParse(format!(
                             "Failed to parse font '{}' index {}: {:?}",
@@ -146,15 +232,17 @@ impl FontParser {
             let is_monospace = face.is_monospaced();
             let is_variable = face.is_variable();
 
-            let id = format!("{}:{}", file_path, font_index);
             let source = Platform::classify_font_source(Path::new(file_path));
 
             results.push(FontMetadata {
-                id,
+                id: 0, // DB 저장 시 auto_increment id 부여
                 file_path: file_path.to_string(),
                 file_name: file_name.to_string(),
                 file_size,
-                file_hash: file_hash.clone(),
+                file_hash: fast_hash.to_string(),
+                fast_hash: fast_hash.to_string(),
+                deep_hash: None,
+                duplicate_count: 1,
                 font_index,
                 family_name,
                 subfamily_name,
@@ -476,10 +564,8 @@ impl FontParser {
             os2.as_ref(),
         );
 
-        let id = format!("{}:{}", file_path, font_index);
-
         Ok(FontDetailedInfo {
-            id,
+            id: 0,
             file_path,
             file_name,
             file_size,

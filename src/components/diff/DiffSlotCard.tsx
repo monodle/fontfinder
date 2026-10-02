@@ -160,7 +160,7 @@ export function DiffSlotCard({
                 width: `${popoverCoords.width}px`,
                 zIndex: 9999,
               }}
-              className="bg-theme-card border border-theme-border rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
+              className="bg-theme-surface border border-theme-border rounded-2xl shadow-2xl p-2.5 z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-1 border-b border-theme-border">

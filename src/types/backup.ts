@@ -9,7 +9,7 @@ export interface BackupFolder {
 export interface BackupSet {
   name: string;
   color?: string;
-  fontIds: string[];
+  fontIds: number[];
 }
 
 /**

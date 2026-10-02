@@ -6,6 +6,7 @@ pub struct FontSet {
   pub name: String,
   pub color: String,
   pub count: usize,
+  pub parent_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +19,6 @@ pub struct DbFolder {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActivatedFontRecord {
-  pub font_id: String,
+  pub font_id: i64,
   pub file_path: String,
 }

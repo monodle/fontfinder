@@ -32,30 +32,24 @@ export const fontService = {
     return await invoke<FontMetadata[]>("scan_directory", { path });
   },
 
-  async activateFont(path: string, fontId?: string): Promise<void> {
+  async activateFont(path: string, fontId: number): Promise<void> {
     return await invoke<void>("activate_font", { path, fontId });
   },
 
-  async deactivateFont(path: string, fontId?: string): Promise<void> {
+  async deactivateFont(path: string, fontId: number): Promise<void> {
     return await invoke<void>("deactivate_font", { path, fontId });
   },
 
   async activateFonts(
-    items: { font_id: string; path: string }[] | string[]
+    items: { font_id: number; path: string }[]
   ): Promise<number> {
-    const formatted = items.map((it) =>
-      typeof it === "string" ? { font_id: it, path: it } : it
-    );
-    return await invoke<number>("activate_fonts", { items: formatted });
+    return await invoke<number>("activate_fonts", { items });
   },
 
   async deactivateFonts(
-    items: { font_id: string; path: string }[] | string[]
+    items: { font_id: number; path: string }[]
   ): Promise<number> {
-    const formatted = items.map((it) =>
-      typeof it === "string" ? { font_id: it, path: it } : it
-    );
-    return await invoke<number>("deactivate_fonts", { items: formatted });
+    return await invoke<number>("deactivate_fonts", { items });
   },
 
   async getActivatedFonts(): Promise<ActivatedFontRecord[]> {
@@ -75,16 +69,20 @@ export const fontService = {
   },
 
   // --- Sets ---
-  async createSet(name: string, color?: string): Promise<FontSet> {
-    return await invoke<FontSet>("create_set", { name, color });
+  async createSet(name: string, color?: string, parentId?: number | null): Promise<FontSet> {
+    return await invoke<FontSet>("create_set", { name, color, parentId: parentId ?? null });
   },
 
   async updateSetColor(setId: number, color: string): Promise<void> {
     return await invoke<void>("update_set_color", { setId, color });
   },
 
-  async updateSet(setId: number, name: string, color: string): Promise<void> {
-    return await invoke<void>("update_set", { setId, name, color });
+  async updateSet(setId: number, name: string, color: string, parentId?: number | null): Promise<void> {
+    return await invoke<void>("update_set", { setId, name, color, parentId: parentId ?? null });
+  },
+
+  async updateSetParent(setId: number, parentId: number | null): Promise<void> {
+    return await invoke<void>("update_set_parent", { setId, parentId });
   },
 
   async getSets(): Promise<FontSet[]> {
@@ -95,44 +93,49 @@ export const fontService = {
     return await invoke<void>("delete_set", { setId });
   },
 
-  async addFontToSet(setId: number, fontId: string): Promise<void> {
+  async addFontToSet(setId: number, fontId: number): Promise<void> {
     return await invoke<void>("add_font_to_set", { setId, fontId });
   },
 
-  async removeFontFromSet(setId: number, fontId: string): Promise<void> {
+  async removeFontFromSet(setId: number, fontId: number): Promise<void> {
     return await invoke<void>("remove_font_from_set", { setId, fontId });
   },
 
-  async getSetFontIds(setId: number): Promise<string[]> {
-    return await invoke<string[]>("get_set_font_ids", { setId });
+  async getSetFontIds(setId: number): Promise<number[]> {
+    return await invoke<number[]>("get_set_font_ids", { setId });
   },
 
-  async getAllSetFontIds(): Promise<Record<number, string[]>> {
-    return await invoke<Record<number, string[]>>("get_all_set_font_ids");
+  async getAllSetFontIds(): Promise<Record<number, number[]>> {
+    return await invoke<Record<number, number[]>>("get_all_set_font_ids");
   },
 
-  async addFontsToSetBulk(setId: number, fontIds: string[]): Promise<void> {
+  async addFontsToSetBulk(setId: number, fontIds: number[]): Promise<void> {
     if (!fontIds || fontIds.length === 0) return;
     return await invoke<void>("add_fonts_to_set_bulk", { setId, fontIds });
   },
 
-  async removeFontsFromSetBulk(setId: number, fontIds: string[]): Promise<void> {
+  async removeFontsFromSetBulk(setId: number, fontIds: number[]): Promise<void> {
     if (!fontIds || fontIds.length === 0) return;
     return await invoke<void>("remove_fonts_from_set_bulk", { setId, fontIds });
   },
 
   // --- Favorites ---
-  async toggleFavorite(fontId: string): Promise<boolean> {
+  async toggleFavorite(fontId: number): Promise<boolean> {
     return await invoke<boolean>("toggle_favorite", { fontId });
   },
 
-  async setFavoritesBulk(fontIds: string[], add: boolean): Promise<void> {
+  async setFavoritesBulk(fontIds: number[], add: boolean): Promise<void> {
     if (!fontIds || fontIds.length === 0) return;
     return await invoke<void>("set_favorites_bulk", { fontIds, add });
   },
 
-  async getFavoriteFontIds(): Promise<string[]> {
-    return await invoke<string[]>("get_favorite_font_ids");
+  async getFavoriteFontIds(): Promise<number[]> {
+    return await invoke<number[]>("get_favorite_font_ids");
+  },
+
+  async getCachedFontsByIds(ids: number[]): Promise<FontMetadata[]> {
+    if (!ids || ids.length === 0) return [];
+    return await invoke<FontMetadata[]>("get_cached_fonts_by_ids", { ids });
   },
 
 

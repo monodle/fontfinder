@@ -548,6 +548,7 @@ export default function App() {
           void fontService.setSetting("set_order", JSON.stringify(nextSets.map((s) => s.id)));
         }}
         onUpdateSet={library.handleUpdateSet}
+        onUpdateSetParent={library.handleUpdateSetParent}
         onUpdateSetColor={library.handleUpdateSetColor}
         onUpdateFolderColor={library.handleUpdateFolderColor}
       />

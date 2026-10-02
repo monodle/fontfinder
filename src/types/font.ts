@@ -30,11 +30,15 @@ export interface FontLibraryTag {
 }
 
 export interface FontMetadata {
-  id: string;
+  id: number;
   file_path: string;
   file_name: string;
   file_size: number;
   file_hash?: string;
+  fast_hash?: string;
+  deep_hash?: string;
+  duplicate_count?: number;
+  is_duplicate?: boolean;
   font_index: number;
   family_name: string;
   subfamily_name: string;
@@ -67,6 +71,7 @@ export interface FontSet {
   name: string;
   color: string;
   count: number;
+  parent_id?: number | null;
 }
 
 export interface PreviewSettings {
@@ -92,7 +97,7 @@ export interface DbFolder {
 }
 
 export interface ActivatedFontRecord {
-  font_id: string;
+  font_id: number;
   file_path: string;
 }
 
@@ -188,7 +193,7 @@ export interface FontVariableInfo {
 }
 
 export interface FontDetailedInfo {
-  id: string;
+  id: number;
   file_path: string;
   file_name: string;
   file_size: number;
