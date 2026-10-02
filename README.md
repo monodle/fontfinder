@@ -5,7 +5,9 @@
 # FontFinder (폰트파인더)
 
 **차세대 오픈소스 데스크톱 폰트 매니저**
-시스템에 폰트를 직접 설치하지 않고도 수천 개의 폰트 파일을 즉시 미리보고, 분류하고, 필요할 때만 활성화하세요.
+
+시스템에 폰트를 직접 설치하지 않고도
+수천 개의 폰트 파일을 즉시 미리보고, 분류하고, 필요할 때만 활성화하세요.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#다운로드-및-설치)
