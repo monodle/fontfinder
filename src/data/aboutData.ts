@@ -101,6 +101,13 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     url: "https://github.com/microsoft/TypeScript",
     category: "frontend",
   },
+  {
+    name: "tailwind-merge",
+    license: "MIT License",
+    description: "조건부 Tailwind CSS 클래스 충돌 방지 및 최적화 병합 유틸리티",
+    url: "https://github.com/dcastil/tailwind-merge",
+    category: "frontend",
+  },
 
   // Backend (Rust)
   {
@@ -143,6 +150,27 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     license: "MIT / Apache-2.0",
     description: "macOS/Windows의 투명 아크릴 및 비브란시 네이티브 창 효과",
     url: "https://github.com/tauri-apps/window-vibrancy",
+    category: "backend",
+  },
+  {
+    name: "xxhash-rust",
+    license: "BSL-1.0",
+    description: "초고속 XXH3 알고리즘 기반 계층형 폰트 핑거프린트 식별 라이브러리",
+    url: "https://github.com/DoumanAsh/xxhash-rust",
+    category: "backend",
+  },
+  {
+    name: "walkdir",
+    license: "Unlicense / MIT",
+    description: "효율적인 파일 시스템 디렉토리 재귀 탐색 라이브러리",
+    url: "https://github.com/BurntSushi/walkdir",
+    category: "backend",
+  },
+  {
+    name: "serde & serde_json",
+    license: "MIT / Apache-2.0",
+    description: "고성능 Rust 데이터 구조 직렬화 및 역직렬화 프레임워크",
+    url: "https://github.com/serde-rs/serde",
     category: "backend",
   },
 

@@ -84,14 +84,14 @@
 
 ## 🌟 주요 기능
 
-- ⚡ **미설치 폰트 즉시 미리보기**: 시스템에 설치하지 않고도 폴더 내 `.ttf`, `.otf`, `.woff`, `.ttc` 파일을 웹뷰에서 실시간 렌더링
-- 🏎️ **초고속 병렬 스캔 & 대용량 가상화 스크롤**: Rust `rayon` 기반 병렬 스캐너와 가상 스크롤로 수천~수만 개의 폰트도 버벅임 없이 탐색
-- 🎨 **리디북스/애플북스 스타일의 Warm Paper 테마**: 장시간 텍스트 작업에도 눈이 편안한 세피아 크림 톤의 프리미엄 UI
-- 🎛️ **가변 폰트(Variable Font) 세부 조절**: `wght` 등 축 슬라이더를 통해 두께를 실시간으로 조절하며 감상
-- 🔍 **정밀 폰트 비교 (Font Diff)**: 최대 5개 폰트를 한 캔버스에 레이어로 겹쳐(Overlay) 투명도·오프셋·외곽선 모드로 글리프 형태와 자폭의 미세한 차이를 정밀하게 비교 분석
-- 📁 **컬렉션 & 세트 관리**: 프로젝트별, 스타일별(고딕, 명조, 손글씨 등) 세트를 생성하고 즐겨찾기 관리
-- 🔌 **원클릭 폰트 임시 활성화 & 설치**: 디자인 프로그램 작업 중에만 폰트를 켜두거나 시스템 영구 설치 가능
-- 🌐 **8개 언어 다국어 인터페이스**: 한국어, 영어, 스페인어, 일본어, 중국어(간체/번체), 독일어, 프랑스어 지원
+- ⚡ **설치 없이 즉시 미리보기**: 폰트를 컴퓨터에 일일이 설치하지 않아도, 폴더에 있는 폰트 파일(`.ttf`, `.otf`, `.woff`, `.ttc`)을 바로 열어 원하는 문장으로 타이핑해 볼 수 있습니다.
+- 🏎️ **수만 개의 폰트도 버벅임 없는 탐색**: 보관 중인 폰트 파일이 수천, 수만 개여도 멈춤이나 지연 없이 부드럽게 스크롤하며 빠르게 찾을 수 있습니다.
+- 🎨 **취향과 작업 환경에 맞춘 다양한 테마**: 깔끔한 클린 화이트, 은은하고 세련된 반투명 글래스, 눈의 피로를 덜어주는 다크 모드와 포레스트 등 다양한 감성 테마를 지원합니다.
+- 🎛️ **슬라이더로 자유로운 두께·너비 조절**: 가변 폰트(Variable Font)의 두께나 비율을 슬라이더로 미세하게 움직이며 원하는 형태를 실시간으로 확인할 수 있습니다.
+- 🔍 **겹쳐서 확인하는 정밀 폰트 비교**: 비슷한 폰트들을 한 화면에 반투명하게 겹쳐보거나 외곽선을 대조하여, 글자 모양과 자간의 미세한 차이를 쉽게 파악할 수 있습니다.
+- 📁 **프로젝트별 서재 & 즐겨찾기 관리**: 스타일별(고딕, 명조, 손글씨 등)이나 작업 프로젝트별로 폴더 세트를 만들어 분류하고, 자주 쓰는 폰트를 즐겨찾기로 보관하세요.
+- 🔌 **작업할 때만 켜두는 원클릭 활성화**: 그래픽 툴(포토샵, 일러스트레이터, 피그마 등) 작업 중에만 폰트를 임시로 켜두어 컴퓨터를 항상 쾌적하게 유지할 수 있습니다. (원클릭 영구 설치도 지원)
+- 🌐 **글로벌 8개 언어 지원**: 한국어는 물론 영어, 일본어, 중국어(간체/번체), 스페인어, 독일어, 프랑스어를 지원합니다.
 
 ---
 
@@ -108,9 +108,18 @@
 
 ## 🛠️ 기술 스택
 
-- **Frontend**: `React 19`, `TypeScript`, `Vite 6`, `Tailwind CSS v4`, `@tanstack/react-virtual`, `lucide-react`
-- **Backend**: `Tauri v2`, `Rust 2021 Edition`, `ttf-parser`, `rayon`, `rusqlite`
-- **Native OS Font API**: `macOS CoreText FFI` / `Windows Win32 GDI`
+| 영역                      | 기술 / 라이브러리                                         | 용도                                                       |
+| :------------------------ | :-------------------------------------------------------- | :--------------------------------------------------------- |
+| **Frontend**              | `React 19`, `TypeScript 5`, `Vite 6`                      | 모던 SPA 프론트엔드 아키텍처 및 빠른 HMR 빌드              |
+| **Styling**               | `Tailwind CSS v4`, `tailwind-merge`                       | 고성능 CSS 컴파일러 및 테마 스타일링                       |
+| **State / UI**            | `@tanstack/react-virtual`, `lucide-react`                 | 대용량 폰트 리스트 가상화 스크롤 및 UI 아이콘 시스템       |
+| **i18n**                  | `i18next`, `react-i18next`                                | 글로벌 8개 언어 다국어 지원                                |
+| **Desktop Core**          | `Tauri v2`, `Rust 2021 Edition`                           | 저메모리 고성능 크로스플랫폼 네이티브 셸                   |
+| **Font Engine**           | `ttf-parser`                                              | TTF / OTF / TTC / WOFF 폰트 테이블 파싱 및 메타데이터 추출 |
+| **Concurrency / IO**      | `rayon`, `tokio`, `walkdir`, `notify-debouncer-mini`      | 멀티스레드 병렬 디렉토리 스캔 및 실시간 파일 변경 감시     |
+| **Storage & Fingerprint** | `rusqlite` (Bundled SQLite), `xxhash-rust (XXH3)`, `sha2` | 로컬 폰트 메타데이터 캐싱 및 계층형 고속 핑거프린트 식별   |
+| **Window Effects**        | `window-vibrancy`, `tauri-plugin-window-state`            | macOS Vibrancy / Windows Mica 글래스 테마 및 창 상태 유지  |
+| **Native OS Font FFI**    | macOS `CoreText` / Windows `Win32 GDI (windows-sys)`      | 무설치 임시 활성화, 시스템 등록/해제 네이티브 바인딩       |
 
 ---
 
@@ -118,7 +127,7 @@
 
 버그 리포트, 기능 제안 또는 기술적 문의는 아래 메일이나 GitHub Issues를 통해 남겨주세요.
 
-- **이메일:** [문의 메일 보내기](mailto:fontfontfinder@gmail.com?subject=%5BFontFinder%5D%20%EB%AC%B8%EC%9D%98%20%EB%B0%8F%20%ED%94%BC%EB%93%9C%EB%B0%B1&body=%5B%EA%B8%B0%EB%B3%B8%20%EC%A0%95%EB%B3%94%5D%0A-%20OS%20%ED%99%98%EA%B2%BD%3A%20macOS%20%2F%20Windows%0A-%20%EC%95%B1%20%EB%B2%84%EC%A0%84%3A%20v0.1.5%0A%0A%5B%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9%5D%0A) (`fontfontfinder@gmail.com`)
+- **이메일:** [문의 메일 보내기](mailto:fontfontfinder@gmail.com?subject=%5BFontFinder%5D%20%EB%AC%B8%EC%9D%98%20%EB%B0%8F%20%ED%94%BC%EB%93%9C%EB%B0%B1&body=%5B%EA%B8%B0%EB%B3%B8%20%EC%A0%95%EB%B3%94%5D%0A-%20OS%20%ED%99%98%EA%B2%BD%3A%20macOS%20%2F%20Windows%0A-%20%EC%95%B1%20%EB%B2%84%EC%A0%84%3A%20v0.2.3%0A%0A%5B%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9%5D%0A) (`fontfontfinder@gmail.com`)
 - **이슈 등록:** [GitHub Issues](https://github.com/monodle/fontfinder/issues)
 
 ---
