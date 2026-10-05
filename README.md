@@ -196,7 +196,7 @@
 
 버그 리포트, 기능 제안 또는 기술적 문의는 아래 메일이나 GitHub Issues를 통해 남겨주세요.
 
-- **이메일:** [문의 메일 보내기](mailto:fontfontfinder@gmail.com?subject=%5BFontFinder%5D%20%EB%AC%B8%EC%9D%98%20%EB%B0%8F%20%ED%94%BC%EB%93%9C%EB%B0%B1&body=%5B%EA%B8%B0%EB%B3%B8%20%EC%A0%95%EB%B3%94%5D%0A-%20OS%20%ED%99%98%EA%B2%BD%3A%20macOS%20%2F%20Windows%0A-%20%EC%95%B1%20%EB%B2%84%EC%A0%84%3A%20v0.2.3%0A%0A%5B%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9%5D%0A) (`fontfontfinder@gmail.com`)
+- **이메일:** [문의 메일 보내기](mailto:fontfontfinder@gmail.com?subject=%5BFontFinder%5D%20%EB%AC%B8%EC%9D%98%20%EB%B0%8F%20%ED%94%BC%EB%93%9C%EB%B0%B1&body=%5B%EA%B8%B0%EB%B3%B8%20%EC%A0%95%EB%B3%94%5D%0A-%20OS%20%ED%99%98%EA%B2%BD%3A%20macOS%20%2F%20Windows%0A%0A%5B%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9%5D%0A) (`fontfontfinder@gmail.com`)
 - **이슈 등록:** [GitHub Issues](https://github.com/monodle/fontfinder/issues)
 
 ---
