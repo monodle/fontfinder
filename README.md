@@ -171,7 +171,6 @@
 | :---------- | :--------------------------------------------- | :-------: |
 | `.ttf`      | TrueType Font                                  |  ✅ 지원   |
 | `.otf`      | OpenType Font                                  |  ✅ 지원   |
-| `.woff`     | Web Open Font Format                           |  ✅ 지원   |
 | `.ttc`      | TrueType Collection (단일 파일 내 복수 패밀리) |  ✅ 지원   |
 
 ---
