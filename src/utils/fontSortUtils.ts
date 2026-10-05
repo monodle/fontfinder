@@ -27,7 +27,7 @@ export function isFontFavorite(font: FontMetadata, favoriteIds: Set<number>): bo
  * - activated: 시스템 등록 또는 임시 활성화 폰트
  * - deactivated: 비활성화 (대기 상태의 외부 폰트 등)
  */
-export function getFontSortBlock(font: FontMetadata, ctx: FontSortContext): FontSortBlock {
+function getFontSortBlock(font: FontMetadata, ctx: FontSortContext): FontSortBlock {
   // 1. 접근 불가 (언플러그드, 파일 유실, 삭제 상태)
   if (
     font.install_status === "unplugged" ||
@@ -61,7 +61,7 @@ export function getFontSortBlock(font: FontMetadata, ctx: FontSortContext): Font
 /**
  * 특정 필드(폰트 이름 / 파일 이름) 및 정렬 방향(오름차순 / 내림차순)에 따른 두 폰트 간 비교
  */
-export function compareFontsByField(
+function compareFontsByField(
   a: FontMetadata,
   b: FontMetadata,
   field: FontSortField = "fontName",
@@ -97,13 +97,6 @@ export function compareFontsByField(
   }
 
   return order === "desc" ? -diff : diff;
-}
-
-/**
- * 다국어(한글/영문/숫자) 패밀리명 오름차순 기본 비교 (하위 호환)
- */
-export function compareFontNames(a: FontMetadata, b: FontMetadata, currentLang?: string): number {
-  return compareFontsByField(a, b, "fontName", "asc", currentLang);
 }
 
 /**
@@ -155,15 +148,4 @@ export function sortFonts(
 
     return compareFontsByField(a, b, field, order, currentLang);
   });
-}
-
-/**
- * 하위 호환용 정렬 함수
- */
-export function sortFontsByPriority(
-  fonts: FontMetadata[],
-  ctx: FontSortContext,
-  sortSettings?: FontSortSettings
-): FontMetadata[] {
-  return sortFonts(fonts, ctx, sortSettings || DEFAULT_SORT_SETTINGS);
 }

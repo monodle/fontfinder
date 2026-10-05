@@ -236,8 +236,15 @@ export function FontDuplicateBadge({
       variant="warning"
       className={cn("text-[9px] font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0", className)}
     >
-      <span title={t("badge.duplicate_tooltip", `동일한 폰트 파일이 ${count}개 존재합니다`)}>
-        {compact ? `×${count}` : t("badge.duplicate", `중복 ${count}`)}
+      <span
+        title={t("badge.duplicate_tooltip", {
+          count,
+          defaultValue: `동일한 폰트 파일이 ${count}개 존재합니다`,
+        })}
+      >
+        {compact
+          ? `×${count}`
+          : t("badge.duplicate", { count, defaultValue: `중복 ${count}` })}
       </span>
     </Badge>
   );

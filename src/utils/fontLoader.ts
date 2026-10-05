@@ -50,7 +50,7 @@ function buildLocalFallbackStack(font: FontMetadata): string {
  * @param fontId 폰트 고유 ID
  * @param margin 뷰포트 상하좌우 안전 여유 마진 (픽셀, 기본 250px)
  */
-export function isFontVisibleInViewport(fontId: string | number, margin = 250): boolean {
+function isFontVisibleInViewport(fontId: string | number, margin = 250): boolean {
   if (typeof document === "undefined") return false;
 
   const selector = `[data-font-card-id="${CSS.escape(String(fontId))}"]`;
@@ -262,7 +262,7 @@ class FontCacheManager {
   }
 }
 
-export const fontCacheManager = new FontCacheManager();
+const fontCacheManager = new FontCacheManager();
 
 /**
  * 외부 모듈용 편의 헬퍼 함수들

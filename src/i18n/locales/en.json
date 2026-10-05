@@ -19,7 +19,9 @@
     "fonts": "Fonts",
     "count_unit": " items",
     "reset_to_default": "Reset to default",
-    "clear": "Clear"
+    "clear": "Clear",
+    "copy": "Copy",
+    "close_esc": "Close (Esc)"
   },
   "dialog": {
     "cancel": "Cancel",
@@ -40,7 +42,14 @@
     "bulk_remove_from_set_desc": "Are you sure you want to remove {{count}} selected fonts from the '{{setName}}' set?",
     "remove_from_set_notice": "(This only removes them from the set; the actual font files will not be deleted.)",
     "bulk_remove_from_set_item": "{{count}} selected fonts",
-    "remove_btn": "Remove from Set"
+    "remove_btn": "Remove from Set",
+    "deactivate_font_title": "Deactivate Font",
+    "bulk_deactivate_title": "Deactivate Fonts",
+    "deactivate_font_desc": "Are you sure you want to deactivate this font?",
+    "bulk_deactivate_desc": "Are you sure you want to deactivate {{count}} selected fonts?",
+    "deactivate_warning": "Deactivating will immediately unload the font from active design and document applications.",
+    "deactivate_btn": "Deactivate",
+    "bulk_deactivate_item": "{{count}} selected fonts"
   },
   "preview": {
     "default_text": "The quick brown fox jumps over the lazy dog\nPack my box with five dozen liquor jugs\n1234567890"
@@ -87,7 +96,7 @@
     "set_name_label": "Set Name",
     "set": "Set",
     "custom_set_desc": "Custom set collection",
-    "all_desc": "All registered fonts",
+    "all_desc": "All registered fonts excluding system fonts",
     "system_desc": "Operating system fonts",
     "user_desc": "User installed fonts",
     "activated_desc": "Currently activated fonts",
@@ -102,7 +111,12 @@
     "promote_to_root": "Promote to Root (1depth)",
     "children_count": "{{count}} subsets",
     "delete_set_with_children_confirm": "Delete library set '{{name}}'?\nIts {{count}} subset(s) ({{children}}) will also be deleted.\n(Original font files will not be deleted)",
-    "subset_desc": "Subset collection"
+    "subset_desc": "Subset collection",
+    "expand": "Expand subsets",
+    "collapse": "Collapse subsets",
+    "insert_root": "Insert at root level",
+    "insert_child": "↳ Depth 2 {{parent}}",
+    "move_into_set": "↳ Move into {{name}}"
   },
   "folder": {
     "disconnected": "Disconnected",
@@ -140,7 +154,8 @@
     "view_mode": "View mode",
     "detail_mode_tooltip": "Font detail level",
     "diff_tooltip_selected": "Compare selected font glyphs ({{count}})",
-    "diff_tooltip": "Compare font glyphs (Diff)"
+    "diff_tooltip": "Compare font glyphs (Diff)",
+    "color_presets": "Presets"
   },
   "sort": {
     "title": "Font List Sorting",
@@ -194,6 +209,7 @@
     "system_protected_title": "System built-in fonts cannot be installed or uninstalled",
     "system_protected_label": "System Protected Font (Read-only)",
     "system_protected_count": "System Protected Fonts ({{count}})",
+    "copy": "Copy",
     "copy_name": "Copy Font Name",
     "copy_names": "Copy {{count}} Font Names",
     "copy_path": "Copy File Path",
@@ -212,7 +228,8 @@
     "no_matching_sets": "No matching font sets",
     "search_sets": "Search font sets...",
     "view_font_info": "View Font Info",
-    "view_font_info_n": "View Font Info ({{count}})"
+    "view_font_info_n": "View Font Info ({{count}})",
+    "show_in_folder_mac": "Reveal in Finder"
   },
   "font_info": {
     "title": "Font Info",
@@ -334,7 +351,9 @@
       "char_unit": "chars",
       "characters_included": "{{count}} characters included",
       "opentype_features": "OpenType Layout Features (GSUB/GPOS)",
-      "no_features": "No OpenType feature tags found."
+      "no_features": "No OpenType feature tags found.",
+      "glyphs_unit": "glyphs",
+      "chars_unit": "chars"
     },
     "raw": {
       "name_table": "Name Table (Font Identification & Naming)",
@@ -377,7 +396,24 @@
         "sample_text": "Sample Preview Text"
       }
     },
-    "disclaimer": "※ This information is extracted directly from the font file's internal metadata and may differ from the author's latest license terms or actual specifications. Please verify usage terms with the official distributor."
+    "disclaimer": "※ This information is extracted directly from the font file's internal metadata and may differ from the author's latest license terms or actual specifications. Please verify usage terms with the official distributor.",
+    "selected_count": "{{count}} selected",
+    "copy_ps_name": "Copy PostScript Name",
+    "copy_file_path": "Copy file path",
+    "analyzing": "Analyzing metadata...",
+    "family_class": {
+      "oldstyle_serifs": "Oldstyle Serifs",
+      "transitional_serifs": "Transitional Serifs",
+      "modern_serifs": "Modern Serifs",
+      "clarendon_serifs": "Clarendon Serifs",
+      "slab_serifs": "Slab Serifs",
+      "freeform_serifs": "Freeform Serifs",
+      "sans_serif": "Sans-serif",
+      "scripts": "Scripts",
+      "decorative": "Decorative / Display",
+      "symbolic": "Symbolic",
+      "none": "No Classification"
+    }
   },
   "diff": {
     "title": "Font Glyph Diff",
@@ -481,7 +517,7 @@
     "theme_glass": "Glass",
     "default_category": "Default Library Category",
     "cat_user_desc": "Fonts added or installed by user",
-    "cat_all_desc": "All fonts in system and user libraries",
+    "cat_all_desc": "All registered fonts excluding system fonts",
     "cat_system_desc": "Operating system built-in fonts",
     "cat_activated_desc": "Currently temporarily activated external fonts",
     "cat_favorites_desc": "Heart-marked favorite fonts",
@@ -689,7 +725,16 @@
     "settings_save_failed": "Failed to save preferences.",
     "folder_open_failed": "Failed to open folder.",
     "added_to_set": "'{{name}}' added to set.",
-    "bulk_added_to_set": "{{count}} fonts added to set."
+    "bulk_added_to_set": "{{count}} fonts added to set.",
+    "woff_activate_unsupported": "WOFF/WOFF2 formats are web-only fonts and do not support OS system activation.",
+    "error_reason_processing": "Error occurred during processing",
+    "error_reason_in_use": "In use by another application",
+    "error_reason_permission": "Insufficient write permissions",
+    "error_reason_corrupted": "Unsupported or corrupted font",
+    "error_reason_not_found": "File not found",
+    "error_reason_multiple": "Multiple causes",
+    "bulk_installed_partial": "{{success}} installed / {{failed}} failed ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}} removed / {{failed}} failed ({{reason}})"
   },
   "empty": {
     "scanning": "Scanning font metadata...",
@@ -818,7 +863,9 @@
     "newer_version_full": "Update Available",
     "newer_version_tooltip": "Newer version than system installed font",
     "older_version": "Older",
-    "older_version_tooltip": "A newer version is already installed in the system"
+    "older_version_tooltip": "A newer version is already installed in the system",
+    "duplicate": "Duplicate {{count}}",
+    "duplicate_tooltip": "{{count}} identical font files exist"
   },
   "sort_settings": {
     "recommended_badge": "Recommended",

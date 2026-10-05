@@ -58,41 +58,48 @@ impl FontParser {
     }
 
     /// 2차 온디맨드 정밀 지문 (Deep Fingerprint):
-    /// 16구간 분산(각 16KB)을 스트림 Seek으로 읽어 SHA-256 해싱 (메모리 256KB 제한, read_to_end 금지)
+    /// - 256KB 이하: 1회 일괄 읽기 (Seek 0회)
+    /// - 256KB 초과: 헤더 32KB(Seek 0) + 중간 1/3(64KB, Seek 1) + 중간 2/3(64KB, Seek 2) + 테일 32KB(Seek 3)
+    /// 총 3번의 Seek만으로 192KB 핵심 표본 + 파일 크기를 SHA-256 해싱하여 I/O 오버헤드를 극적으로 단축
     pub fn compute_deep_hash<P: AsRef<Path>>(path: P, file_size: u64) -> AppResult<String> {
         let mut file = File::open(path)?;
         let mut hasher = Sha256::new();
-        let block = 16_384; // 16KB
-        let total_sample_threshold = block * 16; // 256KB
+        let total_sample_threshold = 262_144; // 256KB
 
         if file_size <= total_sample_threshold as u64 {
             let mut buffer = Vec::with_capacity(file_size as usize);
             file.read_to_end(&mut buffer)?;
             hasher.update(&buffer);
         } else {
-            let mut chunk = vec![0u8; block];
+            // ① 시작 헤더 (32KB, 파일 오픈 직후이므로 Seek 0회 순차 읽기)
+            let head_block = 32_768; // 32KB
+            let mut head_chunk = vec![0u8; head_block];
+            file.read_exact(&mut head_chunk)?;
+            hasher.update(&head_chunk);
 
-            // ① 시작 (헤더 16KB)
-            file.seek(SeekFrom::Start(0))?;
-            file.read_exact(&mut chunk)?;
-            hasher.update(&chunk);
+            // ② 중간 1지점 (파일의 약 1/3 지점, 64KB, Seek 1회)
+            let mid_block = 65_536; // 64KB
+            let mut mid_chunk = vec![0u8; mid_block];
+            let pos1 = (file_size / 3).saturating_sub((mid_block / 2) as u64);
+            file.seek(SeekFrom::Start(pos1))?;
+            let n1 = file.read(&mut mid_chunk)?;
+            hasher.update(&mid_chunk[..n1]);
 
-            // ② ~ ⑮ 중간 14개 균등 분산 지점 (각 16KB)
-            for i in 1..=14 {
-                let center = (file_size * i) / 15;
-                let start = center.saturating_sub((block / 2) as u64);
-                file.seek(SeekFrom::Start(start))?;
-                let n = file.read(&mut chunk)?;
-                hasher.update(&chunk[..n]);
-            }
+            // ③ 중간 2지점 (파일의 약 2/3 지점, 64KB, Seek 2회)
+            let pos2 = ((file_size * 2) / 3).saturating_sub((mid_block / 2) as u64);
+            file.seek(SeekFrom::Start(pos2))?;
+            let n2 = file.read(&mut mid_chunk)?;
+            hasher.update(&mid_chunk[..n2]);
 
-            // ⑯ 끝 (테일 16KB)
-            let tail_start = file_size.saturating_sub(block as u64);
+            // ④ 끝 테일 (32KB, Seek 3회)
+            let tail_block = 32_768; // 32KB
+            let mut tail_chunk = vec![0u8; tail_block];
+            let tail_start = file_size.saturating_sub(tail_block as u64);
             file.seek(SeekFrom::Start(tail_start))?;
-            let n = file.read(&mut chunk)?;
-            hasher.update(&chunk[..n]);
+            let n3 = file.read(&mut tail_chunk)?;
+            hasher.update(&tail_chunk[..n3]);
 
-            // ⑰ 파일 전체 크기
+            // ⑤ 파일 전체 크기 바이트 일치 보장
             hasher.update(&file_size.to_le_bytes());
         }
 

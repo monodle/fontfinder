@@ -53,6 +53,7 @@ interface ContextMenuProps {
   onBulkAddToSet?: (setId: number, fontIds: number[]) => void;
   onBulkRemoveFromSet?: (setId: number, fontIds: number[]) => void;
   onRequestUninstall?: (fonts: FontMetadata[]) => void;
+  onRequestDeactivate?: (fonts: FontMetadata[]) => void;
   onRequestRemoveFromSet?: (setId: number, fonts: FontMetadata[]) => void;
   onRefreshList?: () => void;
   onActionFeedback?: (msg: string) => void;
@@ -60,6 +61,8 @@ interface ContextMenuProps {
   onOpenDiff?: (fonts: FontMetadata[]) => void;
   onOpenFontInfo?: (fonts: FontMetadata[]) => void;
 }
+
+type SubmenuType = "set" | "copy" | null;
 
 export function ContextMenu({
   x,
@@ -80,6 +83,7 @@ export function ContextMenu({
   onBulkAddToSet,
   onBulkRemoveFromSet,
   onRequestUninstall,
+  onRequestDeactivate,
   onRequestRemoveFromSet,
   onRefreshList,
   onActionFeedback,
@@ -92,15 +96,66 @@ export function ContextMenu({
   const isMulti = fonts.length > 1;
   const primaryFont = fonts[0];
 
+  const isFontUsable = (f: FontMetadata) =>
+    !f.isMissing && f.install_status !== "unplugged" && f.install_status !== "deleted";
+
+  const isWoffFont = (f: { format: string }) => f.format === "Woff" || f.format === "Woff2";
+
+  // 사용 가능한 폰트 필터링
+  const usableFonts = useMemo(() => fonts.filter(isFontUsable), [fonts]);
+
+  // 1. 즐겨찾기 상태 분류
+  const unfavoritedFonts = useMemo(
+    () => usableFonts.filter((f) => !isFontFavorite(f, favoriteIds)),
+    [usableFonts, favoriteIds]
+  );
+  const favoritedFonts = useMemo(
+    () => usableFonts.filter((f) => isFontFavorite(f, favoriteIds)),
+    [usableFonts, favoriteIds]
+  );
+
+  // 2. 임시 활성화 상태 분류 (외부 폰트만 해당)
+  const activatableFonts = useMemo(
+    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)),
+    [usableFonts]
+  );
+  const inactiveActivatableFonts = useMemo(
+    () => activatableFonts.filter((f) => !activatedFontIds?.has(f.id)),
+    [activatableFonts, activatedFontIds]
+  );
+  const activeActivatableFonts = useMemo(
+    () => activatableFonts.filter((f) => activatedFontIds?.has(f.id)),
+    [activatableFonts, activatedFontIds]
+  );
+
+  // 3. 시스템 설치 / 제거 / 보호 분류
+  const installableFonts = useMemo(
+    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)),
+    [usableFonts]
+  );
+  const uninstallableFonts = useMemo(
+    () => usableFonts.filter((f) => f.source === "user"),
+    [usableFonts]
+  );
+  const systemFonts = useMemo(
+    () => fonts.filter((f) => f.source === "system"),
+    [fonts]
+  );
+
+  // 서재 상태 (현재 열려있는 서재 세트 화면인지 여부)
+  const isInCurrentSet = currentSetId !== null && currentSetId !== undefined;
+
+  // 폰트 비교 라벨
   const diffLabel = useMemo(() => {
-    if (fonts.length === 0) return t("context_menu.diff_compare", "[폰트 비교]");
-    if (fonts.length === 1) return t("context_menu.diff_compare_1", "[폰트 비교 (1)]");
-    if (fonts.length <= 5)
+    if (fonts.length === 0) return t("context_menu.diff_compare", "폰트비교");
+    if (fonts.length === 1) return t("context_menu.diff_compare_1", "폰트비교 (1)");
+    if (fonts.length <= 5) {
       return t("context_menu.diff_compare_n", {
         count: fonts.length,
-        defaultValue: `[폰트 비교 (${fonts.length})]`,
+        defaultValue: `폰트비교 (${fonts.length})`,
       });
-    return t("context_menu.diff_compare_top5", "[폰트 비교 (상위 5개)]");
+    }
+    return t("context_menu.diff_compare_top5", "폰트비교 (상위 5개)");
   }, [fonts.length, t]);
 
   const handleDiffClick = useCallback(() => {
@@ -117,11 +172,16 @@ export function ContextMenu({
   }, [fonts, onClose, onActionFeedback, onOpenDiff, t]);
 
   // 서브메뉴(2depth) 상태 관리
-  const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<SubmenuType>(null);
   const [setSearchQuery, setSetSearchQuery] = useState("");
-  const [submenuPosition, setSubmenuPosition] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const submenuRef = useRef<HTMLDivElement>(null);
+
+  const setTriggerRef = useRef<HTMLDivElement>(null);
+  const setSubmenuRef = useRef<HTMLDivElement>(null);
+  const copyTriggerRef = useRef<HTMLDivElement>(null);
+  const copySubmenuRef = useRef<HTMLDivElement>(null);
+
+  const [setSubmenuPosition, setSetSubmenuPosition] = useState<{ left: number; top: number } | null>(null);
+  const [copySubmenuPosition, setCopySubmenuPosition] = useState<{ left: number; top: number } | null>(null);
   const submenuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const structuredSetGroups = useMemo<SetGroupItem[]>(() => {
@@ -137,7 +197,6 @@ export function ContextMenu({
     }
 
     if (!query) {
-      // 검색어가 없을 때는 전체 1depth 및 그 하위 2depth 계층 노출
       return parents.map((p) => ({
         parent: p,
         children: childrenMap.get(p.id) ?? [],
@@ -146,10 +205,6 @@ export function ContextMenu({
       }));
     }
 
-    // 검색어 필터링 규칙:
-    // 1) 2depth 일치 시: 상위 1depth 부모를 맥락 헤더로 함께 노출
-    // 2) 1depth 일치 시: 1depth만 단독 노출 (하위 2depth 자식은 숨김)
-    // 3) 둘 다 일치 시: 1depth와 일치하는 2depth만 함께 노출
     const groups: SetGroupItem[] = [];
 
     for (const parent of parents) {
@@ -160,7 +215,6 @@ export function ContextMenu({
       );
 
       if (parentMatches && matchingChildren.length === 0) {
-        // 1depth만 매칭된 경우: 1depth만 단독 노출 (자식 숨김)
         groups.push({
           parent,
           children: [],
@@ -168,7 +222,6 @@ export function ContextMenu({
           isContextOnlyParent: false,
         });
       } else if (!parentMatches && matchingChildren.length > 0) {
-        // 2depth만 매칭된 경우: 부모를 맥락 헤더로 함께 노출
         groups.push({
           parent,
           children: matchingChildren,
@@ -176,7 +229,6 @@ export function ContextMenu({
           isContextOnlyParent: true,
         });
       } else if (parentMatches && matchingChildren.length > 0) {
-        // 둘 다 매칭된 경우: 부모 및 일치하는 자식 모두 노출
         groups.push({
           parent,
           children: matchingChildren,
@@ -189,7 +241,6 @@ export function ContextMenu({
     return groups;
   }, [sets, setSearchQuery]);
 
-  // 화면에 렌더링될 총 항목 개수 계산
   const totalVisibleSetCount = useMemo(() => {
     let count = 0;
     for (const g of structuredSetGroups) {
@@ -198,102 +249,141 @@ export function ContextMenu({
     return count;
   }, [structuredSetGroups]);
 
-  // 서브메뉴 예상 높이 계산 (마운트 전 초기 배치 및 측정 전 폴백용)
-  const getEstimatedSubmenuHeight = useCallback(() => {
+  const getEstimatedSetSubmenuHeight = useCallback(() => {
     const hasSearch = sets.length >= 5;
     const searchHeight = hasSearch ? 36 : 0;
-    const padding = 14; // p-1.5(상하 6*2) + border(1*2)
+    const padding = 14;
     const count = totalVisibleSetCount;
-    let listHeight = 44; // 세트 없음 안내 높이
+    let listHeight = 44;
     if (count > 0) {
       listHeight = Math.min(260, count * 34);
     }
     return searchHeight + listHeight + padding;
   }, [sets.length, totalVisibleSetCount]);
 
-  const updateSubmenuPosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const triggerRect = triggerRef.current.getBoundingClientRect();
-    const menuRect = menuRef.current?.getBoundingClientRect() ?? triggerRect;
+  // 1depth 메뉴 화면 경계 밖 벗어남 방지
+  const adjustedX = Math.max(8, Math.min(x, window.innerWidth - 240));
+  const adjustedY = Math.max(8, Math.min(y, window.innerHeight - 380));
 
-    // 실제 렌더링된 서브메뉴 크기 (마운트 전이면 예상 크기 사용)
-    const submenuRect = submenuRef.current?.getBoundingClientRect();
-    const submenuWidth = submenuRect && submenuRect.width > 0 ? submenuRect.width : 216;
-    const submenuHeight = submenuRect && submenuRect.height > 0
-      ? submenuRect.height
-      : getEstimatedSubmenuHeight();
+  // 공통 2depth 서브메뉴 위치 계산 함수
+  const calculateSubmenuPosition = useCallback(
+    (
+      triggerEl: HTMLElement | null,
+      submenuEl: HTMLElement | null,
+      fallbackHeight: number,
+      fallbackWidth = 216
+    ) => {
+      const triggerRect = triggerEl?.getBoundingClientRect();
+      const menuRect = menuRef.current?.getBoundingClientRect();
 
-    const SCREEN_PADDING = 8;
-    const HORIZONTAL_GAP = 4;
-    // 서브메뉴 컨테이너 패딩(p-1.5 = 6px)을 감안하여 아이템 수평선 일치
-    const VERTICAL_ITEM_ALIGN_OFFSET = 6;
+      if (!triggerRect && !menuRect) {
+        return { left: adjustedX + 224, top: adjustedY };
+      }
 
-    // 1. 가로 (X축) 위치 계산: 1depth 메뉴 바로 옆에 배치
-    const spaceOnRight = window.innerWidth - menuRect.right - SCREEN_PADDING;
-    const spaceOnLeft = menuRect.left - SCREEN_PADDING;
+      const refRect = triggerRect ?? menuRect!;
+      const baseMenuRect = menuRect ?? refRect;
 
-    let left: number;
-    if (spaceOnRight >= submenuWidth + HORIZONTAL_GAP) {
-      // 우측 공간 충분 -> 1depth 메뉴 바로 오른쪽에 붙임
-      left = menuRect.right + HORIZONTAL_GAP;
-    } else if (spaceOnLeft >= submenuWidth + HORIZONTAL_GAP) {
-      // 우측 공간 부족하고 좌측 공간 충분 -> 1depth 메뉴 바로 왼쪽에 붙임
-      left = menuRect.left - submenuWidth - HORIZONTAL_GAP;
-    } else {
-      // 양쪽 모두 좁은 경우 더 넓은 쪽 선택
-      left = spaceOnRight >= spaceOnLeft
-        ? menuRect.right + HORIZONTAL_GAP
-        : menuRect.left - submenuWidth - HORIZONTAL_GAP;
+      const submenuRect = submenuEl?.getBoundingClientRect();
+      const submenuWidth = submenuRect && submenuRect.width > 0 ? submenuRect.width : fallbackWidth;
+      const submenuHeight = submenuRect && submenuRect.height > 0 ? submenuRect.height : fallbackHeight;
+
+      const SCREEN_PADDING = 8;
+      const HORIZONTAL_GAP = 4;
+      const VERTICAL_ITEM_ALIGN_OFFSET = 6;
+
+      const spaceOnRight = window.innerWidth - baseMenuRect.right - SCREEN_PADDING;
+      const spaceOnLeft = baseMenuRect.left - SCREEN_PADDING;
+
+      let left: number;
+      if (spaceOnRight >= submenuWidth + HORIZONTAL_GAP) {
+        left = baseMenuRect.right + HORIZONTAL_GAP;
+      } else if (spaceOnLeft >= submenuWidth + HORIZONTAL_GAP) {
+        left = baseMenuRect.left - submenuWidth - HORIZONTAL_GAP;
+      } else {
+        left = spaceOnRight >= spaceOnLeft
+          ? baseMenuRect.right + HORIZONTAL_GAP
+          : baseMenuRect.left - submenuWidth - HORIZONTAL_GAP;
+      }
+      left = Math.max(SCREEN_PADDING, Math.min(left, window.innerWidth - submenuWidth - SCREEN_PADDING));
+
+      const topAlignY = refRect.top - VERTICAL_ITEM_ALIGN_OFFSET;
+      const bottomAlignY = refRect.bottom + VERTICAL_ITEM_ALIGN_OFFSET - submenuHeight;
+
+      const fitsDownwards = (topAlignY + submenuHeight) <= (window.innerHeight - SCREEN_PADDING);
+      const fitsUpwards = bottomAlignY >= SCREEN_PADDING;
+
+      let top: number;
+      if (fitsDownwards) {
+        top = topAlignY;
+      } else if (fitsUpwards) {
+        top = bottomAlignY;
+      } else {
+        const spaceBelow = window.innerHeight - refRect.top;
+        const spaceAbove = refRect.bottom;
+        top = spaceBelow >= spaceAbove ? topAlignY : bottomAlignY;
+      }
+
+      top = Math.max(SCREEN_PADDING, Math.min(top, window.innerHeight - submenuHeight - SCREEN_PADDING));
+
+      return { left: Math.round(left), top: Math.round(top) };
+    },
+    [adjustedX, adjustedY]
+  );
+
+  const updateSubmenuPositions = useCallback(() => {
+    if (activeSubmenu === "set") {
+      const pos = calculateSubmenuPosition(
+        setTriggerRef.current,
+        setSubmenuRef.current,
+        getEstimatedSetSubmenuHeight(),
+        216
+      );
+      setSetSubmenuPosition(pos);
+    } else if (activeSubmenu === "copy") {
+      const pos = calculateSubmenuPosition(
+        copyTriggerRef.current,
+        copySubmenuRef.current,
+        88,
+        192
+      );
+      setCopySubmenuPosition(pos);
     }
-    left = Math.max(SCREEN_PADDING, Math.min(left, window.innerWidth - submenuWidth - SCREEN_PADDING));
+  }, [activeSubmenu, calculateSubmenuPosition, getEstimatedSetSubmenuHeight]);
 
-    // 2. 세로 (Y축) 위치 계산:
-    // - 아래쪽으로 펼칠 때 (Top 정렬): 서브메뉴 첫 항목이 '서재 세트 등록' 항목과 수평 정렬
-    const topAlignY = triggerRect.top - VERTICAL_ITEM_ALIGN_OFFSET;
-    // - 위쪽으로 펼칠 때 (Bottom 정렬): 서브메뉴 마지막 항목이 '서재 세트 등록' 항목과 수평 정렬
-    const bottomAlignY = triggerRect.bottom + VERTICAL_ITEM_ALIGN_OFFSET - submenuHeight;
+  const openSubmenu = useCallback(
+    (type: SubmenuType) => {
+      if (submenuTimerRef.current) {
+        clearTimeout(submenuTimerRef.current);
+        submenuTimerRef.current = null;
+      }
+      if (type === "set") {
+        const pos = calculateSubmenuPosition(
+          setTriggerRef.current,
+          setSubmenuRef.current,
+          getEstimatedSetSubmenuHeight(),
+          216
+        );
+        setSetSubmenuPosition(pos);
+      } else if (type === "copy") {
+        const pos = calculateSubmenuPosition(
+          copyTriggerRef.current,
+          copySubmenuRef.current,
+          88,
+          192
+        );
+        setCopySubmenuPosition(pos);
+      }
+      setActiveSubmenu(type);
+    },
+    [calculateSubmenuPosition, getEstimatedSetSubmenuHeight]
+  );
 
-    const fitsDownwards = (topAlignY + submenuHeight) <= (window.innerHeight - SCREEN_PADDING);
-    const fitsUpwards = bottomAlignY >= SCREEN_PADDING;
-
-    let top: number;
-    if (fitsDownwards) {
-      // 아래쪽 공간이 충분하면 아래로 펼침 (Top 기준 정렬)
-      top = topAlignY;
-    } else if (fitsUpwards) {
-      // 아래쪽 공간이 부족하고 위쪽 공간이 충분하면 위로 펼침 (Bottom 기준 정렬)
-      top = bottomAlignY;
-    } else {
-      // 둘 다 빠듯할 경우 화면에서 더 많은 영역을 확보할 수 있는 방향 선택
-      const spaceBelow = window.innerHeight - triggerRect.top;
-      const spaceAbove = triggerRect.bottom;
-      top = spaceBelow >= spaceAbove ? topAlignY : bottomAlignY;
-    }
-
-    // 최종 화면 경계 벗어남 방지 (클램프)
-    top = Math.max(SCREEN_PADDING, Math.min(top, window.innerHeight - submenuHeight - SCREEN_PADDING));
-
-    setSubmenuPosition({
-      left: Math.round(left),
-      top: Math.round(top),
-    });
-  }, [getEstimatedSubmenuHeight]);
-
-  const openSubmenu = useCallback(() => {
-    if (submenuTimerRef.current) {
-      clearTimeout(submenuTimerRef.current);
-      submenuTimerRef.current = null;
-    }
-    updateSubmenuPosition();
-    setIsSubmenuOpen(true);
-  }, [updateSubmenuPosition]);
-
-  const closeSubmenuWithDelay = useCallback((delay = 220) => {
+  const closeSubmenuWithDelay = useCallback((delay = 200) => {
     if (submenuTimerRef.current) {
       clearTimeout(submenuTimerRef.current);
     }
     submenuTimerRef.current = setTimeout(() => {
-      setIsSubmenuOpen(false);
+      setActiveSubmenu(null);
     }, delay);
   }, []);
 
@@ -302,7 +392,7 @@ export function ContextMenu({
       clearTimeout(submenuTimerRef.current);
       submenuTimerRef.current = null;
     }
-    setIsSubmenuOpen(false);
+    setActiveSubmenu(null);
   }, []);
 
   const keepSubmenuOpen = useCallback(() => {
@@ -312,24 +402,18 @@ export function ContextMenu({
     }
   }, []);
 
-  // 서브메뉴 열림 상태 또는 목록 변경 시 실제 DOM 측정 후 위치 동기화
   useLayoutEffect(() => {
-    if (isSubmenuOpen) {
-      updateSubmenuPosition();
+    if (activeSubmenu) {
+      updateSubmenuPositions();
     }
-  }, [isSubmenuOpen, totalVisibleSetCount, updateSubmenuPosition]);
+  }, [activeSubmenu, totalVisibleSetCount, updateSubmenuPositions]);
 
-  // 창 크기 변경 시 위치 재조정
   useEffect(() => {
-    if (!isSubmenuOpen) return;
-    const handleResize = () => {
-      updateSubmenuPosition();
-    };
+    if (!activeSubmenu) return;
+    const handleResize = () => updateSubmenuPositions();
     window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [isSubmenuOpen, updateSubmenuPosition]);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [activeSubmenu, updateSubmenuPositions]);
 
   useEffect(() => {
     return () => {
@@ -339,13 +423,14 @@ export function ContextMenu({
     };
   }, []);
 
-  // 외부 클릭 시 닫기 (서브메뉴 클릭 포함)
+  // 외부 클릭 시 닫기
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as Node;
       const clickedMenu = menuRef.current?.contains(target);
-      const clickedSubmenu = submenuRef.current?.contains(target);
-      if (!clickedMenu && !clickedSubmenu) {
+      const clickedSetSubmenu = setSubmenuRef.current?.contains(target);
+      const clickedCopySubmenu = copySubmenuRef.current?.contains(target);
+      if (!clickedMenu && !clickedSetSubmenu && !clickedCopySubmenu) {
         onClose();
       }
     };
@@ -360,137 +445,82 @@ export function ContextMenu({
     };
   }, [onClose]);
 
-  // 화면 경계 밖으로 벗어나는 것 방지
-  const adjustedX = Math.max(8, Math.min(x, window.innerWidth - 240));
-  const adjustedY = Math.max(8, Math.min(y, window.innerHeight - 360));
+  if (!primaryFont) return null;
 
-  const isFontUsable = (f: FontMetadata) =>
-    !f.isMissing && f.install_status !== "unplugged" && f.install_status !== "deleted";
+  // --- 액션 핸들러들 ---
 
-  const handleCopyName = () => {
-    const names = fonts.map((f) => getFontFamilyName(f, i18n.language)).join("\n");
-    navigator.clipboard.writeText(names);
-    onActionFeedback?.(isMulti ? t("toast.copy_names", { count: fonts.length }) : t("toast.copy_name"));
-    onClose();
-  };
-
-  const handleCopyPath = () => {
-    const paths = fonts.map((f) => f.file_path).join("\n");
-    navigator.clipboard.writeText(paths);
-    onActionFeedback?.(isMulti ? t("toast.copy_paths", { count: fonts.length }) : t("toast.copy_path"));
-    onClose();
-  };
-
-  const handleShowInFolder = () => {
-    if (primaryFont) {
-      if (!isFontUsable(primaryFont)) {
-        onActionFeedback?.(t("toast.folder_open_failed", "파일이 연결되어 있지 않거나 삭제되었습니다."));
-        onClose();
-        return;
-      }
-      fontService.showInFolder(primaryFont.file_path).catch((err) => {
-        console.error("탐색기 열기 실패:", err);
-        onActionFeedback?.(t("toast.folder_open_failed", "폴더를 열지 못했습니다."));
-      });
-    }
-    onClose();
-  };
-
-  const isWoffFont = (f: { format: string }) => f.format === "Woff" || f.format === "Woff2";
-
-  const isPrimaryActivatable =
-    isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && !isWoffFont(primaryFont);
-  const activatableFonts = fonts.filter(
-    (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user" && !isWoffFont(f)
-  );
-  const hasActivatable = activatableFonts.length > 0;
-
-  const handleActivateToggle = async () => {
-    if (!isMulti) {
-      if (!isPrimaryActivatable) return;
-      onToggleActivate?.(primaryFont);
+  // 1-1. 즐겨찾기 등록
+  const handleFavoriteAdd = () => {
+    if (unfavoritedFonts.length === 0) return;
+    if (onBulkFavorite) {
+      onBulkFavorite(unfavoritedFonts.map((f) => f.id), true);
     } else {
-      if (!hasActivatable) return;
-      const allActivated = activatableFonts.every((f) => activatedFontIds?.has(f.id));
-      if (onBulkActivate) {
-        onBulkActivate(
-          activatableFonts.map((f) => f.id),
-          !allActivated
+      unfavoritedFonts.forEach((f) => onToggleFavorite(f.id));
+    }
+    onClearSelection?.();
+    onClose();
+  };
+
+  // 1-2. 즐겨찾기 제거 (확인창 없이 즉시 반영)
+  const handleFavoriteRemove = () => {
+    if (favoritedFonts.length === 0) return;
+    if (onBulkFavorite) {
+      onBulkFavorite(favoritedFonts.map((f) => f.id), false);
+    } else {
+      favoritedFonts.forEach((f) => onToggleFavorite(f.id));
+    }
+    onClearSelection?.();
+    onClose();
+  };
+
+  // 1-3. 서재 세트 등록
+  const getSetMembershipState = (setId: number): "all" | "some" | "none" => {
+    const idsInSet = setMap?.get(setId);
+    if (!idsInSet || idsInSet.size === 0) return "none";
+
+    if (!isMulti) {
+      return idsInSet.has(primaryFont.id) ? "all" : "none";
+    }
+
+    let matchCount = 0;
+    for (const f of fonts) {
+      if (idsInSet.has(f.id)) {
+        matchCount++;
+      }
+    }
+
+    if (matchCount === fonts.length) return "all";
+    if (matchCount > 0) return "some";
+    return "none";
+  };
+
+  const handleSetAction = (setId: number) => {
+    const state = getSetMembershipState(setId);
+    if (state === "all") {
+      onActionFeedback?.(t("context_menu.already_in_set", "이미 해당 서재에 등록되어 있습니다."));
+      onClose();
+      return;
+    }
+
+    if (!isMulti) {
+      onAddToSet(setId, primaryFont.id);
+    } else {
+      if (onBulkAddToSet) {
+        onBulkAddToSet(
+          setId,
+          fonts.map((f) => f.id)
         );
       } else {
-        activatableFonts.forEach((f) => onToggleActivate?.(f));
+        fonts.forEach((f) => onAddToSet(setId, f.id));
       }
     }
     onClearSelection?.();
     onClose();
   };
 
-  const handleInstallAll = async () => {
-    const installableFonts = fonts.filter(
-      (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user" && !isWoffFont(f)
-    );
-    if (installableFonts.length === 0) {
-      onActionFeedback?.(t("toast.no_installable_fonts"));
-      onClose();
-      return;
-    }
-
-    try {
-      // 1. 임시 활성화된 글꼴이 있다면 먼저 임시 활성화부터 해제
-      const activatedToDeactivate = installableFonts.filter((f) => activatedFontIds?.has(f.id));
-      if (activatedToDeactivate.length > 0) {
-        const items = activatedToDeactivate.map((f) => ({ font_id: f.id, path: f.file_path }));
-        try {
-          await fontService.deactivateFonts(items);
-          if (onBulkActivate) {
-            onBulkActivate(activatedToDeactivate.map((f) => f.id), false);
-          } else {
-            activatedToDeactivate.forEach((f) => onToggleActivate?.(f));
-          }
-        } catch (deactErr) {
-          console.warn("설치 전 임시 활성화 해제 오류(설치 계속 진행):", deactErr);
-        }
-      }
-
-      // 2. 그 다음 설치 진행
-      const paths = installableFonts.map((f) => f.file_path);
-      const result = await fontService.installFonts(paths);
-      onActionFeedback?.(formatBatchInstallFeedback(result, t));
-      onRefreshList?.();
-      onClearSelection?.();
-    } catch (e) {
-      console.error(e);
-      onActionFeedback?.(t("toast.install_failed", { error: String(e) }));
-    }
-    onClose();
-  };
-
-  // 서재 세트 소속 상태: 전체 포함("all"), 일부 포함("some"), 미포함("none")
-  const getSetMembershipState = useCallback(
-    (setId: number): "all" | "some" | "none" => {
-      const idsInSet = setMap?.get(setId);
-      if (!idsInSet || idsInSet.size === 0) return "none";
-
-      if (!isMulti) {
-        return idsInSet.has(primaryFont.id) ? "all" : "none";
-      }
-
-      let matchCount = 0;
-      for (const f of fonts) {
-        if (idsInSet.has(f.id)) {
-          matchCount++;
-        }
-      }
-
-      if (matchCount === fonts.length) return "all";
-      if (matchCount > 0) return "some";
-      return "none";
-    },
-    [fonts, isMulti, primaryFont, setMap]
-  );
-
+  // 1-4. 서재에서 제거 (확인창 필수)
   const handleRemoveFromCurrentSet = () => {
-    if (currentSetId === null || currentSetId === undefined) return;
+    if (!isInCurrentSet || currentSetId === null || currentSetId === undefined) return;
     if (onRequestRemoveFromSet) {
       onRequestRemoveFromSet(currentSetId, isMulti ? fonts : [primaryFont]);
       onClose();
@@ -509,59 +539,73 @@ export function ContextMenu({
     onClose();
   };
 
-  const handleFavoriteAction = () => {
-    if (!isMulti) {
-      onToggleFavorite(primaryFont.id);
+  // 2-1. 임시활성화 등록
+  const handleActivateAdd = () => {
+    if (inactiveActivatableFonts.length === 0) return;
+    if (onBulkActivate) {
+      onBulkActivate(inactiveActivatableFonts.map((f) => f.id), true);
     } else {
-      const allFavorited = fonts.every((f) => isFontFavorite(f, favoriteIds));
-      if (onBulkFavorite) {
-        onBulkFavorite(
-          fonts.map((f) => f.id),
-          !allFavorited
-        );
-      } else {
-        fonts.forEach((f) => onToggleFavorite(f.id));
-      }
+      inactiveActivatableFonts.forEach((f) => onToggleActivate?.(f));
     }
     onClearSelection?.();
     onClose();
   };
 
-  const handleSetAction = (setId: number) => {
-    const state = getSetMembershipState(setId);
-    if (state === "all") {
-      // 이미 전체 포함된 경우: 제거하지 않고 등록 완료 상태 안내
-      onActionFeedback?.(t("toast.already_in_set", "이미 해당 서재에 등록되어 있습니다."));
+  // 2-2. 임시활성화 해제 (확인창 필수)
+  const handleActivateRemove = () => {
+    if (activeActivatableFonts.length === 0) return;
+    if (onRequestDeactivate) {
+      onRequestDeactivate(activeActivatableFonts);
+      onClose();
+      return;
+    }
+    // 폴백
+    if (onBulkActivate) {
+      onBulkActivate(activeActivatableFonts.map((f) => f.id), false);
+    } else {
+      activeActivatableFonts.forEach((f) => onToggleActivate?.(f));
+    }
+    onClearSelection?.();
+    onClose();
+  };
+
+  // 2-3. 시스템 설치
+  const handleInstallAll = async () => {
+    if (installableFonts.length === 0) {
+      onActionFeedback?.(t("toast.no_installable_fonts"));
       onClose();
       return;
     }
 
-    // 일부 포함("some") 또는 미포함("none"): 선택된 모든 폰트를 해당 세트에 등록
-    if (!isMulti) {
-      onAddToSet(setId, primaryFont.id);
-    } else {
-      if (onBulkAddToSet) {
-        onBulkAddToSet(
-          setId,
-          fonts.map((f) => f.id)
-        );
-      } else {
-        fonts.forEach((f) => onAddToSet(setId, f.id));
+    try {
+      const activatedToDeactivate = installableFonts.filter((f) => activatedFontIds?.has(f.id));
+      if (activatedToDeactivate.length > 0) {
+        const items = activatedToDeactivate.map((f) => ({ font_id: f.id, path: f.file_path }));
+        try {
+          await fontService.deactivateFonts(items);
+          if (onBulkActivate) {
+            onBulkActivate(activatedToDeactivate.map((f) => f.id), false);
+          } else {
+            activatedToDeactivate.forEach((f) => onToggleActivate?.(f));
+          }
+        } catch (deactErr) {
+          console.warn("설치 전 임시 활성화 해제 오류(설치 계속 진행):", deactErr);
+        }
       }
+
+      const paths = installableFonts.map((f) => f.file_path);
+      const result = await fontService.installFonts(paths);
+      onActionFeedback?.(formatBatchInstallFeedback(result, t));
+      onRefreshList?.();
+      onClearSelection?.();
+    } catch (e) {
+      console.error(e);
+      onActionFeedback?.(t("toast.install_failed", { error: String(e) }));
     }
-    onClearSelection?.();
     onClose();
   };
 
-  if (!primaryFont) return null;
-
-  const isFavorite = isMulti
-    ? fonts.every((f) => isFontFavorite(f, favoriteIds))
-    : isFontFavorite(primaryFont, favoriteIds);
-
-  const uninstallableFonts = fonts.filter((f) => isFontUsable(f) && f.source === "user");
-  const hasUninstallable = uninstallableFonts.length > 0;
-
+  // 2-4. 시스템 제거 (확인창 필수)
   const handleUninstallAll = async () => {
     if (uninstallableFonts.length === 0) return;
     if (onRequestUninstall) {
@@ -582,16 +626,62 @@ export function ContextMenu({
     onClose();
   };
 
-  const isActivated = isMulti
-    ? fonts.every((f) => activatedFontIds?.has(f.id))
-    : activatedFontIds?.has(primaryFont.id) ?? false;
+  // 4-1. 복사 핸들러
+  const handleCopyName = () => {
+    const names = fonts.map((f) => getFontFamilyName(f, i18n.language)).join("\n");
+    navigator.clipboard.writeText(names);
+    onActionFeedback?.(
+      isMulti
+        ? t("context_menu.copy_names", { count: fonts.length, defaultValue: `글꼴 이름 복사 (${fonts.length}개)` })
+        : t("toast.copy_name")
+    );
+    onClose();
+  };
 
-  const installableFonts = fonts.filter(
-    (f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)
-  );
-  const hasInstallable = installableFonts.length > 0;
-  const isAllSystem = isMulti && fonts.length > 0 && fonts.every((f) => f.source === "system");
-  const isInCurrentSet = currentSetId !== null && currentSetId !== undefined;
+  const handleCopyPath = () => {
+    const paths = fonts.map((f) => f.file_path).join("\n");
+    navigator.clipboard.writeText(paths);
+    onActionFeedback?.(
+      isMulti
+        ? t("context_menu.copy_paths", { count: fonts.length, defaultValue: `파일 경로 복사 (${fonts.length}개)` })
+        : t("toast.copy_path")
+    );
+    onClose();
+  };
+
+  // 4-2. 파일 탐색기 열기
+  const handleShowInFolder = () => {
+    if (primaryFont) {
+      if (!isFontUsable(primaryFont)) {
+        onActionFeedback?.(t("toast.folder_open_failed", "파일이 연결되어 있지 않거나 삭제되었습니다."));
+        onClose();
+        return;
+      }
+      fontService.showInFolder(primaryFont.file_path).catch((err) => {
+        console.error("탐색기 열기 실패:", err);
+        onActionFeedback?.(t("toast.folder_open_failed", "폴더를 열지 못했습니다."));
+      });
+    }
+    onClose();
+  };
+
+  const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+  // 각 그룹에 렌더링될 항목이 존재하는지 여부
+  const hasGroup1Items =
+    unfavoritedFonts.length > 0 ||
+    favoritedFonts.length > 0 ||
+    usableFonts.length > 0 ||
+    isInCurrentSet;
+
+  const hasGroup2Items =
+    inactiveActivatableFonts.length > 0 ||
+    activeActivatableFonts.length > 0 ||
+    installableFonts.length > 0 ||
+    uninstallableFonts.length > 0 ||
+    systemFonts.length > 0;
+
+  const hasGroup3Items = Boolean(onOpenDiff && fonts.length > 0);
 
   return (
     <>
@@ -601,7 +691,7 @@ export function ContextMenu({
         style={{ left: `${adjustedX}px`, top: `${adjustedY}px` }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 1. Header Info */}
+        {/* [Header] 선택 정보 */}
         <div className="px-2.5 py-1.5 border-b border-theme-border-subtle mb-1">
           {isMulti ? (
             <div className="flex items-center gap-1.5 text-theme-accent">
@@ -622,172 +712,72 @@ export function ContextMenu({
           )}
         </div>
 
-        {/* 2. 즐겨찾기 관련: 사용 가능한 폰트가 있을 때만 */}
-        {fonts.some((f) => isFontUsable(f)) && (
-          <>
-            <button
-              onClick={handleFavoriteAction}
-              onMouseEnter={closeSubmenuImmediately}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-            >
-              <Heart
-                className={`w-3.5 h-3.5 ${
-                  isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted"
-                }`}
-              />
-              <span>
-                {isMulti
-                  ? isFavorite
-                    ? t("context_menu.bulk_favorite_remove", { count: fonts.length })
-                    : t("context_menu.bulk_favorite_add", { count: fonts.length })
-                  : isFavorite
-                    ? t("context_menu.favorite_remove")
-                    : t("context_menu.favorite_add")}
-              </span>
-            </button>
-            <div className="my-1 border-t border-theme-border-subtle" />
-          </>
-        )}
+        {/* ------------------------------------------------------------- */}
+        {/* [Group 1] 즐겨찾기 & 서재 관리 */}
+        {/* ------------------------------------------------------------- */}
 
-        {/* 3. 시스템 관련 (임시 활성화, 시스템 설치, 시스템 제거, 시스템 보호) */}
-        {/* 3-1. 임시 활성화: 외부 폰트만 활성화 가능 */}
-        {(!isMulti ? isPrimaryActivatable : hasActivatable) && (
+        {/* 1-1. 즐겨찾기 등록 (미등록 폰트가 포함되어 있을 때) */}
+        {unfavoritedFonts.length > 0 && (
           <button
-            onClick={handleActivateToggle}
+            type="button"
+            onClick={handleFavoriteAdd}
             onMouseEnter={closeSubmenuImmediately}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
           >
-            {isActivated ? (
-              <ZapOff className="w-3.5 h-3.5 text-theme-accent" />
-            ) : (
-              <Zap className="w-3.5 h-3.5 text-theme-accent" />
-            )}
+            <Heart className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
             <span>
-              {isMulti
-                ? isActivated
-                  ? t("context_menu.bulk_deactivate", { count: activatableFonts.length })
-                  : t("context_menu.bulk_activate", { count: activatableFonts.length })
-                : isActivated
-                  ? t("context_menu.deactivate")
-                  : t("context_menu.activate")}
+              {!isMulti || favoritedFonts.length === 0
+                ? t("context_menu.favorite_add", "즐겨찾기 등록")
+                : t("context_menu.bulk_favorite_add", {
+                    count: unfavoritedFonts.length,
+                    defaultValue: `즐겨찾기 등록 (${unfavoritedFonts.length}개)`,
+                  })}
             </span>
           </button>
         )}
 
-        {/* 3-2. 시스템 설치 (미설치 폰트) */}
-        {isMulti ? (
-          hasInstallable && (
-            <button
-              onClick={handleInstallAll}
-              onMouseEnter={closeSubmenuImmediately}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-              <span>{t("context_menu.bulk_install", { count: installableFonts.length })}</span>
-            </button>
-          )
-        ) : (
-          isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && (
-            !isWoffFont(primaryFont) ? (
-              <button
-                onClick={handleInstallAll}
-                onMouseEnter={closeSubmenuImmediately}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-                <span>{t("context_menu.install")}</span>
-              </button>
-            ) : (
-              <div
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default opacity-60"
-                title={t("context_menu.woff_unsupported_title", "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.")}
-                onMouseEnter={closeSubmenuImmediately}
-              >
-                <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-                <span>{t("context_menu.web_only_font", "웹 전용 폰트 (설치 불가)")}</span>
-              </div>
-            )
-          )
+        {/* 1-2. 즐겨찾기 제거 (등록된 폰트가 포함되어 있을 때 - 항상 빨간색, 확인창 없음) */}
+        {favoritedFonts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleFavoriteRemove}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />
+            <span>
+              {!isMulti || unfavoritedFonts.length === 0
+                ? t("context_menu.favorite_remove", "즐겨찾기 제거")
+                : t("context_menu.bulk_favorite_remove", {
+                    count: favoritedFonts.length,
+                    defaultValue: `즐겨찾기 제거 (${favoritedFonts.length}개)`,
+                  })}
+            </span>
+          </button>
         )}
 
-        {/* 3-3. 시스템에서 글꼴 제거 (사용자 설치 폰트) */}
-        {isMulti ? (
-          hasUninstallable && (
-            <button
-              onClick={handleUninstallAll}
-              onMouseEnter={closeSubmenuImmediately}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-              <span>{t("context_menu.bulk_uninstall", { count: uninstallableFonts.length })}</span>
-            </button>
-          )
-        ) : (
-          isFontUsable(primaryFont) && primaryFont.source === "user" && (
-            <button
-              onClick={handleUninstallAll}
-              onMouseEnter={closeSubmenuImmediately}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-              <span>{t("context_menu.uninstall")}</span>
-            </button>
-          )
-        )}
-
-        {/* 3-4. 시스템 보호 글꼴 안내 (시스템 내장 폰트) */}
-        {isMulti ? (
-          isAllSystem && (
-            <div
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
-              title={t("context_menu.system_protected_title")}
-              onMouseEnter={closeSubmenuImmediately}
-            >
-              <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
-              <span>{t("context_menu.system_protected_count", { count: fonts.length })}</span>
-            </div>
-          )
-        ) : (
-          primaryFont.source === "system" && (
-            <div
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default"
-              title={t("context_menu.system_protected_title")}
-              onMouseEnter={closeSubmenuImmediately}
-            >
-              <Shield className="w-3.5 h-3.5 text-theme-text-muted" />
-              <span>{t("context_menu.system_protected_label")}</span>
-            </div>
-          )
-        )}
-
-        {/* 시스템 동작 항목이 하나라도 있을 때 구분선 표시 */}
-        {((!isMulti ? isPrimaryActivatable : hasActivatable) ||
-          (isMulti ? hasInstallable : (isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user")) ||
-          (isMulti ? hasUninstallable : (isFontUsable(primaryFont) && primaryFont.source === "user")) ||
-          (isMulti ? isAllSystem : primaryFont.source === "system")) && (
-          <div className="my-1 border-t border-theme-border-subtle" />
-        )}
-
-        {/* 4. 서재 관련 (서재 세트 등록 2depth 서브메뉴, 현재 서재에서 제거) */}
-        {/* 4-1. 서재 세트 등록 (2depth 서브메뉴 트리거): 사용 가능한 폰트가 있을 때만 표시 */}
-        {fonts.some((f) => isFontUsable(f)) && (
+        {/* 1-3. 서재 세트 등록 > 2depth */}
+        {usableFonts.length > 0 && (
           <div
-            ref={triggerRef}
-            onMouseEnter={openSubmenu}
-            onMouseLeave={() => closeSubmenuWithDelay(220)}
+            ref={setTriggerRef}
+            onMouseEnter={() => openSubmenu("set")}
+            onMouseLeave={() => closeSubmenuWithDelay(200)}
             className="relative"
           >
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (isSubmenuOpen) {
-                  setIsSubmenuOpen(false);
+                if (activeSubmenu === "set") {
+                  closeSubmenuImmediately();
                 } else {
-                  openSubmenu();
+                  openSubmenu("set");
                 }
               }}
               className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                isSubmenuOpen ? "bg-theme-hover text-theme-text" : "hover:bg-theme-hover text-theme-text"
+                activeSubmenu === "set"
+                  ? "bg-theme-hover text-theme-text"
+                  : "hover:bg-theme-hover text-theme-text"
               }`}
             >
               <div className="flex items-center gap-2 truncate min-w-0">
@@ -803,77 +793,217 @@ export function ContextMenu({
           </div>
         )}
 
-        {/* 4-2. 현재 서재 세트에서 제거 */}
+        {/* 1-4. 서재에서 제거 (서재 세트 화면일 때만 노출 - 항상 빨간색, 확인창 필수) */}
         {isInCurrentSet && (
           <button
+            type="button"
             onClick={handleRemoveFromCurrentSet}
             onMouseEnter={closeSubmenuImmediately}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
           >
-            <Minus className="w-3.5 h-3.5 text-rose-500" />
+            <Minus className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <span>
               {isMulti
-                ? t("context_menu.bulk_remove_from_set", { count: fonts.length })
-                : t("context_menu.remove_from_set")}
+                ? t("context_menu.bulk_remove_from_set", {
+                    count: fonts.length,
+                    defaultValue: `서재에서 제거 (${fonts.length}개)`,
+                  })
+                : t("context_menu.remove_from_set", "서재에서 제거")}
             </span>
           </button>
         )}
 
-        {(fonts.some((f) => isFontUsable(f)) || isInCurrentSet) && (
+        {/* 구분선: Group 1 -> Group 2 */}
+        {hasGroup1Items && hasGroup2Items && (
           <div className="my-1 border-t border-theme-border-subtle" />
         )}
 
-        {/* 4.5 전문가용 글리프 Diff 비교 모달 */}
-        {onOpenDiff && (
-          <>
-            <button
-              onClick={handleDiffClick}
-              onMouseEnter={closeSubmenuImmediately}
-              disabled={fonts.length === 0}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-            >
-              <Split className="w-3.5 h-3.5 text-theme-accent" />
-              <span>{diffLabel}</span>
-            </button>
-            <div className="my-1 border-t border-theme-border-subtle" />
-          </>
+        {/* ------------------------------------------------------------- */}
+        {/* [Group 2] 임시활성화 & 시스템 제어 */}
+        {/* ------------------------------------------------------------- */}
+
+        {/* 2-1. 임시활성화 등록 (미활성화 외부 폰트가 있을 때) */}
+        {inactiveActivatableFonts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleActivateAdd}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5 text-theme-accent shrink-0" />
+            <span>
+              {!isMulti || activeActivatableFonts.length === 0
+                ? t("context_menu.activate", "임시활성화 등록")
+                : t("context_menu.bulk_activate", {
+                    count: inactiveActivatableFonts.length,
+                    defaultValue: `임시활성화 등록 (${inactiveActivatableFonts.length}개)`,
+                  })}
+            </span>
+          </button>
         )}
 
-        {/* 5. 정보 및 탐색 관련 (이름 복사, 경로 복사, 파일 탐색기 열기) */}
-        <button
-          onClick={handleCopyName}
-          onMouseEnter={closeSubmenuImmediately}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-        >
-          <Copy className="w-3.5 h-3.5 text-theme-text-muted" />
-          <span>{isMulti ? t("context_menu.copy_names", { count: fonts.length }) : t("context_menu.copy_name")}</span>
-        </button>
-
-        <button
-          onClick={handleCopyPath}
-          onMouseEnter={closeSubmenuImmediately}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-        >
-          <Check className="w-3.5 h-3.5 text-theme-text-muted" />
-          <span>{isMulti ? t("context_menu.copy_paths", { count: fonts.length }) : t("context_menu.copy_path")}</span>
-        </button>
-
-        {!isMulti && isFontUsable(primaryFont) && (
+        {/* 2-2. 임시활성화 해제 (활성화된 폰트가 있을 때 - 항상 빨간색, 확인창 필수) */}
+        {activeActivatableFonts.length > 0 && (
           <button
+            type="button"
+            onClick={handleActivateRemove}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
+          >
+            <ZapOff className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span>
+              {!isMulti || inactiveActivatableFonts.length === 0
+                ? t("context_menu.deactivate", "임시활성화 해제")
+                : t("context_menu.bulk_deactivate", {
+                    count: activeActivatableFonts.length,
+                    defaultValue: `임시활성화 해제 (${activeActivatableFonts.length}개)`,
+                  })}
+            </span>
+          </button>
+        )}
+
+        {/* 2-3. 시스템 설치 (미설치 외부 폰트가 있을 때) */}
+        {installableFonts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleInstallAll}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+            <span>
+              {isMulti
+                ? t("context_menu.bulk_install", {
+                    count: installableFonts.length,
+                    defaultValue: `시스템 설치 (${installableFonts.length}개)`,
+                  })
+                : t("context_menu.install", "시스템 설치")}
+            </span>
+          </button>
+        )}
+
+        {/* 2-4. 시스템 제거 (사용자 설치 폰트가 있을 때 - 항상 빨간색, 확인창 필수) */}
+        {uninstallableFonts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleUninstallAll}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span>
+              {isMulti
+                ? t("context_menu.bulk_uninstall", {
+                    count: uninstallableFonts.length,
+                    defaultValue: `시스템 제거 (${uninstallableFonts.length}개)`,
+                  })
+                : t("context_menu.uninstall", "시스템 제거")}
+            </span>
+          </button>
+        )}
+
+        {/* 2-5. 시스템 보호 안내 (운영체제 기본 내장 폰트가 포함되어 있을 때) */}
+        {systemFonts.length > 0 && (
+          <div
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default opacity-75"
+            title={t("context_menu.system_protected_title")}
+            onMouseEnter={closeSubmenuImmediately}
+          >
+            <Shield className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+            <span className="truncate">
+              {isMulti
+                ? t("context_menu.system_protected_count", {
+                    count: systemFonts.length,
+                    defaultValue: `시스템 보호 안내 (${systemFonts.length}개)`,
+                  })
+                : t("context_menu.system_protected_label", "시스템 보호 안내")}
+            </span>
+          </div>
+        )}
+
+        {/* 구분선: Group 2 -> Group 3 */}
+        {(hasGroup1Items || hasGroup2Items) && hasGroup3Items && (
+          <div className="my-1 border-t border-theme-border-subtle" />
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* [Group 3] 폰트비교 */}
+        {/* ------------------------------------------------------------- */}
+        {onOpenDiff && fonts.length > 0 && (
+          <button
+            type="button"
+            onClick={handleDiffClick}
+            onMouseEnter={closeSubmenuImmediately}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+          >
+            <Split className="w-3.5 h-3.5 text-theme-accent shrink-0" />
+            <span>{diffLabel}</span>
+          </button>
+        )}
+
+        {/* 구분선: Group 3 -> Group 4 */}
+        <div className="my-1 border-t border-theme-border-subtle" />
+
+        {/* ------------------------------------------------------------- */}
+        {/* [Group 4] 복사 > 2depth & 파일 탐색기 보기 */}
+        {/* ------------------------------------------------------------- */}
+
+        {/* 4-1. 복사 > 2depth 서브메뉴 트리거 */}
+        <div
+          ref={copyTriggerRef}
+          onMouseEnter={() => openSubmenu("copy")}
+          onMouseLeave={() => closeSubmenuWithDelay(200)}
+          className="relative"
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (activeSubmenu === "copy") {
+                closeSubmenuImmediately();
+              } else {
+                openSubmenu("copy");
+              }
+            }}
+            className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              activeSubmenu === "copy"
+                ? "bg-theme-hover text-theme-text"
+                : "hover:bg-theme-hover text-theme-text"
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate min-w-0">
+              <Copy className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+              <span className="truncate">{t("context_menu.copy", "복사")}</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+          </button>
+        </div>
+
+        {/* 4-2. 파일 탐색기(파인더)에서 보기 */}
+        {isFontUsable(primaryFont) && (
+          <button
+            type="button"
             onClick={handleShowInFolder}
             onMouseEnter={closeSubmenuImmediately}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
           >
-            <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted" />
-            <span>{t("context_menu.show_in_folder")}</span>
+            <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+            <span>
+              {isMac
+                ? t("context_menu.show_in_folder_mac", "Finder에서 보기")
+                : t("context_menu.show_in_folder", "파일 탐색기에서 보기")}
+            </span>
           </button>
         )}
 
-        {/* 6. 최하단 폰트 정보 보기 */}
+        {/* ------------------------------------------------------------- */}
+        {/* [Group 5] 폰트 정보 */}
+        {/* ------------------------------------------------------------- */}
         {fonts.length > 0 && (
           <>
             <div className="my-1 border-t border-theme-border-subtle" />
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 onOpenFontInfo?.(fonts);
@@ -881,35 +1011,38 @@ export function ContextMenu({
               onMouseEnter={closeSubmenuImmediately}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
             >
-              <Info className="w-3.5 h-3.5 text-theme-accent" />
+              <Info className="w-3.5 h-3.5 text-theme-accent shrink-0" />
               <span>
                 {isMulti
                   ? t("context_menu.view_font_info_n", {
                       count: fonts.length,
-                      defaultValue: `폰트 정보 보기 (${fonts.length}개)`,
+                      defaultValue: `폰트 정보 (${fonts.length}개)`,
                     })
-                  : t("context_menu.view_font_info", "폰트 정보 보기")}
+                  : t("context_menu.view_font_info", "폰트 정보")}
               </span>
             </button>
           </>
         )}
       </div>
 
-      {/* 2depth 서브메뉴: 부모 Stacking Context 영향 없이 독립적으로 렌더링되도록 Portal 사용 */}
-      {isSubmenuOpen &&
+      {/* ============================================================= */}
+      {/* 2depth 서브메뉴: 서재 세트 등록 목록 */}
+      {/* ============================================================= */}
+      {activeSubmenu === "set" &&
+        setSubmenuPosition &&
         createPortal(
           <div
-            ref={submenuRef}
+            ref={setSubmenuRef}
             onMouseEnter={keepSubmenuOpen}
-            onMouseLeave={() => closeSubmenuWithDelay(220)}
+            onMouseLeave={() => closeSubmenuWithDelay(200)}
             onClick={(e) => e.stopPropagation()}
             className="fixed z-50 w-52 rounded-xl bg-theme-surface border border-theme-border shadow-2xl shadow-black/25 p-1.5 text-xs text-theme-text select-none animate-in fade-in duration-100"
             style={{
-              left: `${submenuPosition.left}px`,
-              top: `${submenuPosition.top}px`,
+              left: `${setSubmenuPosition.left}px`,
+              top: `${setSubmenuPosition.top}px`,
             }}
           >
-            {/* 세트 검색 인풋 표시 */}
+            {/* 세트 검색창 */}
             {sets.length >= 1 && (
               <div className="relative mb-1.5 px-0.5">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-theme-text-muted pointer-events-none" />
@@ -917,22 +1050,22 @@ export function ContextMenu({
                   type="text"
                   value={setSearchQuery}
                   onChange={(e) => setSetSearchQuery(e.target.value)}
-                  placeholder={t("context_menu.search_sets")}
+                  placeholder={t("context_menu.search_sets", "서재 세트 검색...")}
                   className="w-full pl-7 pr-2 py-1 text-[11px] bg-theme-hover/60 border border-theme-border-subtle rounded-md text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:border-theme-accent"
                   autoFocus
                 />
               </div>
             )}
 
-            {/* 서재 세트 계층 목록 (3depth 팝업 없이 단일 패널 내 인덴트 계층 표시) */}
+            {/* 서재 세트 계층 목록 */}
             <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar px-0.5">
               {sets.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
-                  {t("context_menu.no_sets")}
+                  {t("context_menu.no_sets", "등록된 서재 세트 없음")}
                 </div>
               ) : structuredSetGroups.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
-                  {t("context_menu.no_matching_sets")}
+                  {t("context_menu.no_matching_sets", "일치하는 서재 세트 없음")}
                 </div>
               ) : (
                 structuredSetGroups.map((group) => {
@@ -985,7 +1118,7 @@ export function ContextMenu({
                         </button>
                       )}
 
-                      {/* 2depth 자식 노드 목록 (들여쓰기 및 꺾쇠 인디케이터) */}
+                      {/* 2depth 자식 노드 목록 */}
                       {group.children.length > 0 && (
                         <div className="ml-3 pl-2 border-l border-theme-border/60 space-y-0.5">
                           {group.children.map((child) => {
@@ -1037,6 +1170,60 @@ export function ContextMenu({
                 })
               )}
             </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ============================================================= */}
+      {/* 2depth 서브메뉴: 복사 (글꼴 이름 복사, 파일 경로 복사) */}
+      {/* ============================================================= */}
+      {activeSubmenu === "copy" &&
+        copySubmenuPosition &&
+        createPortal(
+          <div
+            ref={copySubmenuRef}
+            onMouseEnter={keepSubmenuOpen}
+            onMouseLeave={() => closeSubmenuWithDelay(200)}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed z-50 w-48 rounded-xl bg-theme-surface border border-theme-border shadow-2xl shadow-black/25 p-1.5 text-xs text-theme-text select-none animate-in fade-in duration-100"
+            style={{
+              left: `${copySubmenuPosition.left}px`,
+              top: `${copySubmenuPosition.top}px`,
+            }}
+          >
+            {/* 글꼴 이름 복사 */}
+            <button
+              type="button"
+              onClick={handleCopyName}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+              <span className="truncate">
+                {isMulti
+                  ? t("context_menu.copy_names", {
+                      count: fonts.length,
+                      defaultValue: `글꼴 이름 복사 (${fonts.length}개)`,
+                    })
+                  : t("context_menu.copy_name", "글꼴 이름 복사")}
+              </span>
+            </button>
+
+            {/* 파일 경로 복사 */}
+            <button
+              type="button"
+              onClick={handleCopyPath}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+            >
+              <Check className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
+              <span className="truncate">
+                {isMulti
+                  ? t("context_menu.copy_paths", {
+                      count: fonts.length,
+                      defaultValue: `파일 경로 복사 (${fonts.length}개)`,
+                    })
+                  : t("context_menu.copy_path", "파일 경로 복사")}
+              </span>
+            </button>
           </div>,
           document.body
         )}

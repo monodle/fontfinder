@@ -1,25 +1,12 @@
-import { useState } from "react";
-import { Coffee, Heart, ExternalLink, Check, Copy, Sparkles } from "lucide-react";
+import { Coffee, Heart, ExternalLink, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CREATORS } from "../../data/aboutData";
 import { openExternalUrl } from "../../utils/url";
 import { appConfig } from "../../config/appConfig";
+import { CopyButton } from "../common";
 
 export function SponsorSection() {
   const { t } = useTranslation();
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const handleCopy = async (id: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  const isKofiCopied = copiedId === "kofi";
 
   return (
     <div className="space-y-6">
@@ -60,26 +47,14 @@ export function SponsorSection() {
               <ExternalLink className="w-3.5 h-3.5 opacity-80" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleCopy("kofi", appConfig.links.sponsorUrl)}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-surface hover:bg-theme-hover border border-theme-border text-[11px] font-medium text-theme-text transition-colors cursor-pointer"
-              title={t("sponsor.copy_sponsor_link", "후원 링크 복사")}
+            <CopyButton
+              text={appConfig.links.sponsorUrl}
+              variant="secondary"
+              hideTooltip
+              className="w-full sm:w-auto h-auto py-1.5 px-3 rounded-lg text-[11px]"
             >
-              {isKofiCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                    {t("sponsor.copied", "복사됨")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-theme-text-muted" />
-                  <span>{t("sponsor.copy_sponsor_link", "후원 링크 복사")}</span>
-                </>
-              )}
-            </button>
+              {t("sponsor.copy_sponsor_link", "후원 링크 복사")}
+            </CopyButton>
           </div>
         </div>
       </div>
@@ -93,7 +68,6 @@ export function SponsorSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {CREATORS.map((creator) => {
-            const isCopied = copiedId === creator.id;
             return (
               <div
                 key={creator.id}
@@ -141,26 +115,14 @@ export function SponsorSection() {
                     <ExternalLink className="w-3 h-3 text-theme-text-muted" />
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(creator.id, `${creator.githubUrl}`)
-                    }
+                  <CopyButton
+                    text={creator.githubUrl}
+                    variant="ghost"
+                    hideTooltip
                     className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] font-medium transition-colors cursor-pointer"
-                    title={t("sponsor.copy_link", "링크 복사")}
                   >
-                    {isCopied ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-500" />
-                        <span className="text-[10px]">{t("sponsor.copied", "복사됨")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span className="text-[10px]">{t("sponsor.share", "공유")}</span>
-                      </>
-                    )}
-                  </button>
+                    <span className="text-[10px]">{t("sponsor.share", "공유")}</span>
+                  </CopyButton>
                 </div>
               </div>
             );

@@ -4,13 +4,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { FontMetadata, FontSet, CustomFolder } from "../types/font";
 import { fontService } from "../services/fontService";
 import { getRandomLibraryColor } from "../config/colorPresets";
-import { isPathInFolder } from "../utils/pathUtils";
+import { isPathInFolder, normalizePath } from "../utils/pathUtils";
 import { deduplicateFonts } from "../utils/fontDeduplication";
-import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../utils/batchFeedback";
+import { formatBatchInstallFeedback, formatBatchUninstallFeedback, formatErrorMessage } from "../utils/batchFeedback";
 
 interface UseFontActionsProps {
   fonts: FontMetadata[];
-  unpluggedFonts?: FontMetadata[];
   setFonts: React.Dispatch<React.SetStateAction<FontMetadata[]>>;
   filteredFonts: FontMetadata[];
   selectedFontIds: Set<number>;
@@ -36,7 +35,6 @@ interface UseFontActionsProps {
 
 export function useFontActions({
   fonts,
-  unpluggedFonts: _unpluggedFonts,
   setFonts,
   filteredFonts,
   selectedFontIds,
@@ -145,7 +143,7 @@ export function useFontActions({
           showToast(t("toast.activated", { name: font.family_name }));
         }
       } catch (err) {
-        showToast(t("toast.activate_failed", { error: String(err) }));
+        showToast(t("toast.activate_failed", { error: formatErrorMessage(err, t) }));
       }
     },
     [activatedFontIds, setActivatedFontIds, showToast, t]
@@ -189,7 +187,7 @@ export function useFontActions({
         }
         handleClearSelection();
       } catch (err) {
-        showToast(t("toast.bulk_activate_failed", { error: String(err) }));
+        showToast(t("toast.bulk_activate_failed", { error: formatErrorMessage(err, t) }));
       }
     },
     [fonts, handleClearSelection, setActivatedFontIds, showToast, t]
@@ -248,7 +246,7 @@ export function useFontActions({
         await loadSystemFonts();
       }
     } catch (err) {
-      showToast(t("toast.install_failed", { error: String(err) }));
+      showToast(t("toast.install_failed", { error: formatErrorMessage(err, t) }));
     }
   }, [
     activatedFontIds,
@@ -281,7 +279,7 @@ export function useFontActions({
         await loadSystemFonts();
       }
     } catch (err) {
-      showToast(t("toast.uninstall_failed", { error: String(err) }));
+      showToast(t("toast.uninstall_failed", { error: formatErrorMessage(err, t) }));
     }
   }, [filteredFonts, handleClearSelection, loadSystemFonts, refreshList, selectedFontIds, showToast, t]);
 
@@ -401,10 +399,11 @@ export function useFontActions({
         );
       } catch (err) {
         console.error("서재에서 제거 실패:", err);
+        const localizedErr = formatErrorMessage(err, t);
         showToast(
           t("toast.remove_from_set_failed", {
-            error: String(err),
-            defaultValue: `서재에서 제거 실패: ${String(err)}`,
+            error: localizedErr,
+            defaultValue: `서재에서 제거 실패: ${localizedErr}`,
           })
         );
       }
@@ -433,10 +432,11 @@ export function useFontActions({
         );
       } catch (err) {
         console.error("일괄 서재 제거 실패:", err);
+        const localizedErr = formatErrorMessage(err, t);
         showToast(
           t("toast.remove_from_set_failed", {
-            error: String(err),
-            defaultValue: `서재에서 제거 실패: ${String(err)}`,
+            error: localizedErr,
+            defaultValue: `서재에서 제거 실패: ${localizedErr}`,
           })
         );
       }
@@ -464,8 +464,8 @@ export function useFontActions({
         }
 
         // 2. 이미 존재하는 폴더 필터링
-        const existingPaths = new Set(customFoldersRef.current.map((f) => f.path));
-        const newDirs = dirInfos.filter((d) => !existingPaths.has(d.path));
+        const existingPaths = new Set(customFoldersRef.current.map((f) => normalizePath(f.path)));
+        const newDirs = dirInfos.filter((d) => !existingPaths.has(normalizePath(d.path)));
 
         // 모든 폴더가 이미 등록되어 있는 경우
         if (newDirs.length === 0) {
@@ -495,7 +495,7 @@ export function useFontActions({
         });
 
         setCustomFolders((prev) => [
-          ...prev.filter((f) => !newDirs.some((d) => d.path === f.path)),
+          ...prev.filter((f) => !newDirs.some((d) => normalizePath(d.path) === normalizePath(f.path))),
           ...optimisticFolders,
         ]);
 
@@ -509,7 +509,7 @@ export function useFontActions({
 
         for (const dir of newDirs) {
           const folderName = dir.name || dir.path.split(/[\\/]/).pop() || dir.path;
-          const matchingOptimistic = optimisticFolders.find((f) => f.path === dir.path);
+          const matchingOptimistic = optimisticFolders.find((f) => normalizePath(f.path) === normalizePath(dir.path));
           const folderColor = matchingOptimistic?.color || getRandomLibraryColor();
 
           try {
@@ -530,11 +530,6 @@ export function useFontActions({
             newFoldersToAdd.push(finalizedFolder);
             allNewFonts.push(...folderFonts);
 
-            // 해당 폴더 상태 개별 즉시 완료 반영
-            setCustomFolders((prev) =>
-              prev.map((f) => (f.path === dir.path ? finalizedFolder : f))
-            );
-
             // 해당 폴더의 폰트 즉시 목록에 병합
             if (folderFonts.length > 0) {
               setFonts((prev) => {
@@ -544,11 +539,16 @@ export function useFontActions({
               });
             }
 
+            // 해당 폴더 상태 개별 즉시 완료 반영
+            setCustomFolders((prev) =>
+              prev.map((f) => (normalizePath(f.path) === normalizePath(dir.path) ? finalizedFolder : f))
+            );
+
             await fontService.watchFolder(dir.path);
           } catch (dirErr) {
             console.error(`폴더(${dir.path}) 스캔/추가 실패:`, dirErr);
             // 실패 시 낙관적 임시 폴더 제거
-            setCustomFolders((prev) => prev.filter((f) => f.path !== dir.path));
+            setCustomFolders((prev) => prev.filter((f) => normalizePath(f.path) !== normalizePath(dir.path)));
             throw dirErr;
           }
         }
@@ -574,7 +574,7 @@ export function useFontActions({
         }
       } catch (error) {
         console.error("폴더 추가 실패:", error);
-        showToast(t("toast.folder_scan_failed", { error: String(error) }));
+        showToast(t("toast.folder_scan_failed", { error: formatErrorMessage(error, t) }));
       } finally {
         setIsLoading(false);
       }
@@ -611,7 +611,7 @@ export function useFontActions({
         try {
           setIsLoading(true);
           setCustomFolders((prev) =>
-            prev.map((f) => (f.path === folderPath ? { ...f, isScanning: true } : f))
+            prev.map((f) => (normalizePath(f.path) === normalizePath(folderPath) ? { ...f, isScanning: true } : f))
           );
           const folderFonts = await fontService.scanDirectory(folderPath);
           setFonts((prev) => {
@@ -622,7 +622,7 @@ export function useFontActions({
           const uniqueCount = deduplicateFonts(folderFonts, activatedFontIds).length;
           setCustomFolders((prev) =>
             prev.map((f) =>
-              f.path === folderPath
+              normalizePath(f.path) === normalizePath(folderPath)
                 ? { ...f, count: uniqueCount, isScanning: false, scanProgress: undefined }
                 : f
             )
@@ -630,7 +630,7 @@ export function useFontActions({
         } catch (err) {
           console.error("폴더 재스캔 실패:", err);
           setCustomFolders((prev) =>
-            prev.map((f) => (f.path === folderPath ? { ...f, isScanning: false } : f))
+            prev.map((f) => (normalizePath(f.path) === normalizePath(folderPath) ? { ...f, isScanning: false, scanProgress: undefined } : f))
           );
         } finally {
           setIsLoading(false);
@@ -647,7 +647,12 @@ export function useFontActions({
       const folderFonts = fonts.filter((f) => isPathInFolder(f.file_path, folderPath));
       const remainingFonts = fonts.filter((f) => !isPathInFolder(f.file_path, folderPath));
 
-      // 2. 활성화된 폰트 처리 (다른 폴더에 복제본이 있으면 인계, 없으면 안전 해제)
+      // 2. 활성화된 폰트 처리 (다른 폴더에 복제본이 있으면 인계, 없으면 안전 해제 - Bulk 일괄 처리로 N+1 방지)
+      const toDeactivate: { font_id: number; path: string }[] = [];
+      const toActivate: { font_id: number; path: string }[] = [];
+      const removedActiveIds = new Set<number>();
+      const addedActiveIds = new Set<number>();
+
       for (const font of folderFonts) {
         if (activatedFontIds.has(font.id)) {
           // 다른 활성 폴더에 동일 해시 폰트가 있는지 검사
@@ -657,26 +662,29 @@ export function useFontActions({
             )
             : undefined;
 
+          toDeactivate.push({ font_id: font.id, path: font.file_path });
+          removedActiveIds.add(font.id);
+
           if (counterpart) {
-            // 다른 폴더의 파일로 활성화 인계
-            void fontService.deactivateFont(font.file_path, font.id);
-            void fontService.activateFont(counterpart.file_path, counterpart.id);
-            setActivatedFontIds((prev) => {
-              const next = new Set(prev);
-              next.delete(font.id);
-              next.add(counterpart.id);
-              return next;
-            });
-          } else {
-            // 어디에도 없으면 OS에서 안전하게 해제
-            void fontService.deactivateFont(font.file_path, font.id);
-            setActivatedFontIds((prev) => {
-              const next = new Set(prev);
-              next.delete(font.id);
-              return next;
-            });
+            toActivate.push({ font_id: counterpart.id, path: counterpart.file_path });
+            addedActiveIds.add(counterpart.id);
           }
         }
+      }
+
+      if (toDeactivate.length > 0) {
+        void fontService.deactivateFonts(toDeactivate);
+      }
+      if (toActivate.length > 0) {
+        void fontService.activateFonts(toActivate);
+      }
+      if (removedActiveIds.size > 0 || addedActiveIds.size > 0) {
+        setActivatedFontIds((prev) => {
+          const next = new Set(prev);
+          removedActiveIds.forEach((id) => next.delete(id));
+          addedActiveIds.forEach((id) => next.add(id));
+          return next;
+        });
       }
 
       // 3. 백엔드 폴더 삭제 (세트/즐겨찾기 보존 캐시는 백엔드에서 유지됨)

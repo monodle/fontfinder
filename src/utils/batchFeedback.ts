@@ -5,7 +5,7 @@ type TranslateFn = (key: string, options?: any) => string;
 /**
  * 대량 파일 작업 에러 목록을 분석하여 가장 직관적인 실패 원인 요약 문구를 도출합니다.
  */
-export function summarizeBatchErrors(errors: string[], t: TranslateFn): string {
+function summarizeBatchErrors(errors: string[], t: TranslateFn): string {
   if (!errors || errors.length === 0) {
     return t("toast.error_reason_processing", { defaultValue: "처리 중 오류 발생" });
   }
@@ -85,7 +85,12 @@ export function formatBatchInstallFeedback(result: BatchInstallResult, t: Transl
   }
 
   const reason = summarizeBatchErrors(result.errors, t);
-  return `${successCount}개 설치 완료 / ${failedCount}개 실패 (${reason})`;
+  return t("toast.bulk_installed_partial", {
+    success: successCount,
+    failed: failedCount,
+    reason,
+    defaultValue: `${successCount}개 설치 완료 / ${failedCount}개 실패 (${reason})`,
+  });
 }
 
 /**
@@ -100,5 +105,69 @@ export function formatBatchUninstallFeedback(result: BatchUninstallResult, t: Tr
   }
 
   const reason = summarizeBatchErrors(result.errors, t);
-  return `${successCount}개 제거 완료 / ${failedCount}개 실패 (${reason})`;
+  return t("toast.bulk_uninstalled_partial", {
+    success: successCount,
+    failed: failedCount,
+    reason,
+    defaultValue: `${successCount}개 제거 완료 / ${failedCount}개 실패 (${reason})`,
+  });
+}
+
+/**
+ * 단일 작업 에러 메시지를 분석하여 현재 언어에 적합한 로컬라이즈된 에러 문구를 반환합니다.
+ */
+export function formatErrorMessage(err: unknown, t: TranslateFn): string {
+  if (!err) {
+    return t("toast.error_reason_processing", { defaultValue: "처리 중 오류 발생" });
+  }
+
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("woff") ||
+    lower.includes("웹 전용") ||
+    lower.includes("web-only")
+  ) {
+    return t("toast.woff_activate_unsupported", {
+      defaultValue: "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화를 지원하지 않습니다.",
+    });
+  }
+
+  if (
+    lower.includes("사용 중") ||
+    lower.includes("in use") ||
+    lower.includes("sharing_violation") ||
+    lower.includes("잠겨") ||
+    lower.includes("locked")
+  ) {
+    return t("toast.error_reason_in_use", { defaultValue: "다른 프로그램에서 사용 중" });
+  }
+
+  if (
+    lower.includes("권한") ||
+    lower.includes("access_denied") ||
+    lower.includes("permission")
+  ) {
+    return t("toast.error_reason_permission", { defaultValue: "쓰기 권한 부족" });
+  }
+
+  if (
+    lower.includes("손상") ||
+    lower.includes("invalid") ||
+    lower.includes("corrupt") ||
+    lower.includes("format")
+  ) {
+    return t("toast.error_reason_corrupted", { defaultValue: "지원하지 않거나 손상된 서체" });
+  }
+
+  if (
+    lower.includes("not found") ||
+    lower.includes("찾을 수 없") ||
+    lower.includes("존재하지 않")
+  ) {
+    return t("toast.error_reason_not_found", { defaultValue: "파일을 찾을 수 없음" });
+  }
+
+  return message.replace(/^Error:\s*/i, "");
 }

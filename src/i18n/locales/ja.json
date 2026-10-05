@@ -19,7 +19,9 @@
     "fonts": "Fonts",
     "count_unit": "個",
     "reset_to_default": "デフォルトに戻す",
-    "clear": "クリア"
+    "clear": "クリア",
+    "copy": "コピー",
+    "close_esc": "閉じる (Esc)"
   },
   "confirm": {
     "uninstall_font_title": "システムからフォントを削除",
@@ -35,7 +37,14 @@
     "bulk_remove_from_set_desc": "選択した{{count}}個のフォントを「{{setName}}」セットから削除しますか？",
     "remove_from_set_notice": "（セットからのみ除外され、実際のフォントファイルは削除されません。）",
     "bulk_remove_from_set_item": "{{count}}個の選択されたフォント",
-    "remove_btn": "セットから削除"
+    "remove_btn": "セットから削除",
+    "deactivate_font_title": "アクティベーション解除",
+    "bulk_deactivate_title": "アクティベーション一括解除",
+    "deactivate_font_desc": "このフォントのアクティベーションを解除しますか？",
+    "bulk_deactivate_desc": "選択した{{count}}個のフォントのアクティベーションを解除しますか？",
+    "deactivate_warning": "アクティベーションを解除すると、現在起動中のグラフィック・文書編集プログラムからフォントが即座にアンロードされます。",
+    "deactivate_btn": "アクティベーション解除",
+    "bulk_deactivate_item": "{{count}}個の選択されたフォント"
   },
   "preview": {
     "default_text": "色は匂へど 散りぬるを 我が世誰ぞ 常ならむ\nThe quick brown fox jumps over the lazy dog\n1234567890"
@@ -85,14 +94,33 @@
     "user_desc": "User installed fonts",
     "activated_desc": "Currently activated fonts",
     "favorites_desc": "Favorite fonts",
-    "duplicates_desc": "Duplicate fonts detected"
+    "duplicates_desc": "Duplicate fonts detected",
+    "search_sets": "コレクション検索...",
+    "no_matching_sets": "一致するコレクションがありません。",
+    "set_location_label": "位置 (親コレクション)",
+    "depth_1": "第1階層 (ルートカテゴリ)",
+    "depth_2": "第2階層 (サブセット)",
+    "set_parent_root": "📁 ルート (第1階層カテゴリ)",
+    "parent_has_children_locked": "ルート (サブセットを含んでいるため第1階層に固定)",
+    "add_subset": "サブセット追加",
+    "promote_to_root": "ルート(第1階層)に昇格",
+    "children_count": "サブ {{count}}件",
+    "delete_set_with_children_confirm": "コレクション「{{name}}」を削除しますか？\n含まれるサブセット{{count}}件 ({{children}}) も一緒に削除されます。\n(フォント原本ファイルは削除されません)",
+    "subset_desc": "サブセットコレクション",
+    "expand": "サブセットを展開",
+    "collapse": "サブセットを折りたたむ",
+    "insert_root": "最上位(1階層)に挿入",
+    "insert_child": "↳ サブセット {{parent}}",
+    "move_into_set": "↳ {{name}} 内へ移動"
   },
   "folder": {
     "disconnected": "接続切断",
     "relink": "新しい場所を再接続",
     "relink_dialog_title": "移動したフォルダの新しい場所を選択",
     "missing_label": "Missing folder location",
-    "relink_short": "Relink"
+    "relink_short": "Relink",
+    "missing_title": "フォルダが見つかりません",
+    "missing_desc": "フォルダが移動または切断されました。フォントを表示するにはフォルダを再接続してください。"
   },
   "toolbar": {
     "style_settings": "スタイル設定",
@@ -116,7 +144,8 @@
     "view_mode": "View mode",
     "detail_mode_tooltip": "Font detail level",
     "diff_tooltip_selected": "Compare selected font glyphs ({{count}})",
-    "diff_tooltip": "Compare font glyphs (Diff)"
+    "diff_tooltip": "Compare font glyphs (Diff)",
+    "color_presets": "プリセット"
   },
   "action_bar": {
     "selected_count": "{{count}}個のフォントを選択中",
@@ -164,7 +193,9 @@
     "diff_compare_top5": "フォント比較 (上位5件)",
     "already_in_set": "このセットには既に登録されています",
     "view_font_info": "フォント情報を見る",
-    "view_font_info_n": "フォント情報を見る ({{count}}個)"
+    "view_font_info_n": "フォント情報を見る ({{count}}個)",
+    "copy": "コピー",
+    "show_in_folder_mac": "Finderで表示"
   },
   "font_info": {
     "title": "フォント情報",
@@ -286,7 +317,9 @@
       "char_unit": "文字",
       "characters_included": "{{count}}文字収録",
       "opentype_features": "対応OpenType機能 (GSUB/GPOS)",
-      "no_features": "OpenType機能タグがありません。"
+      "no_features": "OpenType機能タグがありません。",
+      "glyphs_unit": "グリフ",
+      "chars_unit": "文字"
     },
     "raw": {
       "name_table": "Name Table (フォント識別・名称テーブル)",
@@ -329,7 +362,24 @@
         "sample_text": "サンプルプレビュー文言 (Sample Text)"
       }
     },
-    "disclaimer": "※ 本情報はフォントファイル内のメタデータを直接解析した結果であり、実際のフォント仕様や最新のライセンス条件と異なる場合があります。正確な利用条件は公式配布元でご確認ください。"
+    "disclaimer": "※ 本情報はフォントファイル内のメタデータを直接解析した結果であり、実際のフォント仕様や最新のライセンス条件と異なる場合があります。正確な利用条件は公式配布元でご確認ください。",
+    "selected_count": "{{count}}個選択中",
+    "copy_ps_name": "PostScript Nameをコピー",
+    "copy_file_path": "ファイルパスをコピー",
+    "analyzing": "メタデータを分析中...",
+    "family_class": {
+      "oldstyle_serifs": "オールドスタイル・セリフ (Oldstyle Serifs)",
+      "transitional_serifs": "過渡期セリフ (Transitional Serifs)",
+      "modern_serifs": "モダン・セリフ (Modern Serifs)",
+      "clarendon_serifs": "クラレンドン・セリフ (Clarendon Serifs)",
+      "slab_serifs": "スラブ・セリフ (Slab Serifs)",
+      "freeform_serifs": "フリーフォーム・セリフ (Freeform Serifs)",
+      "sans_serif": "サンセリフ / ゴシック (Sans-serif)",
+      "scripts": "スクリプト / 筆記体 (Scripts)",
+      "decorative": "装飾 / ディスプレイ (Decorative / Display)",
+      "symbolic": "記号 / シンボル (Symbolic)",
+      "none": "未分類 (No Classification)"
+    }
   },
   "style_modal": {
     "title": "プレビュー文言とスタイル設定",
@@ -593,7 +643,16 @@
     "drop_folder_only": "Please drop folder(s) only. (Individual files are not supported)",
     "folder_open_failed": "Failed to open folder.",
     "added_to_set": "'{{name}}' added to set.",
-    "bulk_added_to_set": "{{count}} fonts added to set."
+    "bulk_added_to_set": "{{count}} fonts added to set.",
+    "woff_activate_unsupported": "WOFF/WOFF2形式はウェブ専用フォントのため、OSシステムのアクティベーションに対応していません。",
+    "error_reason_processing": "処理中にエラーが発生しました",
+    "error_reason_in_use": "他のプログラムで使用中",
+    "error_reason_permission": "書き込み権限が不足しています",
+    "error_reason_corrupted": "非対応または破損したフォント",
+    "error_reason_not_found": "ファイルが見つかりません",
+    "error_reason_multiple": "複数の原因",
+    "bulk_installed_partial": "{{success}}件のインストール完了 / {{failed}}件失敗 ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}}件のアンインストール完了 / {{failed}}件失敗 ({{reason}})"
   },
   "empty": {
     "scanning": "フォントメタデータをスキャンしています...",
@@ -804,7 +863,9 @@
     "newer_version_full": "アップデート可能",
     "newer_version_tooltip": "システム上のフォントより新しいバージョンです",
     "older_version": "旧バージョン",
-    "older_version_tooltip": "システムにさらに新しいバージョンが既にインストールされています"
+    "older_version_tooltip": "システムにさらに新しいバージョンが既にインストールされています",
+    "duplicate": "重複 {{count}}",
+    "duplicate_tooltip": "同じフォントファイルが{{count}}個存在します"
   },
   "sort_settings": {
     "recommended_badge": "おすすめ",

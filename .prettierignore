@@ -21,3 +21,15 @@ build/
 
 # OS
 .DS_Store
+
+docs/working/
+
+.editorconfig
+.codexignore
+.geminiignore
+.agents/
+*.old
+playwright-report/
+docs/
+
+src-tauri/target

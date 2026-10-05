@@ -50,8 +50,7 @@ export function LanguageSelector({
             disabled={disabled}
             onClick={() => onSelect(lang.code)}
             showCheckmark={false}
-            variant="compact"
-            className="flex-col items-center justify-center text-center p-2.5"
+            variant="centered"
           />
         );
       })}

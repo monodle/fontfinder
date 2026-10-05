@@ -19,7 +19,9 @@
     "fonts": "글꼴",
     "count_unit": "개",
     "reset_to_default": "기본값으로 재설정",
-    "clear": "지우기"
+    "clear": "지우기",
+    "copy": "복사",
+    "close_esc": "닫기 (Esc)"
   },
   "dialog": {
     "cancel": "취소",
@@ -40,7 +42,14 @@
     "bulk_remove_from_set_desc": "'{{setName}}' 서재 세트에서 선택한 {{count}}개의 글꼴을 제거하시겠습니까?",
     "remove_from_set_notice": "(서재 세트에서만 제외되며, 실제 글꼴 파일은 삭제되지 않습니다.)",
     "bulk_remove_from_set_item": "{{count}}개 선택된 글꼴",
-    "remove_btn": "서재에서 제거"
+    "remove_btn": "서재에서 제거",
+    "deactivate_font_title": "임시활성화 해제",
+    "bulk_deactivate_title": "임시활성화 일괄 해제",
+    "deactivate_font_desc": "이 글꼴의 임시활성화를 해제하시겠습니까?",
+    "bulk_deactivate_desc": "선택한 {{count}}개 글꼴의 임시활성화를 해제하시겠습니까?",
+    "deactivate_warning": "임시활성화를 해제하면 현재 실행 중인 그래픽/문서 편집 프로그램에서 글꼴이 즉시 제외됩니다.",
+    "deactivate_btn": "임시활성화 해제",
+    "bulk_deactivate_item": "{{count}}개 선택된 글꼴"
   },
   "preview": {
     "default_text": "다람쥐 헌 쳇바퀴에 타고파\nThe quick brown fox jumps over the lazy dog\n1234567890"
@@ -87,7 +96,7 @@
     "set_name_label": "세트 이름",
     "set": "세트",
     "custom_set_desc": "사용자 지정 세트 컬렉션",
-    "all_desc": "등록된 모든 글꼴",
+    "all_desc": "시스템 폰트를 제외한 전체 글꼴",
     "system_desc": "운영체제 시스템 글꼴",
     "user_desc": "사용자 설치 글꼴",
     "activated_desc": "현재 임시 활성화된 글꼴",
@@ -102,7 +111,12 @@
     "promote_to_root": "최상위(1depth)로 꺼내기",
     "children_count": "하위 {{count}}개",
     "delete_set_with_children_confirm": "'{{name}}' 서재 세트를 삭제하시겠습니까?\n포함된 하위 세트 {{count}}개({{children}})도 함께 삭제됩니다.\n(폰트 원본 파일은 삭제되지 않습니다)",
-    "subset_desc": "하위 서재 세트"
+    "subset_desc": "하위 서재 세트",
+    "expand": "하위 세트 펼치기",
+    "collapse": "하위 세트 접기",
+    "insert_root": "1depth 최상위로 끼워넣기",
+    "insert_child": "↳ 2depth {{parent}}",
+    "move_into_set": "↳ {{name}} 안으로 이동"
   },
   "folder": {
     "disconnected": "연결 끊김",
@@ -140,7 +154,8 @@
     "view_mode": "보기 모드",
     "detail_mode_tooltip": "폰트 표시 상세도",
     "diff_tooltip_selected": "선택한 폰트 글리프 Diff 비교 ({{count}}개)",
-    "diff_tooltip": "전문가용 글리프 Diff 비교"
+    "diff_tooltip": "전문가용 글리프 Diff 비교",
+    "color_presets": "프리셋"
   },
   "sort": {
     "title": "폰트 목록 정렬",
@@ -179,40 +194,42 @@
   },
   "context_menu": {
     "selected_count": "{{count}}개 글꼴 일괄 선택됨",
-    "favorite_add": "즐겨찾기에 추가",
-    "favorite_remove": "즐겨찾기에서 제거",
-    "bulk_favorite_add": "선택 {{count}}개 즐겨찾기 추가",
-    "bulk_favorite_remove": "선택 {{count}}개 즐겨찾기 해제",
-    "activate": "시스템에 임시 활성화",
-    "deactivate": "임시 활성화 해제",
-    "bulk_activate": "선택 {{count}}개 임시 활성화",
-    "bulk_deactivate": "선택 {{count}}개 임시 활성화 해제",
-    "install": "시스템에 설치",
-    "uninstall": "시스템에서 글꼴 제거",
-    "bulk_install": "선택 {{count}}개 설치",
-    "bulk_uninstall": "선택 {{count}}개 시스템에서 제거",
+    "favorite_add": "즐겨찾기 등록",
+    "favorite_remove": "즐겨찾기 제거",
+    "bulk_favorite_add": "즐겨찾기 등록 ({{count}}개)",
+    "bulk_favorite_remove": "즐겨찾기 제거 ({{count}}개)",
+    "activate": "임시활성화 등록",
+    "deactivate": "임시활성화 해제",
+    "bulk_activate": "임시활성화 등록 ({{count}}개)",
+    "bulk_deactivate": "임시활성화 해제 ({{count}}개)",
+    "install": "시스템 설치",
+    "uninstall": "시스템 제거",
+    "bulk_install": "시스템 설치 ({{count}}개)",
+    "bulk_uninstall": "시스템 제거 ({{count}}개)",
     "system_protected_title": "운영체제 기본 내장 폰트는 삭제하거나 설치할 수 없습니다",
-    "system_protected_label": "시스템 보호 글꼴 (삭제 불가)",
-    "system_protected_count": "시스템 보호 글꼴 ({{count}}개)",
+    "system_protected_label": "시스템 보호 안내",
+    "system_protected_count": "시스템 보호 안내 ({{count}}개)",
+    "copy": "복사",
     "copy_name": "글꼴 이름 복사",
-    "copy_names": "글꼴 이름 {{count}}개 복사",
+    "copy_names": "글꼴 이름 복사 ({{count}}개)",
     "copy_path": "파일 경로 복사",
-    "copy_paths": "파일 경로 {{count}}개 복사",
-    "diff_compare": "폰트 비교",
-    "diff_compare_1": "폰트 비교 (1)",
-    "diff_compare_n": "폰트 비교 ({{count}})",
-    "diff_compare_top5": "폰트 비교",
+    "copy_paths": "파일 경로 복사 ({{count}}개)",
+    "diff_compare": "폰트비교",
+    "diff_compare_1": "폰트비교 (1)",
+    "diff_compare_n": "폰트비교 ({{count}})",
+    "diff_compare_top5": "폰트비교",
     "show_in_folder": "파일 탐색기에서 보기",
+    "show_in_folder_mac": "Finder에서 보기",
     "remove_from_set": "서재에서 제거",
-    "bulk_remove_from_set": "선택 {{count}}개 서재에서 제거",
+    "bulk_remove_from_set": "서재에서 제거 ({{count}}개)",
     "add_to_set": "서재 세트 등록",
     "bulk_add_to_set": "서재 세트 등록 ({{count}}개)",
     "already_in_set": "이미 등록되어 있습니다",
     "no_sets": "등록된 서재 세트 없음",
     "no_matching_sets": "일치하는 서재 세트 없음",
     "search_sets": "서재 세트 검색...",
-    "view_font_info": "폰트 정보 보기",
-    "view_font_info_n": "폰트 정보 보기 ({{count}}개)"
+    "view_font_info": "폰트 정보",
+    "view_font_info_n": "폰트 정보 ({{count}}개)"
   },
   "font_info": {
     "title": "폰트 정보",
@@ -334,7 +351,9 @@
       "char_unit": "자",
       "characters_included": "{{count}}자 수록",
       "opentype_features": "지원 오픈타입 레이아웃 기능 (GSUB/GPOS)",
-      "no_features": "수록된 오픈타입 기능 태그가 없습니다."
+      "no_features": "수록된 오픈타입 기능 태그가 없습니다.",
+      "glyphs_unit": "글리프",
+      "chars_unit": "문자"
     },
     "raw": {
       "name_table": "Name Table (서체 식별 및 명칭 테이블)",
@@ -377,7 +396,24 @@
         "sample_text": "견본 미리보기 문구 (Sample Text)"
       }
     },
-    "disclaimer": "※ 본 정보는 폰트 파일 내에 기록된 메타데이터를 직접 분석한 결과이며, 제작사의 실제 정보나 최신 라이선스 정책과 다를 수 있습니다. 정확한 사용 조건은 공식 제작사를 통해 확인하시기 바랍니다."
+    "disclaimer": "※ 본 정보는 폰트 파일 내에 기록된 메타데이터를 직접 분석한 결과이며, 제작사의 실제 정보나 최신 라이선스 정책과 다를 수 있습니다. 정확한 사용 조건은 공식 제작사를 통해 확인하시기 바랍니다.",
+    "selected_count": "{{count}}개 선택됨",
+    "copy_ps_name": "PostScript Name 복사",
+    "copy_file_path": "파일 경로 복사",
+    "analyzing": "메타데이터 분석 중...",
+    "family_class": {
+      "oldstyle_serifs": "Oldstyle Serifs (옛날 명조/세리프)",
+      "transitional_serifs": "Transitional Serifs (과도기 세리프)",
+      "modern_serifs": "Modern Serifs (모던 세리프)",
+      "clarendon_serifs": "Clarendon Serifs (클라렌던 세리프)",
+      "slab_serifs": "Slab Serifs (슬랩 세리프)",
+      "freeform_serifs": "Freeform Serifs (자유형 세리프)",
+      "sans_serif": "Sans-serif (고딕/산세리프)",
+      "scripts": "Scripts (필기체/손글씨)",
+      "decorative": "Decorative / Display (장식/디스플레이)",
+      "symbolic": "Symbolic (기호/심볼)",
+      "none": "No Classification (미분류)"
+    }
   },
   "diff": {
     "title": "글꼴 글리프 비교",
@@ -481,7 +517,7 @@
     "theme_glass": "글래스 테마",
     "default_category": "시작 라이브러리 카테고리",
     "cat_user_desc": "사용자가 직접 추가하거나 설치한 글꼴",
-    "cat_all_desc": "시스템 및 사용자 글꼴 전체",
+    "cat_all_desc": "시스템 폰트를 제외한 사용자 및 등록 글꼴 전체",
     "cat_system_desc": "운영체제 기본 제공 글꼴",
     "cat_activated_desc": "현재 임시 활성화된 외부 글꼴",
     "cat_favorites_desc": "하트 표시한 관심 글꼴",
@@ -689,7 +725,16 @@
     "settings_save_failed": "설정 저장에 실패했습니다.",
     "folder_open_failed": "폴더를 열지 못했습니다.",
     "added_to_set": "'{{name}}' 글꼴이 서재에 등록되었습니다.",
-    "bulk_added_to_set": "{{count}}개 글꼴이 서재에 등록되었습니다."
+    "bulk_added_to_set": "{{count}}개 글꼴이 서재에 등록되었습니다.",
+    "woff_activate_unsupported": "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화를 지원하지 않습니다.",
+    "error_reason_processing": "처리 중 오류 발생",
+    "error_reason_in_use": "다른 프로그램에서 사용 중",
+    "error_reason_permission": "쓰기 권한 부족",
+    "error_reason_corrupted": "지원하지 않거나 손상된 서체",
+    "error_reason_not_found": "파일을 찾을 수 없음",
+    "error_reason_multiple": "복합 원인",
+    "bulk_installed_partial": "{{success}}개 설치 완료 / {{failed}}개 실패 ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}}개 제거 완료 / {{failed}}개 실패 ({{reason}})"
   },
   "empty": {
     "scanning": "활자 메타데이터를 스캔하는 중입니다...",
@@ -818,7 +863,9 @@
     "newer_version_full": "업데이트 가능",
     "newer_version_tooltip": "시스템에 설치된 폰트보다 최신 버전입니다",
     "older_version": "구버전",
-    "older_version_tooltip": "시스템에 더 최신 버전이 이미 설치되어 있습니다"
+    "older_version_tooltip": "시스템에 더 최신 버전이 이미 설치되어 있습니다",
+    "duplicate": "중복 {{count}}",
+    "duplicate_tooltip": "동일한 폰트 파일이 {{count}}개 존재합니다"
   },
   "sort_settings": {
     "recommended_badge": "추천",

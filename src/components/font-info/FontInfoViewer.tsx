@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FontDetailedInfo, FontMetadata } from "../../types/font";
 import { fontService } from "../../services/fontService";
 import { loadFontIntoDocument, getCustomFontFamily } from "../../utils/fontLoader";
 import { getFontFamilyName } from "../../utils/fontLocalization";
+import { getDefaultPreviewText, isDefaultPreviewText } from "../../config/appConfig";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { MetricsTab } from "./tabs/MetricsTab";
 import { CoverageTab } from "./tabs/CoverageTab";
@@ -13,12 +14,10 @@ import {
   Sliders,
   Globe,
   Code2,
-  Copy,
-  Check,
   AlertCircle,
-  Loader2,
   Folder,
 } from "lucide-react";
+import { Spinner, CopyButton } from "../common";
 
 interface FontInfoViewerProps {
   font: FontMetadata;
@@ -26,9 +25,6 @@ interface FontInfoViewerProps {
 }
 
 type TabType = "overview" | "metrics" | "coverage" | "raw";
-
-const DEFAULT_PREVIEW_TEXT =
-  "다람쥐 헌 쳇바퀴에 타고파. The quick brown fox jumps over the lazy dog. 1234567890 !@#$%^&*";
 
 export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps) {
   const { t, i18n } = useTranslation();
@@ -38,20 +34,28 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 라이브 프리뷰용 상태
+  // 라이브 프리뷰용 상태 (현재 언어에 맞는 팬그램으로 초기화)
   const [previewText, setPreviewText] = useState(
-    initialPreviewText?.trim() || DEFAULT_PREVIEW_TEXT
+    initialPreviewText?.trim() || getDefaultPreviewText(i18n.language)
   );
   const [fontSize, setFontSize] = useState(28);
   const [fontLoaded, setFontLoaded] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // 외부 initialPreviewText 변경 시 동기화
   useEffect(() => {
     if (initialPreviewText?.trim()) {
       setPreviewText(initialPreviewText.trim());
+    } else {
+      setPreviewText(getDefaultPreviewText(i18n.language));
     }
-  }, [initialPreviewText]);
+  }, [initialPreviewText, i18n.language]);
+
+  // 언어 변경 시 사용자가 별도 커스텀 텍스트를 입력하지 않았으면 해당 언어의 기본 프리뷰 문구로 동기화
+  useEffect(() => {
+    if (!initialPreviewText?.trim() || isDefaultPreviewText(previewText)) {
+      setPreviewText(getDefaultPreviewText(i18n.language));
+    }
+  }, [i18n.language]);
 
   // 1. 해당 폰트 실제 CSS FontFace 로드
   useEffect(() => {
@@ -97,13 +101,6 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
     };
   }, [font.file_path, font.font_index]);
 
-  const handleCopy = useCallback((text: string, key: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
-  }, []);
-
   const customFamily = useMemo(() => {
     return fontLoaded ? `${getCustomFontFamily(font)}, sans-serif` : "sans-serif";
   }, [font, fontLoaded]);
@@ -126,18 +123,11 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
               <span className="text-[11px] font-mono text-theme-text-muted truncate select-all">
                 {font.postscript_name}
               </span>
-              <button
-                type="button"
-                onClick={() => handleCopy(font.postscript_name, "ps_name")}
-                className="text-theme-text-muted hover:text-theme-text p-0.5 transition-colors"
-                title="PostScript Name 복사"
-              >
-                {copiedKey === "ps_name" ? (
-                  <Check className="w-3 h-3 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </button>
+              <CopyButton
+                text={font.postscript_name}
+                size="xs"
+                className="p-0.5"
+              />
             </div>
 
             {/* 파일 경로 최상단 공통 노출 */}
@@ -146,18 +136,11 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
               <span className="font-mono truncate select-all text-[11px]" title={font.file_path}>
                 {font.file_path}
               </span>
-              <button
-                type="button"
-                onClick={() => handleCopy(font.file_path, "file_path")}
-                className="text-theme-text-muted hover:text-theme-text p-0.5 transition-colors shrink-0"
-                title="파일 경로 복사"
-              >
-                {copiedKey === "file_path" ? (
-                  <Check className="w-3 h-3 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </button>
+              <CopyButton
+                text={font.file_path}
+                size="xs"
+                className="p-0.5 shrink-0"
+              />
             </div>
           </div>
 
@@ -256,9 +239,8 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
       {/* 3. 탭 본문 (스크롤 영역) */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
         {loading ? (
-          <div className="h-48 flex flex-col items-center justify-center gap-2 text-theme-text-muted">
-            <Loader2 className="w-6 h-6 animate-spin text-theme-accent" />
-            <span className="text-xs">메타데이터 분석 중...</span>
+          <div className="h-48 flex items-center justify-center">
+            <Spinner size="lg" label={t("font_info.analyzing", "메타데이터 분석 중...")} />
           </div>
         ) : error ? (
           <div className="h-48 flex flex-col items-center justify-center gap-2 text-rose-500">

@@ -1,24 +1,8 @@
 import React from "react";
-import { FontMetadata, PreviewSettings, FontLibraryTag } from "../../types/font";
+import { FontMetadata, FontLibraryTag } from "../../types/font";
 
 export type FontDetailMode = "detailed" | "simple";
 
-export interface FontItemProps {
-  font: FontMetadata;
-  previewText?: string;
-  fontSize?: number;
-  previewSettings?: PreviewSettings;
-  detailMode?: FontDetailMode;
-  isSelected: boolean;
-  isFavorite?: boolean;
-  isActivated?: boolean;
-  columns?: number;
-  onSelect: (font: FontMetadata, e: React.MouseEvent) => void;
-  onToggleFavorite?: (fontId: number) => void;
-  onToggleActivate?: (font: FontMetadata) => void;
-  onContextMenu?: (e: React.MouseEvent, font: FontMetadata) => void;
-  onSelectLibrary?: (tag: FontLibraryTag, e: React.MouseEvent) => void;
-}
 
 export interface FontCardRenderProps {
   font: FontMetadata;

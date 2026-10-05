@@ -10,7 +10,7 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
-import { ModalDialog } from "./ModalDialog";
+import { ModalDialog, Input } from "./common";
 import { FontSet } from "../types/font";
 import {
   LIBRARY_LABEL_COLOR_PRESETS,
@@ -296,20 +296,17 @@ export function LibraryItemModal({
         {mode !== "edit_folder" ? (
           <div className="space-y-3.5">
             <div>
-              <label className="block text-xs font-semibold text-theme-text mb-1.5">
-                {t("sidebar.set_name_label", "세트 이름")}
-              </label>
-              <div className="relative">
-                <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted pointer-events-none" />
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("sidebar.new_set_placeholder")}
-                  className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-3.5 py-2 text-xs text-theme-text placeholder:text-theme-text-muted transition-all outline-none"
-                />
-              </div>
+              <Input
+                ref={nameInputRef}
+                label={t("sidebar.set_name_label", "세트 이름")}
+                prefixIcon={<Tag className="w-4 h-4 text-theme-text-muted" />}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("sidebar.new_set_placeholder")}
+                clearable
+                onClear={() => setName("")}
+              />
             </div>
 
             {/* 상위 세트(위치) 선택 드롭다운 (2depth 제한) */}

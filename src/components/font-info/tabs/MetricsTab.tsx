@@ -14,26 +14,26 @@ export function MetricsTab({ details }: MetricsTabProps) {
       {/* 1. UPM 및 비율 메트릭 요약 배너 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle/80 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] text-theme-text-muted mb-0.5">UPM (Units Per Em)</span>
+          <span className="text-[10px] text-theme-text-muted mb-0.5">{t("font_info.metrics.units_per_em", "Units Per Em (UPM)")}</span>
           <span className="text-base font-bold font-mono text-theme-accent">{metrics.units_per_em}</span>
         </div>
 
         <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle/80 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] text-theme-text-muted mb-0.5">Cap Height</span>
+          <span className="text-[10px] text-theme-text-muted mb-0.5">{t("font_info.metrics.cap_height", "Cap Height")}</span>
           <span className="text-base font-bold font-mono text-theme-text">
             {metrics.cap_height !== null && metrics.cap_height !== undefined ? metrics.cap_height : "-"}
           </span>
         </div>
 
         <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle/80 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] text-theme-text-muted mb-0.5">X-Height</span>
+          <span className="text-[10px] text-theme-text-muted mb-0.5">{t("font_info.metrics.x_height", "X-Height")}</span>
           <span className="text-base font-bold font-mono text-theme-text">
             {metrics.x_height !== null && metrics.x_height !== undefined ? metrics.x_height : "-"}
           </span>
         </div>
 
         <div className="p-3 rounded-xl bg-theme-surface-subtle border border-theme-border-subtle/80 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] text-theme-text-muted mb-0.5">Italic Angle</span>
+          <span className="text-[10px] text-theme-text-muted mb-0.5">{t("font_info.metrics.italic_angle", "Italic Angle")}</span>
           <span className="text-base font-bold font-mono text-theme-text">
             {metrics.italic_angle !== 0 ? `${metrics.italic_angle.toFixed(1)}°` : "0°"}
           </span>

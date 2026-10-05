@@ -19,7 +19,9 @@
     "fonts": "Fonts",
     "count_unit": " Elemente",
     "reset_to_default": "Auf Standard zurücksetzen",
-    "clear": "Löschen"
+    "clear": "Löschen",
+    "copy": "Kopieren",
+    "close_esc": "Schließen (Esc)"
   },
   "confirm": {
     "uninstall_font_title": "Schriftart aus System deinstallieren",
@@ -35,7 +37,14 @@
     "bulk_remove_from_set_desc": "Möchten Sie {{count}} ausgewählte Schriftarten aus dem Set '{{setName}}' entfernen?",
     "remove_from_set_notice": "(Wird nur aus dem Set entfernt, die eigentlichen Schriftartdateien werden nicht gelöscht.)",
     "bulk_remove_from_set_item": "{{count}} Schriftarten ausgewählt",
-    "remove_btn": "Aus Set entfernen"
+    "remove_btn": "Aus Set entfernen",
+    "deactivate_font_title": "Schriftart deaktivieren",
+    "bulk_deactivate_title": "Schriftarten deaktivieren",
+    "deactivate_font_desc": "Möchten Sie diese Schriftart wirklich deaktivieren?",
+    "bulk_deactivate_desc": "Möchten Sie die ausgewählten {{count}} Schriftarten wirklich deaktivieren?",
+    "deactivate_warning": "Das Deaktivieren entfernt die Schriftart sofort aus aktiven Grafik- und Dokumentenbearbeitungsprogrammen.",
+    "deactivate_btn": "Deaktivieren",
+    "bulk_deactivate_item": "{{count}} ausgewählte Schriftarten"
   },
   "preview": {
     "default_text": "Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter Deich\nThe quick brown fox jumps over the lazy dog\n1234567890"
@@ -85,7 +94,24 @@
     "user_desc": "User installed fonts",
     "activated_desc": "Currently activated fonts",
     "favorites_desc": "Favorite fonts",
-    "duplicates_desc": "Duplicate fonts detected"
+    "duplicates_desc": "Duplicate fonts detected",
+    "search_sets": "Schriftsätze durchsuchen...",
+    "no_matching_sets": "Keine passenden Schriftsätze gefunden.",
+    "set_location_label": "Ort (Übergeordneter Satz)",
+    "depth_1": "Ebene 1 (Hauptkategorie)",
+    "depth_2": "Ebene 2 (Untersatz)",
+    "set_parent_root": "📁 Hauptverzeichnis (Ebene 1)",
+    "parent_has_children_locked": "Hauptverzeichnis (auf Ebene 1 fixiert, da Untersätze vorhanden sind)",
+    "add_subset": "Untersatz hinzufügen",
+    "promote_to_root": "Auf oberste Ebene verschieben",
+    "children_count": "{{count}} Untersätze",
+    "delete_set_with_children_confirm": "Möchten Sie den Schriftsatz '{{name}}' löschen?\nDie darin enthaltenen {{count}} Untersätze ({{children}}) werden ebenfalls gelöscht.\n(Originaldateien werden nicht gelöscht)",
+    "subset_desc": "Untersatz-Sammlung",
+    "expand": "Untergruppen erweitern",
+    "collapse": "Untergruppen einklappen",
+    "insert_root": "Auf oberster Ebene einfügen",
+    "insert_child": "↳ Ebene 2 {{parent}}",
+    "move_into_set": "↳ In {{name}} verschieben"
   },
   "toolbar": {
     "style_settings": "Stil-Einstellungen",
@@ -109,7 +135,8 @@
     "view_mode": "View mode",
     "detail_mode_tooltip": "Font detail level",
     "diff_tooltip_selected": "Compare selected font glyphs ({{count}})",
-    "diff_tooltip": "Compare font glyphs (Diff)"
+    "diff_tooltip": "Compare font glyphs (Diff)",
+    "color_presets": "Voreinstellungen"
   },
   "action_bar": {
     "selected_count": "{{count}} Schriftart(en) ausgewählt",
@@ -155,7 +182,11 @@
     "diff_compare_top5": "Compare Fonts (Top 5)",
     "remove_from_set": "Remove from Set",
     "bulk_remove_from_set": "Remove {{count}} from Set",
-    "already_in_set": "Already registered in this set"
+    "already_in_set": "Already registered in this set",
+    "copy": "Kopieren",
+    "show_in_folder_mac": "Im Finder anzeigen",
+    "view_font_info": "Schriftinformationen",
+    "view_font_info_n": "Schriftinformationen ({{count}})"
   },
   "style_modal": {
     "title": "Vorschautext & Stil-Einstellungen",
@@ -419,7 +450,16 @@
     "folder_relink_failed": "Failed to relink folder.",
     "folder_open_failed": "Failed to open folder.",
     "added_to_set": "'{{name}}' added to set.",
-    "bulk_added_to_set": "{{count}} fonts added to set."
+    "bulk_added_to_set": "{{count}} fonts added to set.",
+    "woff_activate_unsupported": "WOFF/WOFF2-Formate sind reine Web-Schriftarten und unterstützen keine Betriebssystem-Aktivierung.",
+    "error_reason_processing": "Fehler bei der Verarbeitung aufgetreten",
+    "error_reason_in_use": "Wird von einer anderen Anwendung verwendet",
+    "error_reason_permission": "Unzureichende Schreibberechtigungen",
+    "error_reason_corrupted": "Nicht unterstützte oder beschädigte Schriftart",
+    "error_reason_not_found": "Datei nicht gefunden",
+    "error_reason_multiple": "Mehrere Ursachen",
+    "bulk_installed_partial": "{{success}} installiert / {{failed}} fehlgeschlagen ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}} entfernt / {{failed}} fehlgeschlagen ({{reason}})"
   },
   "empty": {
     "scanning": "Schrift-Metadaten werden gescannt...",
@@ -464,7 +504,9 @@
     "relink": "Relink to new location",
     "relink_dialog_title": "Select New Location for Missing Folder",
     "missing_label": "Missing folder location",
-    "relink_short": "Relink"
+    "relink_short": "Relink",
+    "missing_title": "Ordner nicht gefunden",
+    "missing_desc": "Der Ordner wurde verschoben oder getrennt. Bitte verbinden Sie den Ordner erneut."
   },
   "dropzone": {
     "title": "Drop Folders to Add to Library",
@@ -637,7 +679,9 @@
     "newer_version_full": "Update verfügbar",
     "newer_version_tooltip": "Neuere Version als die installierte Systemschriftart",
     "older_version": "Ältere",
-    "older_version_tooltip": "Eine neuere Version ist bereits im System installiert"
+    "older_version_tooltip": "Eine neuere Version ist bereits im System installiert",
+    "duplicate": "Duplikat {{count}}",
+    "duplicate_tooltip": "Es gibt {{count}} identische Schriftdateien"
   },
   "sort_settings": {
     "recommended_badge": "Empfohlen",
@@ -681,5 +725,189 @@
     "save_failed": "Fehler beim Speichern der Datei.",
     "read_failed": "Datei kann nicht gelesen werden.",
     "json_parse_failed": "JSON-Parsing fehlgeschlagen. Bitte überprüfen Sie die Backup-Datei."
+  },
+  "font_info": {
+    "title": "Font Info",
+    "title_multi": "Font Details (Selected: {{count}})",
+    "search_placeholder": "Search selected fonts...",
+    "no_search_results": "No matching fonts",
+    "live_preview_placeholder": "Type preview text...",
+    "font_size": "Font Size",
+    "copy_success": "Copied to clipboard.",
+    "tabs": {
+      "overview": "Overview & License",
+      "metrics": "Typography Metrics",
+      "coverage": "Language & Script Coverage",
+      "raw": "Raw Metadata"
+    },
+    "styles": {
+      "sans_serif": "Sans-serif",
+      "serif": "Serif",
+      "script": "Script / Cursive",
+      "display": "Display / Decorative",
+      "monospace": "Monospace",
+      "symbol": "Symbolic",
+      "unknown": "Unclassified"
+    },
+    "fs_type": {
+      "installable": "Installable Embedding (No Restrictions)",
+      "restricted": "Restricted License",
+      "preview_print": "Preview & Print Allowed",
+      "editable": "Editable Embedding Allowed",
+      "no_subsetting": "No Subsetting",
+      "bitmap_only": "Bitmap Only"
+    },
+    "languages": {
+      "ko": "Korean (KO)",
+      "en": "English (EN)",
+      "ja": "Japanese (JA)",
+      "zh_cn": "Simplified Chinese (ZH)",
+      "zh_tw": "Traditional Chinese (ZH)",
+      "de": "German (DE)",
+      "fr": "French (FR)",
+      "es": "Spanish (ES)",
+      "default": "Default"
+    },
+    "overview": {
+      "style_classification": "Style Classification",
+      "embedding_license": "Embedding License",
+      "designer": "Designer",
+      "manufacturer": "Manufacturer (Vendor)",
+      "copyright": "Copyright",
+      "trademark": "Trademark",
+      "version": "Version",
+      "format": "Font Format",
+      "file_path": "File Path",
+      "file_size": "File Size",
+      "created_date": "Created Date",
+      "modified_date": "Modified Date",
+      "open_vendor_url": "Visit Vendor Website",
+      "open_designer_url": "Visit Designer Website",
+      "description": "Description",
+      "license_terms_title": "LICENSE TERMS & CONDITIONS",
+      "copy_full_text": "Copy Full Text",
+      "copied": "Copied!",
+      "license_official_page": "Official License Page",
+      "check_website_for_license": "Please check the official website for full license terms and conditions."
+    },
+    "metrics": {
+      "units_per_em": "Units Per Em (UPM)",
+      "typo_metrics": "Typography Vertical Metrics",
+      "ascender": "Ascender",
+      "descender": "Descender",
+      "line_gap": "Line Gap",
+      "win_metrics": "Windows Metrics",
+      "win_ascent": "Win Ascent",
+      "win_descent": "Win Descent",
+      "proportions": "Proportions & Slant",
+      "cap_height": "Cap Height",
+      "x_height": "X-Height",
+      "italic_angle": "Italic Angle",
+      "weight_class": "Weight Class (usWeightClass)",
+      "width_class": "Width Class (usWidthClass)",
+      "width_normal": "5 (Normal)",
+      "bounding_box": "Global Bounding Box (BBox)",
+      "underline": "Underline Thickness / Position",
+      "thickness": "Thickness",
+      "position": "Position",
+      "monospace_label": "Monospace",
+      "monospace_yes": "Yes (Monospace)",
+      "monospace_no": "No (Proportional)"
+    },
+    "coverage": {
+      "glyph_stats": "Glyph & Character Statistics",
+      "total_glyphs": "Total Glyphs",
+      "encoded_chars": "Encoded Characters",
+      "scripts_title": "Supported Scripts",
+      "scripts": {
+        "latin": "Latin / English",
+        "hangul": "Hangul (Korean)",
+        "cjk": "CJK Ideographs",
+        "japanese": "Japanese Kana",
+        "cyrillic": "Cyrillic",
+        "greek": "Greek",
+        "arabic": "Arabic"
+      },
+      "basic_latin_fallback": "Includes Basic Latin Characters",
+      "hangul_status": {
+        "full_11172": "Full Hangul 11,172 Syllables",
+        "basic_ks_2350": "KS Standard 2,350 Syllables",
+        "partial": "Partial Hangul ({{count}} chars)",
+        "none": "Hangul Not Supported"
+      },
+      "latin_basic_coverage": "Basic Latin (ASCII) Coverage",
+      "latin_basic_subtitle": "ASCII Standard Printable (95 chars)",
+      "latin_extended_coverage": "Latin Extended Coverage",
+      "latin_extended_subtitle": "Latin Extended (224 chars)",
+      "hangul_coverage": "Hangul Syllables Coverage",
+      "japanese_kana_coverage": "Japanese Kana Coverage",
+      "japanese_kana_subtitle": "Hiragana & Katakana (192 chars)",
+      "cjk_coverage": "CJK Unified Ideographs",
+      "char_unit": "chars",
+      "characters_included": "{{count}} characters included",
+      "opentype_features": "OpenType Layout Features (GSUB/GPOS)",
+      "no_features": "No OpenType feature tags found.",
+      "glyphs_unit": "Glyphen",
+      "chars_unit": "Zeichen"
+    },
+    "raw": {
+      "name_table": "Name Table (Font Identification & Naming)",
+      "name_id": "ID",
+      "name_key": "Metadata Field",
+      "name_raw_key": "Original Key",
+      "name_value": "Recorded Value",
+      "os2_table": "OS/2 Table (Operating System Specifications)",
+      "col_metric": "Specification Field",
+      "col_value": "Binary Value",
+      "col_desc": "Description & Meaning",
+      "s_family_class": "Font Family Classification (sFamilyClass)",
+      "panose": "PANOSE 10-Byte Visual Classification (PANOSE)",
+      "us_weight_class": "Weight Class (usWeightClass)",
+      "us_weight_class_desc": "CSS font-weight standard numeric scale (100-900)",
+      "us_width_class": "Width Class (usWidthClass)",
+      "us_width_class_desc": "1 (Ultra-condensed) ~ 5 (Normal) ~ 9 (Ultra-expanded)",
+      "fs_selection": "Font Style Attributes (fsSelection)",
+      "fs_type": "Embedding License Rights (fsType)",
+      "vendor_id": "Vendor Identifier (achVendID)",
+      "vendor_id_desc": "Officially registered 4-byte manufacturer ID",
+      "name_labels": {
+        "copyright": "Copyright Notice",
+        "family": "Font Family Name",
+        "subfamily": "Subfamily / Style",
+        "unique_id": "Unique Identifier",
+        "full_name": "Full Font Name",
+        "version": "Version String",
+        "postscript_name": "PostScript Name",
+        "trademark": "Trademark Notice",
+        "manufacturer": "Manufacturer / Vendor",
+        "designer": "Font Designer",
+        "description": "Font Description",
+        "vendor_url": "Vendor Website URL",
+        "designer_url": "Designer Website URL",
+        "license": "License Description",
+        "license_url": "Official License URL",
+        "typographic_family": "Typographic Family",
+        "typographic_subfamily": "Typographic Subfamily",
+        "sample_text": "Sample Preview Text"
+      }
+    },
+    "disclaimer": "※ This information is extracted directly from the font file's internal metadata and may differ from the author's latest license terms or actual specifications. Please verify usage terms with the official distributor.",
+    "selected_count": "{{count}} ausgewählt",
+    "copy_ps_name": "PostScript-Namen kopieren",
+    "copy_file_path": "Dateipfad kopieren",
+    "analyzing": "Metadaten werden analysiert...",
+    "family_class": {
+      "oldstyle_serifs": "Renaissance-Antiqua (Oldstyle Serifs)",
+      "transitional_serifs": "Barock-Antiqua (Transitional Serifs)",
+      "modern_serifs": "Klassizistische Antiqua (Modern Serifs)",
+      "clarendon_serifs": "Clarendon Serifen (Clarendon Serifs)",
+      "slab_serifs": "Serifenbetonte Linear-Antiqua (Slab Serifs)",
+      "freeform_serifs": "Freie Serifen (Freeform Serifs)",
+      "sans_serif": "Serifenlos / Grotesk (Sans-serif)",
+      "scripts": "Schreibschriften (Scripts)",
+      "decorative": "Dekorativ / Display (Decorative / Display)",
+      "symbolic": "Symbole (Symbolic)",
+      "none": "Keine Klassifizierung (No Classification)"
+    }
   }
 }

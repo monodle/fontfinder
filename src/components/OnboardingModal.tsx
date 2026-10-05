@@ -75,7 +75,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     <ModalDialog
       isOpen={isOpen}
-      onClose={() => {}}
+      onClose={() => { }}
       closeOnEsc={false}
       closeOnBackdropClick={false}
       showCloseButton={false}

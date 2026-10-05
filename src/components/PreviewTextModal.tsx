@@ -14,7 +14,6 @@ interface PreviewTextModalProps {
   settings: PreviewSettings;
   minFontSize?: number;
   maxFontSize?: number;
-  defaultFontSize?: number;
   defaultText?: string;
   onClose: () => void;
   onApply: (settings: PreviewSettings) => void;
@@ -25,7 +24,6 @@ export function PreviewTextModal({
   settings,
   minFontSize = appConfig.preview.minFontSize,
   maxFontSize = appConfig.preview.maxFontSize,
-  defaultFontSize,
   defaultText,
   onClose,
   onApply,
@@ -49,7 +47,17 @@ export function PreviewTextModal({
   const handleReset = () => {
     setCurrent({
       ...defaultPreviewSettings,
-      fontSize: defaultFontSize ?? defaultPreviewSettings.fontSize,
+      fontSize: 24,
+      fontWeight: 0,
+      isBold: false,
+      isItalic: false,
+      isUnderline: false,
+      textAlign: "left",
+      letterSpacing: 0,
+      lineHeight: 1.45,
+      textTransform: "none",
+      textColor: "",
+      backgroundColor: "",
       text: defaultText ?? t("preview.default_text"),
     });
   };

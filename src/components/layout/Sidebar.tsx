@@ -269,41 +269,45 @@ export function Sidebar({
     onReorderSets(newSets);
   };
 
-  const categories = useMemo(
+  const systemCategory = useMemo(
+    () => ({
+      id: "system" as const,
+      label: t("sidebar.category_system"),
+      count: counts.system,
+      icon: Sparkles,
+    }),
+    [t, counts.system]
+  );
+
+  const libraryCategories = useMemo(
     () => [
       {
-        id: "all",
+        id: "all" as const,
         label: t("sidebar.category_all"),
         count: counts.total,
         icon: Type,
       },
       {
-        id: "system",
-        label: t("sidebar.category_system"),
-        count: counts.system,
-        icon: Sparkles,
-      },
-      {
-        id: "user",
+        id: "user" as const,
         label: t("sidebar.category_user"),
         count: counts.user,
         icon: User,
       },
       {
-        id: "activated",
+        id: "activated" as const,
         label: t("sidebar.category_activated"),
         count: counts.activated,
         icon: Zap,
       },
       {
-        id: "favorites",
+        id: "favorites" as const,
         label: t("sidebar.category_favorites"),
         count: counts.favorites,
         icon: Heart,
         iconClass: "fill-rose-500 text-rose-500",
       },
       {
-        id: "duplicates",
+        id: "duplicates" as const,
         label: t("sidebar.category_duplicates"),
         count: counts.duplicates,
         icon: Copy,
@@ -350,69 +354,99 @@ export function Sidebar({
           )}
         </div>
 
-        {!isCollapsed && onRefresh && (
-          <ListRefreshButton
-            onRefresh={onRefresh}
-            isLoading={isLoading}
-            variant="ghost"
-            size="md"
-            className="w-7 h-7 p-1 rounded-md shrink-0"
-          />
+        {!isCollapsed && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            {onRefresh && (
+              <ListRefreshButton
+                onRefresh={onRefresh}
+                isLoading={isLoading}
+                variant="ghost"
+                size="md"
+                className="w-7 h-7 p-1 rounded-md shrink-0"
+              />
+            )}
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title={`${t("sidebar.collapse_menu")} (Ctrl+B / ⌘B)`}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-theme-text-muted hover:text-theme-accent hover:bg-theme-hover transition-colors cursor-pointer"
+                aria-label={t("sidebar.collapse_menu")}
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       {/* Sidebar Nav Items */}
       <div
-        className={`flex-1 overflow-y-scroll overflow-x-hidden text-xs ${isCollapsed ? "p-1.5 space-y-2" : "pl-3 pr-2 py-3 space-y-4"
+        className={`flex-1 overflow-y-scroll overflow-x-hidden text-xs ${isCollapsed ? "p-1.5 space-y-2" : "pl-3 pr-2 py-3 space-y-3"
           }`}
       >
-        {/* Library Section */}
-        <div>
-          {isCollapsed ? (
-            <div className="flex flex-col items-center gap-1 pb-1">
-              {onToggleCollapse && (
-                <button
-                  type="button"
-                  onClick={onToggleCollapse}
-                  title={`${t("sidebar.expand_menu")} (Ctrl+B / ⌘B)`}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg text-theme-text-muted hover:text-theme-accent hover:bg-theme-hover transition-colors cursor-pointer"
-                  aria-label={t("sidebar.expand_menu")}
-                >
-                  <PanelLeftOpen className="w-4 h-4" />
-                </button>
-              )}
-              {onRefresh && (
-                <ListRefreshButton
-                  onRefresh={onRefresh}
-                  isLoading={isLoading}
-                  variant="ghost"
-                  size="md"
-                  className="w-9 h-9 p-0 flex items-center justify-center rounded-lg"
-                />
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-2 pb-1.5">
-              <span className="font-semibold text-theme-text-muted uppercase tracking-wider text-[10px]">
-                {t("sidebar.library")}
-              </span>
-              {onToggleCollapse && (
-                <button
-                  type="button"
-                  onClick={onToggleCollapse}
-                  title={`${t("sidebar.collapse_menu")} (Ctrl+B / ⌘B)`}
-                  className="flex items-center gap-1 text-[10px] text-theme-text-muted hover:text-theme-accent px-1.5 py-0.5 rounded hover:bg-theme-hover transition-colors cursor-pointer"
-                  aria-label={t("sidebar.collapse_menu")}
-                >
-                  <PanelLeftClose className="w-3 h-3" />
-                  <span className="font-medium">{t("sidebar.collapse_menu")}</span>
-                </button>
-              )}
-            </div>
-          )}
+        {/* Collapsed top controls */}
+        {isCollapsed && (
+          <div className="flex flex-col items-center gap-1 pb-1">
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title={`${t("sidebar.expand_menu")} (Ctrl+B / ⌘B)`}
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-theme-text-muted hover:text-theme-accent hover:bg-theme-hover transition-colors cursor-pointer"
+                aria-label={t("sidebar.expand_menu")}
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            )}
+            {onRefresh && (
+              <ListRefreshButton
+                onRefresh={onRefresh}
+                isLoading={isLoading}
+                variant="ghost"
+                size="md"
+                className="w-9 h-9 p-0 flex items-center justify-center rounded-lg"
+              />
+            )}
+          </div>
+        )}
 
+        {/* 1. 시스템 폰트 (최상단 단독 격리) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => onSelectCategory(systemCategory.id)}
+            title={`${systemCategory.label} (${systemCategory.count})`}
+            className={`w-full flex items-center rounded-lg font-medium transition-colors cursor-pointer ${isCollapsed
+              ? "w-9 h-9 mx-auto justify-center px-0 py-0"
+              : "justify-between px-2.5 py-2"
+              } ${activeCategory === systemCategory.id
+                ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
+                : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
+              }`}
+          >
+            <span
+              className={`flex items-center gap-2 ${isCollapsed ? "justify-center" : ""
+                }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 shrink-0 text-theme-accent" />
+              {!isCollapsed && <span>{systemCategory.label}</span>}
+            </span>
+            {!isCollapsed && (
+              <span className="text-[11px] font-mono opacity-80">
+                {systemCategory.count}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Divider 1 */}
+        <div className={`h-px bg-theme-border ${isCollapsed ? "my-1 mx-1" : "my-1.5 mx-1"}`} />
+
+        {/* 2. 일반 라이브러리 폰트 (전체, 사용자, 임시 활성화, 즐겨찾기, 중복) */}
+        <div>
           <div className="space-y-0.5">
-            {categories.map((cat) => {
+            {libraryCategories.map((cat) => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
               return (
@@ -449,11 +483,13 @@ export function Sidebar({
           </div>
         </div>
 
+        {/* Divider 2 */}
+        <div className={`h-px bg-theme-border ${isCollapsed ? "my-1 mx-1" : "my-1.5 mx-1"}`} />
+
         {/* Folders List */}
         <div>
           {isCollapsed ? (
             <div className="space-y-1">
-              <div className="h-px bg-theme-border my-1.5 mx-1" />
               <button
                 type="button"
                 onClick={onAddFolder}
@@ -633,11 +669,13 @@ export function Sidebar({
           )}
         </div>
 
+        {/* Divider 3 */}
+        <div className={`h-px bg-theme-border ${isCollapsed ? "my-1 mx-1" : "my-1.5 mx-1"}`} />
+
         {/* Sets & Collections (2depth 폴더화 및 계층 지원) */}
         <div>
           {isCollapsed ? (
             <div className="space-y-1">
-              <div className="h-px bg-theme-border my-1.5 mx-1" />
               <button
                 type="button"
                 onClick={() => setModalTarget({ mode: "create_set" })}

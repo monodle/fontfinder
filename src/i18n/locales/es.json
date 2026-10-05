@@ -19,7 +19,9 @@
     "fonts": "Fonts",
     "count_unit": " elementos",
     "reset_to_default": "Restablecer a predeterminado",
-    "clear": "Borrar"
+    "clear": "Borrar",
+    "copy": "Copiar",
+    "close_esc": "Cerrar (Esc)"
   },
   "confirm": {
     "uninstall_font_title": "Desinstalar fuente del sistema",
@@ -35,7 +37,14 @@
     "bulk_remove_from_set_desc": "¿Está seguro de quitar las {{count}} fuentes seleccionadas del conjunto '{{setName}}'?",
     "remove_from_set_notice": "(Solo se eliminarán del conjunto, los archivos de fuente reales no se borrarán.)",
     "bulk_remove_from_set_item": "{{count}} fuente(s) seleccionada(s)",
-    "remove_btn": "Quitar del conjunto"
+    "remove_btn": "Quitar del conjunto",
+    "deactivate_font_title": "Desactivar fuente",
+    "bulk_deactivate_title": "Desactivar fuentes",
+    "deactivate_font_desc": "¿Está seguro de que desea desactivar esta fuente?",
+    "bulk_deactivate_desc": "¿Está seguro de que desea desactivar las {{count}} fuentes seleccionadas?",
+    "deactivate_warning": "Al desactivar, la fuente se descargará inmediatamente de las aplicaciones de diseño y edición activas.",
+    "deactivate_btn": "Desactivar",
+    "bulk_deactivate_item": "{{count}} fuentes seleccionadas"
   },
   "preview": {
     "default_text": "El veloz murciélago hindú comía feliz cardillo y kiwi\nThe quick brown fox jumps over the lazy dog\n1234567890"
@@ -85,7 +94,24 @@
     "user_desc": "User installed fonts",
     "activated_desc": "Currently activated fonts",
     "favorites_desc": "Favorite fonts",
-    "duplicates_desc": "Duplicate fonts detected"
+    "duplicates_desc": "Duplicate fonts detected",
+    "search_sets": "Buscar colecciones...",
+    "no_matching_sets": "No se encontraron colecciones coincidentes.",
+    "set_location_label": "Ubicación (Colección principal)",
+    "depth_1": "Nivel 1 (Categoría raíz)",
+    "depth_2": "Nivel 2 (Subconjunto)",
+    "set_parent_root": "📁 Raíz (Categoría de nivel 1)",
+    "parent_has_children_locked": "Raíz (fijada en nivel 1 porque contiene subconjuntos)",
+    "add_subset": "Añadir subconjunto",
+    "promote_to_root": "Mover a nivel raíz",
+    "children_count": "{{count}} subconjuntos",
+    "delete_set_with_children_confirm": "¿Desea eliminar la colección '{{name}}'?\nSus {{count}} subconjuntos ({{children}}) también se eliminarán.\n(Los archivos de fuente originales no se eliminarán)",
+    "subset_desc": "Colección de subconjuntos",
+    "expand": "Expandir subconjuntos",
+    "collapse": "Contraer subconjuntos",
+    "insert_root": "Insertar en el nivel superior",
+    "insert_child": "↳ Nivel 2 {{parent}}",
+    "move_into_set": "↳ Mover dentro de {{name}}"
   },
   "toolbar": {
     "style_settings": "Ajustes de estilo",
@@ -109,7 +135,8 @@
     "view_mode": "View mode",
     "detail_mode_tooltip": "Font detail level",
     "diff_tooltip_selected": "Compare selected font glyphs ({{count}})",
-    "diff_tooltip": "Compare font glyphs (Diff)"
+    "diff_tooltip": "Compare font glyphs (Diff)",
+    "color_presets": "Ajustes predefinidos"
   },
   "action_bar": {
     "selected_count": "{{count}} fuente(s) seleccionada(s)",
@@ -155,7 +182,11 @@
     "diff_compare_top5": "Compare Fonts (Top 5)",
     "remove_from_set": "Remove from Set",
     "bulk_remove_from_set": "Remove {{count}} from Set",
-    "already_in_set": "Already registered in this set"
+    "already_in_set": "Already registered in this set",
+    "copy": "Copiar",
+    "show_in_folder_mac": "Mostrar en Finder",
+    "view_font_info": "Información de la fuente",
+    "view_font_info_n": "Información de fuentes ({{count}})"
   },
   "style_modal": {
     "title": "Texto de vista previa y estilos",
@@ -419,7 +450,16 @@
     "folder_relink_failed": "Failed to relink folder.",
     "folder_open_failed": "Failed to open folder.",
     "added_to_set": "'{{name}}' added to set.",
-    "bulk_added_to_set": "{{count}} fonts added to set."
+    "bulk_added_to_set": "{{count}} fonts added to set.",
+    "woff_activate_unsupported": "Los formatos WOFF/WOFF2 son fuentes web y no admiten la activación en el sistema operativo.",
+    "error_reason_processing": "Se produjo un error durante el procesamiento",
+    "error_reason_in_use": "En uso por otra aplicación",
+    "error_reason_permission": "Permisos de escritura insuficientes",
+    "error_reason_corrupted": "Fuente no compatible o dañada",
+    "error_reason_not_found": "Archivo no encontrado",
+    "error_reason_multiple": "Múltiples causas",
+    "bulk_installed_partial": "{{success}} instaladas / {{failed}} fallidas ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}} eliminadas / {{failed}} fallidas ({{reason}})"
   },
   "empty": {
     "scanning": "Escaneando metadatos de fuentes...",
@@ -464,7 +504,9 @@
     "relink": "Relink to new location",
     "relink_dialog_title": "Select New Location for Missing Folder",
     "missing_label": "Missing folder location",
-    "relink_short": "Relink"
+    "relink_short": "Relink",
+    "missing_title": "Carpeta no encontrada",
+    "missing_desc": "La carpeta se ha movido o desconectado. Vuelva a conectarla para mostrar las fuentes."
   },
   "dropzone": {
     "title": "Drop Folders to Add to Library",
@@ -637,7 +679,9 @@
     "newer_version_full": "Actualización disponible",
     "newer_version_tooltip": "Versión más nueva que la instalada en el sistema",
     "older_version": "Más antigua",
-    "older_version_tooltip": "Ya hay una versión más nueva instalada en el sistema"
+    "older_version_tooltip": "Ya hay una versión más nueva instalada en el sistema",
+    "duplicate": "Duplicado {{count}}",
+    "duplicate_tooltip": "Existen {{count}} archivos de fuente idénticos"
   },
   "sort_settings": {
     "recommended_badge": "Recomendado",
@@ -681,5 +725,189 @@
     "save_failed": "Error al guardar el archivo.",
     "read_failed": "No se puede leer el archivo.",
     "json_parse_failed": "Error al analizar JSON. Compruebe si el archivo de copia de seguridad es válido."
+  },
+  "font_info": {
+    "title": "Font Info",
+    "title_multi": "Font Details (Selected: {{count}})",
+    "search_placeholder": "Search selected fonts...",
+    "no_search_results": "No matching fonts",
+    "live_preview_placeholder": "Type preview text...",
+    "font_size": "Font Size",
+    "copy_success": "Copied to clipboard.",
+    "tabs": {
+      "overview": "Overview & License",
+      "metrics": "Typography Metrics",
+      "coverage": "Language & Script Coverage",
+      "raw": "Raw Metadata"
+    },
+    "styles": {
+      "sans_serif": "Sans-serif",
+      "serif": "Serif",
+      "script": "Script / Cursive",
+      "display": "Display / Decorative",
+      "monospace": "Monospace",
+      "symbol": "Symbolic",
+      "unknown": "Unclassified"
+    },
+    "fs_type": {
+      "installable": "Installable Embedding (No Restrictions)",
+      "restricted": "Restricted License",
+      "preview_print": "Preview & Print Allowed",
+      "editable": "Editable Embedding Allowed",
+      "no_subsetting": "No Subsetting",
+      "bitmap_only": "Bitmap Only"
+    },
+    "languages": {
+      "ko": "Korean (KO)",
+      "en": "English (EN)",
+      "ja": "Japanese (JA)",
+      "zh_cn": "Simplified Chinese (ZH)",
+      "zh_tw": "Traditional Chinese (ZH)",
+      "de": "German (DE)",
+      "fr": "French (FR)",
+      "es": "Spanish (ES)",
+      "default": "Default"
+    },
+    "overview": {
+      "style_classification": "Style Classification",
+      "embedding_license": "Embedding License",
+      "designer": "Designer",
+      "manufacturer": "Manufacturer (Vendor)",
+      "copyright": "Copyright",
+      "trademark": "Trademark",
+      "version": "Version",
+      "format": "Font Format",
+      "file_path": "File Path",
+      "file_size": "File Size",
+      "created_date": "Created Date",
+      "modified_date": "Modified Date",
+      "open_vendor_url": "Visit Vendor Website",
+      "open_designer_url": "Visit Designer Website",
+      "description": "Description",
+      "license_terms_title": "LICENSE TERMS & CONDITIONS",
+      "copy_full_text": "Copy Full Text",
+      "copied": "Copied!",
+      "license_official_page": "Official License Page",
+      "check_website_for_license": "Please check the official website for full license terms and conditions."
+    },
+    "metrics": {
+      "units_per_em": "Units Per Em (UPM)",
+      "typo_metrics": "Typography Vertical Metrics",
+      "ascender": "Ascender",
+      "descender": "Descender",
+      "line_gap": "Line Gap",
+      "win_metrics": "Windows Metrics",
+      "win_ascent": "Win Ascent",
+      "win_descent": "Win Descent",
+      "proportions": "Proportions & Slant",
+      "cap_height": "Cap Height",
+      "x_height": "X-Height",
+      "italic_angle": "Italic Angle",
+      "weight_class": "Weight Class (usWeightClass)",
+      "width_class": "Width Class (usWidthClass)",
+      "width_normal": "5 (Normal)",
+      "bounding_box": "Global Bounding Box (BBox)",
+      "underline": "Underline Thickness / Position",
+      "thickness": "Thickness",
+      "position": "Position",
+      "monospace_label": "Monospace",
+      "monospace_yes": "Yes (Monospace)",
+      "monospace_no": "No (Proportional)"
+    },
+    "coverage": {
+      "glyph_stats": "Glyph & Character Statistics",
+      "total_glyphs": "Total Glyphs",
+      "encoded_chars": "Encoded Characters",
+      "scripts_title": "Supported Scripts",
+      "scripts": {
+        "latin": "Latin / English",
+        "hangul": "Hangul (Korean)",
+        "cjk": "CJK Ideographs",
+        "japanese": "Japanese Kana",
+        "cyrillic": "Cyrillic",
+        "greek": "Greek",
+        "arabic": "Arabic"
+      },
+      "basic_latin_fallback": "Includes Basic Latin Characters",
+      "hangul_status": {
+        "full_11172": "Full Hangul 11,172 Syllables",
+        "basic_ks_2350": "KS Standard 2,350 Syllables",
+        "partial": "Partial Hangul ({{count}} chars)",
+        "none": "Hangul Not Supported"
+      },
+      "latin_basic_coverage": "Basic Latin (ASCII) Coverage",
+      "latin_basic_subtitle": "ASCII Standard Printable (95 chars)",
+      "latin_extended_coverage": "Latin Extended Coverage",
+      "latin_extended_subtitle": "Latin Extended (224 chars)",
+      "hangul_coverage": "Hangul Syllables Coverage",
+      "japanese_kana_coverage": "Japanese Kana Coverage",
+      "japanese_kana_subtitle": "Hiragana & Katakana (192 chars)",
+      "cjk_coverage": "CJK Unified Ideographs",
+      "char_unit": "chars",
+      "characters_included": "{{count}} characters included",
+      "opentype_features": "OpenType Layout Features (GSUB/GPOS)",
+      "no_features": "No OpenType feature tags found.",
+      "glyphs_unit": "glifos",
+      "chars_unit": "caracteres"
+    },
+    "raw": {
+      "name_table": "Name Table (Font Identification & Naming)",
+      "name_id": "ID",
+      "name_key": "Metadata Field",
+      "name_raw_key": "Original Key",
+      "name_value": "Recorded Value",
+      "os2_table": "OS/2 Table (Operating System Specifications)",
+      "col_metric": "Specification Field",
+      "col_value": "Binary Value",
+      "col_desc": "Description & Meaning",
+      "s_family_class": "Font Family Classification (sFamilyClass)",
+      "panose": "PANOSE 10-Byte Visual Classification (PANOSE)",
+      "us_weight_class": "Weight Class (usWeightClass)",
+      "us_weight_class_desc": "CSS font-weight standard numeric scale (100-900)",
+      "us_width_class": "Width Class (usWidthClass)",
+      "us_width_class_desc": "1 (Ultra-condensed) ~ 5 (Normal) ~ 9 (Ultra-expanded)",
+      "fs_selection": "Font Style Attributes (fsSelection)",
+      "fs_type": "Embedding License Rights (fsType)",
+      "vendor_id": "Vendor Identifier (achVendID)",
+      "vendor_id_desc": "Officially registered 4-byte manufacturer ID",
+      "name_labels": {
+        "copyright": "Copyright Notice",
+        "family": "Font Family Name",
+        "subfamily": "Subfamily / Style",
+        "unique_id": "Unique Identifier",
+        "full_name": "Full Font Name",
+        "version": "Version String",
+        "postscript_name": "PostScript Name",
+        "trademark": "Trademark Notice",
+        "manufacturer": "Manufacturer / Vendor",
+        "designer": "Font Designer",
+        "description": "Font Description",
+        "vendor_url": "Vendor Website URL",
+        "designer_url": "Designer Website URL",
+        "license": "License Description",
+        "license_url": "Official License URL",
+        "typographic_family": "Typographic Family",
+        "typographic_subfamily": "Typographic Subfamily",
+        "sample_text": "Sample Preview Text"
+      }
+    },
+    "disclaimer": "※ This information is extracted directly from the font file's internal metadata and may differ from the author's latest license terms or actual specifications. Please verify usage terms with the official distributor.",
+    "selected_count": "{{count}} seleccionadas",
+    "copy_ps_name": "Copiar nombre PostScript",
+    "copy_file_path": "Copiar ruta del archivo",
+    "analyzing": "Analizando metadatos...",
+    "family_class": {
+      "oldstyle_serifs": "Serifas de estilo antiguo (Oldstyle Serifs)",
+      "transitional_serifs": "Serifas de transición (Transitional Serifs)",
+      "modern_serifs": "Serifas modernas (Modern Serifs)",
+      "clarendon_serifs": "Serifas Clarendon (Clarendon Serifs)",
+      "slab_serifs": "Serifas egipcias (Slab Serifs)",
+      "freeform_serifs": "Serifas libres (Freeform Serifs)",
+      "sans_serif": "Sin serifa / Palo seco (Sans-serif)",
+      "scripts": "Caligráficas / Manuscritas (Scripts)",
+      "decorative": "Decorativas / Display (Decorative / Display)",
+      "symbolic": "Símbolos (Symbolic)",
+      "none": "Sin clasificación (No Classification)"
+    }
   }
 }

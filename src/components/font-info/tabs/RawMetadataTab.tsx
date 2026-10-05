@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { FontDetailedInfo } from "../../../types/font";
-import { Copy, Check } from "lucide-react";
-import { useState, useCallback } from "react";
+import { formatFamilyClass, formatFsType } from "../../../utils/fontLocalization";
+import { CopyButton } from "../../common";
 
 interface RawMetadataTabProps {
   details: FontDetailedInfo;
@@ -9,15 +9,6 @@ interface RawMetadataTabProps {
 
 export function RawMetadataTab({ details }: RawMetadataTabProps) {
   const { t } = useTranslation();
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-  const handleCopy = useCallback((text: string, key: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
-  }, []);
-
   const { os2, names } = details;
 
   return (
@@ -52,16 +43,14 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                   <td className="py-1.5 px-2 text-theme-accent">
                     0x{((os2.s_family_class || 0) & 0xffff).toString(16).padStart(4, "0").toUpperCase()}
                   </td>
-                  <td className="py-1.5 px-2 text-theme-text-muted font-sans">{os2.family_class_name}</td>
+                  <td className="py-1.5 px-2 text-theme-text-muted font-sans">
+                    {formatFamilyClass(os2.s_family_class, t, os2.family_class_name)}
+                  </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`0x${((os2.s_family_class || 0) & 0xffff).toString(16).padStart(4, "0").toUpperCase()}`, "family_class")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                      title="복사"
-                    >
-                      {copiedKey === "family_class" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`0x${((os2.s_family_class || 0) & 0xffff).toString(16).padStart(4, "0").toUpperCase()}`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -76,14 +65,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                     Family: {os2.panose[0] ?? "-"}, Serif: {os2.panose[1] ?? "-"}, Weight: {os2.panose[2] ?? "-"}
                   </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`[${os2.panose.join(" ")}]`, "panose")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                      title="복사"
-                    >
-                      {copiedKey === "panose" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`[${os2.panose.join(" ")}]`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -96,13 +81,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                     {t("font_info.raw.us_weight_class_desc")}
                   </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`${os2.weight_class}`, "weight_class")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                    >
-                      {copiedKey === "weight_class" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`${os2.weight_class}`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -115,13 +97,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                     {t("font_info.raw.us_width_class_desc")}
                   </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`${os2.width_class}`, "width_class")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                    >
-                      {copiedKey === "width_class" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`${os2.width_class}`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -139,13 +118,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                     {(os2.fs_selection & 0x0080) !== 0 ? "USE_TYPO_METRICS " : ""}
                   </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`0x${os2.fs_selection.toString(16).padStart(4, "0").toUpperCase()}`, "fs_selection")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                    >
-                      {copiedKey === "fs_selection" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`0x${os2.fs_selection.toString(16).padStart(4, "0").toUpperCase()}`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -156,15 +132,14 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                   <td className="py-1.5 px-2 text-emerald-500">
                     0x{os2.fs_type.toString(16).padStart(4, "0").toUpperCase()}
                   </td>
-                  <td className="py-1.5 px-2 text-theme-text-muted font-sans">{os2.fs_type_label}</td>
+                  <td className="py-1.5 px-2 text-theme-text-muted font-sans">
+                    {formatFsType(os2.fs_type, t, os2.fs_type_label)}
+                  </td>
                   <td className="py-1.5 px-1 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(`0x${os2.fs_type.toString(16).padStart(4, "0").toUpperCase()}`, "fs_type")}
-                      className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                    >
-                      {copiedKey === "fs_type" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    </button>
+                    <CopyButton
+                      text={`0x${os2.fs_type.toString(16).padStart(4, "0").toUpperCase()}`}
+                      size="xs"
+                    />
                   </td>
                 </tr>
 
@@ -178,13 +153,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                       {t("font_info.raw.vendor_id_desc")}
                     </td>
                     <td className="py-1.5 px-1 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(os2.vendor_id, "vendor_id")}
-                        className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                      >
-                        {copiedKey === "vendor_id" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                      </button>
+                      <CopyButton
+                        text={os2.vendor_id}
+                        size="xs"
+                      />
                     </td>
                   </tr>
                 )}
@@ -232,18 +204,10 @@ export function RawMetadataTab({ details }: RawMetadataTabProps) {
                       {record.value}
                     </td>
                     <td className="py-2 px-1 text-right align-top">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(record.value, `name-${record.name_id}`)}
-                        className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
-                        title="복사"
-                      >
-                        {copiedKey === `name-${record.name_id}` ? (
-                          <Check className="w-3 h-3 text-emerald-500" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </button>
+                      <CopyButton
+                        text={record.value}
+                        size="xs"
+                      />
                     </td>
                   </tr>
                 );

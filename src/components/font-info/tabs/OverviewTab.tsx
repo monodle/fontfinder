@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { FontDetailedInfo, FontNameRecord } from "../../../types/font";
-import { ExternalLink, Copy, Check, ShieldCheck, FileCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck, FileCheck } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { openExternalUrl } from "../../../utils/url";
+import { formatFsType } from "../../../utils/fontLocalization";
+import { CopyButton } from "../../common";
 
 interface OverviewTabProps {
   details: FontDetailedInfo;
@@ -10,14 +12,6 @@ interface OverviewTabProps {
 
 export function OverviewTab({ details }: OverviewTabProps) {
   const { t, i18n } = useTranslation();
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-  const handleCopy = useCallback((text: string, key: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
-  }, []);
 
   // 현재 앱 언어 (ko, en, ja 등)
   const currentLang = useMemo(() => {
@@ -153,32 +147,10 @@ export function OverviewTab({ details }: OverviewTabProps) {
     return t(`font_info.styles.${raw}`, raw || t("font_info.styles.sans_serif"));
   }, [details.style_classification, t]);
 
-  const embeddingLabel = useMemo(() => {
-    const fsType = details.os2?.fs_type;
-    if (fsType === undefined || fsType === null || fsType === 0) {
-      return t("font_info.fs_type.installable");
-    }
-    const parts: string[] = [];
-    if ((fsType & 0x0002) !== 0) {
-      parts.push(t("font_info.fs_type.restricted"));
-    }
-    if ((fsType & 0x0004) !== 0) {
-      parts.push(t("font_info.fs_type.preview_print"));
-    }
-    if ((fsType & 0x0008) !== 0) {
-      parts.push(t("font_info.fs_type.editable"));
-    }
-    if ((fsType & 0x0100) !== 0) {
-      parts.push(t("font_info.fs_type.no_subsetting"));
-    }
-    if ((fsType & 0x0200) !== 0) {
-      parts.push(t("font_info.fs_type.bitmap_only"));
-    }
-    if (parts.length > 0) {
-      return parts.join(", ");
-    }
-    return details.os2?.fs_type_label || `0x${fsType.toString(16).padStart(4, "0")}`;
-  }, [details.os2, t]);
+  const embeddingLabel = useMemo(
+    () => formatFsType(details.os2?.fs_type, t, details.os2?.fs_type_label),
+    [details.os2, t]
+  );
 
   return (
     <div className="space-y-4 text-xs text-theme-text">
@@ -252,14 +224,7 @@ export function OverviewTab({ details }: OverviewTabProps) {
           <div className="pt-2 border-t border-theme-border-subtle/60">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-theme-text-muted">{t("font_info.overview.copyright")}</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(copyright, "copyright")}
-                className="text-theme-text-muted hover:text-theme-text p-1 transition-colors"
-                title="복사"
-              >
-                {copiedKey === "copyright" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              <CopyButton text={copyright} size="xs" />
             </div>
             <p className="mt-0.5 text-[11px] text-theme-text-muted leading-relaxed select-all">
               {copyright}
@@ -350,23 +315,14 @@ export function OverviewTab({ details }: OverviewTabProps) {
               )}
 
               {licenseDescription && (
-                <button
-                  type="button"
-                  onClick={() => handleCopy(licenseDescription, "license_desc")}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-theme-hover text-theme-text-muted hover:text-theme-text text-[11px] transition-colors"
+                <CopyButton
+                  text={licenseDescription}
+                  size="xs"
+                  hideTooltip
                   title={t("font_info.overview.copy_full_text")}
                 >
-                  {copiedKey === "license_desc" ? (
-                    <Check className="w-3 h-3 text-emerald-500" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                  <span>
-                    {copiedKey === "license_desc"
-                      ? t("font_info.overview.copied")
-                      : t("font_info.overview.copy_full_text")}
-                  </span>
-                </button>
+                  {t("font_info.overview.copy_full_text")}
+                </CopyButton>
               )}
 
               {licenseUrl && (

@@ -19,7 +19,9 @@
     "fonts": "Fonts",
     "count_unit": "个",
     "reset_to_default": "恢复默认",
-    "clear": "清除"
+    "clear": "清除",
+    "copy": "复制",
+    "close_esc": "关闭 (Esc)"
   },
   "confirm": {
     "uninstall_font_title": "从系统卸载字体",
@@ -35,7 +37,14 @@
     "bulk_remove_from_set_desc": "确定要从“{{setName}}”字库集中移除选中的 {{count}} 个字体吗？",
     "remove_from_set_notice": "（仅从字库集中移除，实际字体文件不会被删除。）",
     "bulk_remove_from_set_item": "已选 {{count}} 个字体",
-    "remove_btn": "从字库集移除"
+    "remove_btn": "从字库集移除",
+    "deactivate_font_title": "取消临时激活",
+    "bulk_deactivate_title": "批量取消临时激活",
+    "deactivate_font_desc": "确定要取消临时激活此字体吗？",
+    "bulk_deactivate_desc": "确定要取消临时激活所选的 {{count}} 个字体吗？",
+    "deactivate_warning": "取消临时激活将立即从当前运行的设计和文档编辑软件中卸载该字体。",
+    "deactivate_btn": "取消激活",
+    "bulk_deactivate_item": "已选择 {{count}} 个字体"
   },
   "preview": {
     "default_text": "天地玄黄 宇宙洪荒 日月盈昃 辰宿列张\nThe quick brown fox jumps over the lazy dog\n1234567890"
@@ -85,7 +94,24 @@
     "user_desc": "User installed fonts",
     "activated_desc": "Currently activated fonts",
     "favorites_desc": "Favorite fonts",
-    "duplicates_desc": "Duplicate fonts detected"
+    "duplicates_desc": "Duplicate fonts detected",
+    "search_sets": "搜索字体集...",
+    "no_matching_sets": "未找到匹配的字体集。",
+    "set_location_label": "位置 (上级字体集)",
+    "depth_1": "第 1 级 (根分类)",
+    "depth_2": "第 2 级 (子集合)",
+    "set_parent_root": "📁 根目录 (第 1 级分类)",
+    "parent_has_children_locked": "根目录 (因包含子集合已固定为第 1 级)",
+    "add_subset": "添加子集合",
+    "promote_to_root": "提升为根分类",
+    "children_count": "{{count}} 个子项",
+    "delete_set_with_children_confirm": "确定要删除字体集 '{{name}}' 吗？\n其下包含的 {{count}} 个子集合 ({{children}}) 也将被一并删除。\n(原始字体文件不会被删除)",
+    "subset_desc": "子集合",
+    "expand": "展开子集合",
+    "collapse": "折叠子集合",
+    "insert_root": "插入至顶层",
+    "insert_child": "↳ 子集合 {{parent}}",
+    "move_into_set": "↳ 移至 {{name}} 内"
   },
   "toolbar": {
     "style_settings": "样式设置",
@@ -109,7 +135,8 @@
     "view_mode": "View mode",
     "detail_mode_tooltip": "Font detail level",
     "diff_tooltip_selected": "Compare selected font glyphs ({{count}})",
-    "diff_tooltip": "Compare font glyphs (Diff)"
+    "diff_tooltip": "Compare font glyphs (Diff)",
+    "color_presets": "预设"
   },
   "action_bar": {
     "selected_count": "已选 {{count}} 个字体",
@@ -155,7 +182,11 @@
     "diff_compare_top5": "Compare Fonts (Top 5)",
     "remove_from_set": "Remove from Set",
     "bulk_remove_from_set": "Remove {{count}} from Set",
-    "already_in_set": "Already registered in this set"
+    "already_in_set": "Already registered in this set",
+    "copy": "复制",
+    "show_in_folder_mac": "在访达中显示",
+    "view_font_info": "字体信息",
+    "view_font_info_n": "字体信息 ({{count}}项)"
   },
   "style_modal": {
     "title": "预览文本与样式设置",
@@ -419,7 +450,16 @@
     "folder_relink_failed": "Failed to relink folder.",
     "folder_open_failed": "Failed to open folder.",
     "added_to_set": "'{{name}}' added to set.",
-    "bulk_added_to_set": "{{count}} fonts added to set."
+    "bulk_added_to_set": "{{count}} fonts added to set.",
+    "woff_activate_unsupported": "WOFF/WOFF2 格式为网页专用字体，不支持操作系统级激活。",
+    "error_reason_processing": "处理过程中发生错误",
+    "error_reason_in_use": "已被其他程序占用",
+    "error_reason_permission": "写入权限不足",
+    "error_reason_corrupted": "不支持或已损坏的字体",
+    "error_reason_not_found": "找不到文件",
+    "error_reason_multiple": "复合原因",
+    "bulk_installed_partial": "{{success}} 个安装成功 / {{failed}} 个失败 ({{reason}})",
+    "bulk_uninstalled_partial": "{{success}} 个移除成功 / {{failed}} 个失败 ({{reason}})"
   },
   "empty": {
     "scanning": "正在扫描字体元数据...",
@@ -464,7 +504,9 @@
     "relink": "Relink to new location",
     "relink_dialog_title": "Select New Location for Missing Folder",
     "missing_label": "Missing folder location",
-    "relink_short": "Relink"
+    "relink_short": "Relink",
+    "missing_title": "文件夹路径缺失",
+    "missing_desc": "文件夹已被移动或断开连接。请重新链接文件夹以显示字体。"
   },
   "dropzone": {
     "title": "Drop Folders to Add to Library",
@@ -637,7 +679,9 @@
     "newer_version_full": "可更新",
     "newer_version_tooltip": "比系统安装的版本更新",
     "older_version": "旧版本",
-    "older_version_tooltip": "系统已安装了更新的版本"
+    "older_version_tooltip": "系统已安装了更新的版本",
+    "duplicate": "重复 {{count}}",
+    "duplicate_tooltip": "存在 {{count}} 个相同的字体文件"
   },
   "sort_settings": {
     "recommended_badge": "推荐",
@@ -681,5 +725,189 @@
     "save_failed": "保存文件失败。",
     "read_failed": "无法读取文件。",
     "json_parse_failed": "JSON 解析失败，请检查备份文件是否正确。"
+  },
+  "font_info": {
+    "title": "Font Info",
+    "title_multi": "Font Details (Selected: {{count}})",
+    "search_placeholder": "Search selected fonts...",
+    "no_search_results": "No matching fonts",
+    "live_preview_placeholder": "Type preview text...",
+    "font_size": "Font Size",
+    "copy_success": "Copied to clipboard.",
+    "tabs": {
+      "overview": "Overview & License",
+      "metrics": "Typography Metrics",
+      "coverage": "Language & Script Coverage",
+      "raw": "Raw Metadata"
+    },
+    "styles": {
+      "sans_serif": "Sans-serif",
+      "serif": "Serif",
+      "script": "Script / Cursive",
+      "display": "Display / Decorative",
+      "monospace": "Monospace",
+      "symbol": "Symbolic",
+      "unknown": "Unclassified"
+    },
+    "fs_type": {
+      "installable": "Installable Embedding (No Restrictions)",
+      "restricted": "Restricted License",
+      "preview_print": "Preview & Print Allowed",
+      "editable": "Editable Embedding Allowed",
+      "no_subsetting": "No Subsetting",
+      "bitmap_only": "Bitmap Only"
+    },
+    "languages": {
+      "ko": "Korean (KO)",
+      "en": "English (EN)",
+      "ja": "Japanese (JA)",
+      "zh_cn": "Simplified Chinese (ZH)",
+      "zh_tw": "Traditional Chinese (ZH)",
+      "de": "German (DE)",
+      "fr": "French (FR)",
+      "es": "Spanish (ES)",
+      "default": "Default"
+    },
+    "overview": {
+      "style_classification": "Style Classification",
+      "embedding_license": "Embedding License",
+      "designer": "Designer",
+      "manufacturer": "Manufacturer (Vendor)",
+      "copyright": "Copyright",
+      "trademark": "Trademark",
+      "version": "Version",
+      "format": "Font Format",
+      "file_path": "File Path",
+      "file_size": "File Size",
+      "created_date": "Created Date",
+      "modified_date": "Modified Date",
+      "open_vendor_url": "Visit Vendor Website",
+      "open_designer_url": "Visit Designer Website",
+      "description": "Description",
+      "license_terms_title": "LICENSE TERMS & CONDITIONS",
+      "copy_full_text": "Copy Full Text",
+      "copied": "Copied!",
+      "license_official_page": "Official License Page",
+      "check_website_for_license": "Please check the official website for full license terms and conditions."
+    },
+    "metrics": {
+      "units_per_em": "Units Per Em (UPM)",
+      "typo_metrics": "Typography Vertical Metrics",
+      "ascender": "Ascender",
+      "descender": "Descender",
+      "line_gap": "Line Gap",
+      "win_metrics": "Windows Metrics",
+      "win_ascent": "Win Ascent",
+      "win_descent": "Win Descent",
+      "proportions": "Proportions & Slant",
+      "cap_height": "Cap Height",
+      "x_height": "X-Height",
+      "italic_angle": "Italic Angle",
+      "weight_class": "Weight Class (usWeightClass)",
+      "width_class": "Width Class (usWidthClass)",
+      "width_normal": "5 (Normal)",
+      "bounding_box": "Global Bounding Box (BBox)",
+      "underline": "Underline Thickness / Position",
+      "thickness": "Thickness",
+      "position": "Position",
+      "monospace_label": "Monospace",
+      "monospace_yes": "Yes (Monospace)",
+      "monospace_no": "No (Proportional)"
+    },
+    "coverage": {
+      "glyph_stats": "Glyph & Character Statistics",
+      "total_glyphs": "Total Glyphs",
+      "encoded_chars": "Encoded Characters",
+      "scripts_title": "Supported Scripts",
+      "scripts": {
+        "latin": "Latin / English",
+        "hangul": "Hangul (Korean)",
+        "cjk": "CJK Ideographs",
+        "japanese": "Japanese Kana",
+        "cyrillic": "Cyrillic",
+        "greek": "Greek",
+        "arabic": "Arabic"
+      },
+      "basic_latin_fallback": "Includes Basic Latin Characters",
+      "hangul_status": {
+        "full_11172": "Full Hangul 11,172 Syllables",
+        "basic_ks_2350": "KS Standard 2,350 Syllables",
+        "partial": "Partial Hangul ({{count}} chars)",
+        "none": "Hangul Not Supported"
+      },
+      "latin_basic_coverage": "Basic Latin (ASCII) Coverage",
+      "latin_basic_subtitle": "ASCII Standard Printable (95 chars)",
+      "latin_extended_coverage": "Latin Extended Coverage",
+      "latin_extended_subtitle": "Latin Extended (224 chars)",
+      "hangul_coverage": "Hangul Syllables Coverage",
+      "japanese_kana_coverage": "Japanese Kana Coverage",
+      "japanese_kana_subtitle": "Hiragana & Katakana (192 chars)",
+      "cjk_coverage": "CJK Unified Ideographs",
+      "char_unit": "chars",
+      "characters_included": "{{count}} characters included",
+      "opentype_features": "OpenType Layout Features (GSUB/GPOS)",
+      "no_features": "No OpenType feature tags found.",
+      "glyphs_unit": "字形",
+      "chars_unit": "字符"
+    },
+    "raw": {
+      "name_table": "Name Table (Font Identification & Naming)",
+      "name_id": "ID",
+      "name_key": "Metadata Field",
+      "name_raw_key": "Original Key",
+      "name_value": "Recorded Value",
+      "os2_table": "OS/2 Table (Operating System Specifications)",
+      "col_metric": "Specification Field",
+      "col_value": "Binary Value",
+      "col_desc": "Description & Meaning",
+      "s_family_class": "Font Family Classification (sFamilyClass)",
+      "panose": "PANOSE 10-Byte Visual Classification (PANOSE)",
+      "us_weight_class": "Weight Class (usWeightClass)",
+      "us_weight_class_desc": "CSS font-weight standard numeric scale (100-900)",
+      "us_width_class": "Width Class (usWidthClass)",
+      "us_width_class_desc": "1 (Ultra-condensed) ~ 5 (Normal) ~ 9 (Ultra-expanded)",
+      "fs_selection": "Font Style Attributes (fsSelection)",
+      "fs_type": "Embedding License Rights (fsType)",
+      "vendor_id": "Vendor Identifier (achVendID)",
+      "vendor_id_desc": "Officially registered 4-byte manufacturer ID",
+      "name_labels": {
+        "copyright": "Copyright Notice",
+        "family": "Font Family Name",
+        "subfamily": "Subfamily / Style",
+        "unique_id": "Unique Identifier",
+        "full_name": "Full Font Name",
+        "version": "Version String",
+        "postscript_name": "PostScript Name",
+        "trademark": "Trademark Notice",
+        "manufacturer": "Manufacturer / Vendor",
+        "designer": "Font Designer",
+        "description": "Font Description",
+        "vendor_url": "Vendor Website URL",
+        "designer_url": "Designer Website URL",
+        "license": "License Description",
+        "license_url": "Official License URL",
+        "typographic_family": "Typographic Family",
+        "typographic_subfamily": "Typographic Subfamily",
+        "sample_text": "Sample Preview Text"
+      }
+    },
+    "disclaimer": "※ This information is extracted directly from the font file's internal metadata and may differ from the author's latest license terms or actual specifications. Please verify usage terms with the official distributor.",
+    "selected_count": "已选择 {{count}} 项",
+    "copy_ps_name": "复制 PostScript 名称",
+    "copy_file_path": "复制文件路径",
+    "analyzing": "正在分析元数据...",
+    "family_class": {
+      "oldstyle_serifs": "古典衬线体 (Oldstyle Serifs)",
+      "transitional_serifs": "过渡时期衬线体 (Transitional Serifs)",
+      "modern_serifs": "现代衬线体 (Modern Serifs)",
+      "clarendon_serifs": "克拉伦登衬线体 (Clarendon Serifs)",
+      "slab_serifs": "板状衬线体 (Slab Serifs)",
+      "freeform_serifs": "自由形态衬线体 (Freeform Serifs)",
+      "sans_serif": "无衬线体 / 黑体 (Sans-serif)",
+      "scripts": "手写手稿体 (Scripts)",
+      "decorative": "装饰 / 展示体 (Decorative / Display)",
+      "symbolic": "符号 / 标识 (Symbolic)",
+      "none": "未分类 (No Classification)"
+    }
   }
 }

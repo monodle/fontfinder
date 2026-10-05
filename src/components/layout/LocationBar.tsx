@@ -12,12 +12,15 @@ import {
   User,
   Zap,
   Heart,
+  Loader2,
 } from "lucide-react";
 import { CustomFolder, FontSet } from "../../types/font";
 import { FontDetailMode } from "../font-card/types";
 import { DetailModeControl } from "../DetailModeControl";
 import { SortModeControl } from "../SortModeControl";
 import { FontSortSettings } from "../../types/sort";
+import { ColorDot } from "../common";
+import { normalizePath } from "../../utils/pathUtils";
 
 interface LocationBarProps {
   activeCategory: string;
@@ -49,6 +52,23 @@ export function LocationBar({
   const { t } = useTranslation();
 
   const renderFontCount = () => {
+    if (activeCategory.startsWith("folder:")) {
+      const folderPath = activeCategory.replace("folder:", "");
+      const folder = customFolders.find((f) => normalizePath(f.path) === normalizePath(folderPath));
+      if (folder?.isScanning) {
+        return (
+          <div className="flex items-center gap-1.5 text-[11px] text-theme-accent font-medium select-none">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <span>
+              {folder.scanProgress && folder.scanProgress.total > 0
+                ? `${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%`
+                : t("sidebar.scanning_short", { defaultValue: "스캔 중..." })}
+            </span>
+          </div>
+        );
+      }
+    }
+
     if (selectedCount > 0) {
       return (
         <div className="flex items-center gap-1.5 text-[11px] font-mono">
@@ -90,7 +110,7 @@ export function LocationBar({
   // 1. 감시 폴더인 경우
   if (activeCategory.startsWith("folder:")) {
     const folderPath = activeCategory.replace("folder:", "");
-    const folder = customFolders.find((f) => f.path === folderPath);
+    const folder = customFolders.find((f) => normalizePath(f.path) === normalizePath(folderPath));
     const folderName = folder?.name || folderPath.split(/[\\/]/).pop() || folderPath;
     const folderColor = folder?.color || "#0ea5e9";
     const isMissing = folder?.isMissing;
@@ -100,10 +120,7 @@ export function LocationBar({
         {/* 좌측: 폴더 정보 및 순수 텍스트 경로 */}
         <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
           <div className="flex items-center gap-1.5 shrink-0">
-            <span
-              style={{ backgroundColor: folderColor }}
-              className="w-2.5 h-2.5 rounded-full ring-1 ring-theme-surface shadow-2xs"
-            />
+            <ColorDot color={folderColor} size="xs" />
             <Folder className="w-3.5 h-3.5 text-theme-text-secondary" />
             <span className="font-semibold text-theme-text truncate max-w-[140px] sm:max-w-[200px]">
               {folderName}
@@ -181,10 +198,7 @@ export function LocationBar({
             </>
           )}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span
-              style={{ backgroundColor: setColor }}
-              className="w-2.5 h-2.5 rounded-full ring-1 ring-theme-surface shadow-2xs"
-            />
+            <ColorDot color={setColor} size="xs" />
             <Tag className="w-3.5 h-3.5 text-theme-text-secondary" />
             <span className="font-semibold text-theme-text truncate max-w-[200px]">
               {setName}

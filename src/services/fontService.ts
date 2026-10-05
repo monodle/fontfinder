@@ -65,9 +65,6 @@ export const fontService = {
     return await invoke<number>("deactivate_fonts", { items });
   },
 
-  async getActivatedFonts(): Promise<ActivatedFontRecord[]> {
-    return await invoke<ActivatedFontRecord[]>("get_activated_fonts");
-  },
 
   async showInFolder(path: string): Promise<void> {
     return await invoke<void>("show_in_folder", { path });

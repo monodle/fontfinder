@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   SlidersHorizontal,
   HardDrive,
-  Sliders,
   Globe,
   Palette,
   Download,
@@ -33,10 +32,6 @@ import {
   AppTheme,
 } from "../config/appConfig";
 import { changeLanguage } from "../i18n";
-import {
-  PreviewTypographyForm,
-  TypographyStyleValues,
-} from "./PreviewTypographyForm";
 import { ThemeSelector } from "./ThemeSelector";
 import { LanguageSelector } from "./LanguageSelector";
 import { ViewModeControl } from "./ViewModeControl";
@@ -57,7 +52,6 @@ export type SettingsTab =
   | "all"
   | "appearance"
   | "library"
-  | "preview"
   | "layout"
   | "advanced"
   | "sponsor"
@@ -121,9 +115,8 @@ export function SettingsModal({
   };
 
   const categoryOptions: { id: LibraryCategory; label: string; desc: string }[] = [
-    { id: "user", label: t("sidebar.category_user"), desc: t("settings.cat_user_desc") },
     { id: "all", label: t("sidebar.category_all"), desc: t("settings.cat_all_desc") },
-    { id: "system", label: t("sidebar.category_system"), desc: t("settings.cat_system_desc") },
+    { id: "user", label: t("sidebar.category_user"), desc: t("settings.cat_user_desc") },
     { id: "activated", label: t("sidebar.category_activated"), desc: t("settings.cat_activated_desc") },
     { id: "favorites", label: t("sidebar.category_favorites"), desc: t("settings.cat_favorites_desc") },
     { id: "duplicates", label: t("sidebar.category_duplicates"), desc: t("settings.cat_duplicates_desc") },
@@ -181,57 +174,6 @@ export function SettingsModal({
       ...defaults,
       language: currentLang,
       theme: currentTheme,
-    });
-  };
-
-  const typographyValues: TypographyStyleValues = {
-    text: form.defaultPreviewText,
-    fontSize: form.defaultFontSize,
-    fontWeight: form.defaultVariableWeight,
-    isBold: Boolean(form.defaultIsBold),
-    isItalic: Boolean(form.defaultIsItalic),
-    isUnderline: Boolean(form.defaultIsUnderline),
-    textAlign: form.defaultTextAlign,
-    lineHeight: form.defaultLineHeight || 1.45,
-    letterSpacing: form.defaultLetterSpacing ?? 0,
-    textColor: form.defaultTextColor,
-    backgroundColor: form.defaultBackgroundColor,
-  };
-
-  const handleTypographyChange = <K extends keyof TypographyStyleValues>(
-    field: K,
-    value: TypographyStyleValues[K]
-  ) => {
-    setForm((prev) => {
-      switch (field) {
-        case "text":
-          return { ...prev, defaultPreviewText: value as string };
-        case "fontSize":
-          return { ...prev, defaultFontSize: value as number };
-        case "fontWeight":
-          return { ...prev, defaultVariableWeight: value as number };
-        case "isBold":
-          return { ...prev, defaultIsBold: Boolean(value) };
-        case "isItalic":
-          return { ...prev, defaultIsItalic: Boolean(value) };
-        case "isUnderline":
-          return { ...prev, defaultIsUnderline: Boolean(value) };
-        case "textAlign":
-          return {
-            ...prev,
-            defaultTextAlign: value as "left" | "center" | "right",
-          };
-        case "lineHeight":
-          return { ...prev, defaultLineHeight: value as number };
-        case "letterSpacing":
-          return { ...prev, defaultLetterSpacing: value as number };
-        case "textColor":
-          return { ...prev, defaultTextColor: value as string };
-        case "backgroundColor":
-          return { ...prev, defaultBackgroundColor: value as string };
-        default:
-          return prev;
-      }
     });
   };
 
@@ -311,7 +253,6 @@ export function SettingsModal({
     { id: "appearance", label: t("settings.tab_appearance"), icon: <Palette className="w-4 h-4 shrink-0" /> },
     { id: "library", label: t("settings.tab_library"), icon: <Type className="w-4 h-4 shrink-0" /> },
     { id: "layout", label: t("settings.tab_layout"), icon: <LayoutGrid className="w-4 h-4 shrink-0" /> },
-    { id: "preview", label: t("settings.tab_preview"), icon: <Sliders className="w-4 h-4 shrink-0" /> },
     { id: "advanced", label: t("settings.tab_advanced"), icon: <HardDrive className="w-4 h-4 shrink-0" /> },
     { id: "sponsor", label: t("settings.tab_sponsor", "커피 한 잔 보내기"), icon: <Coffee className="w-4 h-4 shrink-0" /> },
     { id: "about", label: t("settings.tab_about", "정보"), icon: <Info className="w-4 h-4 shrink-0" /> },
@@ -320,48 +261,48 @@ export function SettingsModal({
   return (
     <>
       <ModalDialog
-      isOpen={isOpen}
-      onClose={handleCloseModal}
-      maxWidth="4xl"
-      heightClass="h-[720px] max-h-[90vh]"
-      icon={<Settings className="w-4 h-4" />}
-      title={t("settings.title")}
-      subtitle={tabItems.find((tab) => tab.id === activeTab)?.label}
-      footer={
-        <>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs text-theme-text-muted hover:text-theme-accent px-2.5 py-1.5 rounded-lg hover:bg-theme-hover transition-colors cursor-pointer"
-            title={t("common.reset")}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>{t("common.reset")}</span>
-          </button>
+        isOpen={isOpen}
+        onClose={handleCloseModal}
+        maxWidth="4xl"
+        heightClass="h-[720px] max-h-[90vh]"
+        icon={<Settings className="w-4 h-4" />}
+        title={t("settings.title")}
+        subtitle={tabItems.find((tab) => tab.id === activeTab)?.label}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs text-theme-text-muted hover:text-theme-accent px-2.5 py-1.5 rounded-lg hover:bg-theme-hover transition-colors cursor-pointer"
+              title={t("common.reset")}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{t("common.reset")}</span>
+            </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-3.5 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text-secondary hover:bg-theme-hover transition-colors cursor-pointer"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-theme-accent hover:bg-theme-accent-hover text-theme-accent-text text-xs font-medium shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>{isSaving ? t("common.loading") : t("common.save")}</span>
-            </button>
-          </div>
-        </>
-      }
-    >
-      {/* Modal Body: Left Tab Sidebar + Right Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="px-3.5 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text-secondary hover:bg-theme-hover transition-colors cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-theme-accent hover:bg-theme-accent-hover text-theme-accent-text text-xs font-medium shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{isSaving ? t("common.loading") : t("common.save")}</span>
+              </button>
+            </div>
+          </>
+        }
+      >
+        {/* Modal Body: Left Tab Sidebar + Right Content Area */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
           {/* Left Tabs Sidebar */}
           <aside className="w-full md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-theme-border bg-theme-surface-header/30 flex flex-col justify-between p-3 select-none">
             <Tabs
@@ -435,35 +376,7 @@ export function SettingsModal({
               </SettingSection>
             )}
 
-            {/* 4. 폰트 미리보기 및 스타일 설정 (Preview) */}
-            {(activeTab === "all" || activeTab === "preview") && (
-              <SettingSection icon={<Sliders className="w-4 h-4" />} title={t("settings.tab_preview")}>
-                <PreviewTypographyForm
-                  mode="defaults"
-                  values={typographyValues}
-                  onChange={handleTypographyChange}
-                  minFontSize={form.minFontSize}
-                  maxFontSize={form.maxFontSize}
-                  onMinFontSizeChange={(val) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      minFontSize: val,
-                      defaultFontSize: Math.max(val, prev.defaultFontSize),
-                    }))
-                  }
-                  onMaxFontSizeChange={(val) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      maxFontSize: val,
-                      defaultFontSize: Math.min(val, prev.defaultFontSize),
-                    }))
-                  }
-                  onSubmitShortcut={handleSave}
-                />
-              </SettingSection>
-            )}
-
-            {/* 5. 뷰 모드 및 그리드 설정 (Layout) */}
+            {/* 4. 뷰 모드 및 그리드 설정 (Layout) */}
             {(activeTab === "all" || activeTab === "layout") && (
               <section className="space-y-4">
                 {/* 폰트 목록 정렬 섹션 */}

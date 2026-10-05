@@ -43,6 +43,7 @@ export function getDefaultPreviewText(lang = "ko"): string {
 
 const LEGACY_DEFAULT_PREVIEW_TEXTS = [
   "다람쥐 헌 쳇바퀴에 타고파\nThe quick brown fox jumps over the lazy dog\n1234567890",
+  "다람쥐 헌 쳇바퀴에 타고파. The quick brown fox jumps over the lazy dog. 1234567890 !@#$%^&*",
 ];
 
 export function isDefaultPreviewText(text: string): boolean {
@@ -147,7 +148,6 @@ export const appConfig = {
   },
   performance: {
     virtualScrollOverscan: getEnvNumber("VITE_VIRTUAL_SCROLL_OVERSCAN", 5),
-    maxGlyphPreviewCount: getEnvNumber("VITE_MAX_GLYPH_PREVIEW_COUNT", 300),
   },
   ui: {
     toastDurationMs: getEnvNumber("VITE_TOAST_DURATION_MS", 2500),

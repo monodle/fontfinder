@@ -10,7 +10,7 @@ const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
  * @param url 검증할 URL 문자열
  * @returns 정규화된 URL 문자열 또는 검증 실패 시 null
  */
-export function validateWebUrl(url: string): string | null {
+function validateWebUrl(url: string): string | null {
   if (!url || typeof url !== "string") {
     return null;
   }

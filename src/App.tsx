@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, RefreshCw, Sliders, AlertTriangle, FolderSync } from "lucide-react";
+import { RefreshCw, Sliders, AlertTriangle, FolderSync } from "lucide-react";
 import { normalizePath } from "./utils/pathUtils";
 import { FontMetadata, PreviewSettings, FontLibraryTag } from "./types/font";
 import { fontService } from "./services/fontService";
@@ -31,7 +31,7 @@ import { FolderDropOverlay } from "./components/FolderDropOverlay";
 import { GlyphDiffModal } from "./components/diff/GlyphDiffModal";
 import { FontInfoModal } from "./components/font-info/FontInfoModal";
 import { ConfirmModal } from "./components/ConfirmModal";
-import { EmptyState } from "./components/common/EmptyState";
+import { EmptyState, ProgressBar, Toast, ToastVariant } from "./components/common";
 import { FontDetailMode } from "./components/font-card/types";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "./types/sort";
 
@@ -117,10 +117,14 @@ export default function App() {
     y: number;
     font: FontMetadata;
   } | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastInfo, setToastInfo] = useState<{
+    message: string;
+    variant?: ToastVariant;
+  } | null>(null);
 
-  // 확인 모달 상태 (시스템 글꼴 제거 / 서재 세트에서 제거)
+  // 확인 모달 상태 (시스템 글꼴 제거 / 서재 세트에서 제거 / 임시 활성화 해제)
   const [uninstallConfirmFonts, setUninstallConfirmFonts] = useState<FontMetadata[] | null>(null);
+  const [deactivateConfirmFonts, setDeactivateConfirmFonts] = useState<FontMetadata[] | null>(null);
   const [removeFromSetConfirm, setRemoveFromSetConfirm] = useState<{
     setId: number;
     setName: string;
@@ -146,10 +150,17 @@ export default function App() {
     });
   }, []);
 
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), appConfig.ui.toastDurationMs);
-  }, []);
+  const showToast = useCallback(
+    (msg: string | { message: string; variant?: ToastVariant }) => {
+      if (typeof msg === "string") {
+        const isError = /실패|오류|failed|error/i.test(msg);
+        setToastInfo({ message: msg, variant: isError ? "error" : "success" });
+      } else {
+        setToastInfo(msg);
+      }
+    },
+    []
+  );
 
   // 2. 도메인 계층 커스텀 훅: 폰트 라이브러리 및 DB 동기화
   const library = useFontLibrary({
@@ -167,7 +178,6 @@ export default function App() {
   // 4. 비즈니스 액션 계층 커스텀 훅: 활성화/설치/제거/세트/폴더 조작
   const actions = useFontActions({
     fonts: library.fonts,
-    unpluggedFonts: library.unpluggedFonts,
     setFonts: library.setFonts,
     filteredFonts: library.filteredFonts,
     selectedFontIds: selection.selectedFontIds,
@@ -241,21 +251,28 @@ export default function App() {
     enabled: !isOnboardingOpen && !isDiffModalOpen,
   });
 
-  // 프리뷰 설정 동기화
+  // 프리뷰 설정 동기화 (로컬스토리지 즉시, DB 300ms 디바운스 저장)
   useEffect(() => {
     try {
       localStorage.setItem("fontfinder_preview_settings", JSON.stringify(previewSettings));
-      void fontService.setSetting("preview_settings", JSON.stringify(previewSettings));
     } catch (e) {
-      console.error("previewSettings 저장 실패:", e);
+      console.error("previewSettings 로컬 저장 실패:", e);
     }
+
+    const timer = setTimeout(() => {
+      void fontService.setSetting("preview_settings", JSON.stringify(previewSettings));
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [previewSettings]);
 
-  // DB 사용자 환경설정 로드 및 온보딩 상태 확인
+  // DB 사용자 환경설정 및 프리뷰 설정 로드, 온보딩 상태 확인
   useEffect(() => {
-    settingsService
-      .loadSettings()
-      .then((loaded) => {
+    Promise.all([
+      settingsService.loadSettings(),
+      fontService.getSetting("preview_settings"),
+    ])
+      .then(([loaded, dbPreviewStr]) => {
         setAppSettings(loaded);
         if (loaded.language) {
           changeLanguage(loaded.language);
@@ -263,24 +280,38 @@ export default function App() {
         if (loaded.fontSortSettings) {
           setSortSettings(loaded.fontSortSettings);
         }
-        setPreviewSettings((prev) => {
-          const isDefault = isDefaultPreviewText(prev.text);
-          return {
-            ...prev,
-            text: isDefault && loaded.language
-              ? getDefaultPreviewText(loaded.language)
-              : prev.text,
-            fontSize: prev.fontSize || loaded.defaultFontSize,
-            textColor: prev.textColor || loaded.defaultTextColor || "",
-            backgroundColor: prev.backgroundColor || loaded.defaultBackgroundColor || "",
-            textAlign: prev.textAlign || loaded.defaultTextAlign || "left",
-            lineHeight: prev.lineHeight || loaded.defaultLineHeight || 1.45,
-            letterSpacing: prev.letterSpacing ?? loaded.defaultLetterSpacing ?? 0,
-            isBold: prev.isBold ?? loaded.defaultIsBold ?? false,
-            isItalic: prev.isItalic ?? loaded.defaultIsItalic ?? false,
-            isUnderline: prev.isUnderline ?? loaded.defaultIsUnderline ?? false,
-          };
-        });
+        if (loaded.defaultViewMode) {
+          setViewMode(loaded.defaultViewMode);
+        }
+        if (loaded.defaultGridColumns) {
+          setGridColumns(loaded.defaultGridColumns);
+        }
+        if (loaded.defaultFontDetailMode) {
+          setDetailMode(loaded.defaultFontDetailMode);
+        }
+
+        // DB에 저장된 preview_settings 파싱하여 상태 복원
+        let dbPreview: Partial<PreviewSettings> | null = null;
+        if (dbPreviewStr) {
+          try {
+            dbPreview = JSON.parse(dbPreviewStr);
+          } catch (e) {
+            console.warn("DB 프리뷰 설정 파싱 실패:", e);
+          }
+        }
+
+        if (dbPreview) {
+          setPreviewSettings((prev) => {
+            const merged = { ...prev, ...dbPreview };
+            const isDefault = isDefaultPreviewText(merged.text);
+            return {
+              ...merged,
+              text: isDefault && loaded.language
+                ? getDefaultPreviewText(loaded.language)
+                : merged.text,
+            };
+          });
+        }
       })
       .catch((e) => {
         console.warn("DB 설정 로드 오류:", e);
@@ -369,6 +400,12 @@ export default function App() {
     setUninstallConfirmFonts(userFonts);
   }, []);
 
+  // 임시 활성화 해제 요청 (확인 모달 표시)
+  const handleRequestDeactivate = useCallback((fontsToDeactivate: FontMetadata[]) => {
+    if (fontsToDeactivate.length === 0) return;
+    setDeactivateConfirmFonts(fontsToDeactivate);
+  }, []);
+
   // 서재 세트에서 폰트 제거 요청 (확인 모달 표시)
   const handleRequestRemoveFromSet = useCallback(
     (setId: number, targetFonts: FontMetadata[]) => {
@@ -396,7 +433,9 @@ export default function App() {
   const activeScanningFolder = useMemo(() => {
     if (library.activeCategory.startsWith("folder:")) {
       const folderPath = library.activeCategory.replace("folder:", "");
-      return library.customFolders.find((f) => f.path === folderPath && f.isScanning);
+      return library.customFolders.find(
+        (f) => normalizePath(f.path) === normalizePath(folderPath) && f.isScanning
+      );
     }
     return null;
   }, [library.activeCategory, library.customFolders]);
@@ -455,6 +494,36 @@ export default function App() {
     });
   }, []);
 
+  // 뷰 모드(리스트/그리드) 변경 핸들러 (환경설정 DB 동기화)
+  const handleViewModeChange = useCallback((mode: "list" | "grid") => {
+    setViewMode(mode);
+    setAppSettings((prev) => {
+      const next = { ...prev, defaultViewMode: mode };
+      void settingsService.saveSettings(next);
+      return next;
+    });
+  }, []);
+
+  // 그리드 기본 열 수 변경 핸들러 (환경설정 DB 동기화)
+  const handleGridColumnsChange = useCallback((cols: number) => {
+    setGridColumns(cols);
+    setAppSettings((prev) => {
+      const next = { ...prev, defaultGridColumns: cols };
+      void settingsService.saveSettings(next);
+      return next;
+    });
+  }, []);
+
+  // 카드 상세 수준 변경 핸들러 (환경설정 DB 동기화)
+  const handleDetailModeChange = useCallback((mode: FontDetailMode) => {
+    setDetailMode(mode);
+    setAppSettings((prev) => {
+      const next = { ...prev, defaultFontDetailMode: mode };
+      void settingsService.saveSettings(next);
+      return next;
+    });
+  }, []);
+
   // 환경 설정 저장 핸들러
   const handleSaveSettings = async (newSettings: CustomAppSettings) => {
     try {
@@ -463,20 +532,12 @@ export default function App() {
       if (newSettings.fontSortSettings) {
         setSortSettings(newSettings.fontSortSettings);
       }
-      setPreviewSettings((prev) => ({
-        ...prev,
-        text: newSettings.defaultPreviewText,
-        fontSize: newSettings.defaultFontSize,
-        textColor: newSettings.defaultTextColor,
-        backgroundColor: newSettings.defaultBackgroundColor,
-        textAlign: newSettings.defaultTextAlign,
-        lineHeight: newSettings.defaultLineHeight,
-        letterSpacing: newSettings.defaultLetterSpacing,
-        isBold: Boolean(newSettings.defaultIsBold),
-        isItalic: Boolean(newSettings.defaultIsItalic),
-        isUnderline: Boolean(newSettings.defaultIsUnderline),
-      }));
-      setGridColumns((prev) => Math.min(5, Math.max(2, prev)));
+      if (newSettings.defaultViewMode) {
+        setViewMode(newSettings.defaultViewMode);
+      }
+      if (newSettings.defaultGridColumns) {
+        setGridColumns(newSettings.defaultGridColumns);
+      }
       if (newSettings.defaultFontDetailMode) {
         setDetailMode(newSettings.defaultFontDetailMode);
       }
@@ -570,12 +631,10 @@ export default function App() {
           minFontSize={appSettings.minFontSize}
           maxFontSize={appSettings.maxFontSize}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           gridColumns={gridColumns}
-          onGridColumnsChange={setGridColumns}
+          onGridColumnsChange={handleGridColumnsChange}
           onOpenStyleModal={() => setIsPreviewModalOpen(true)}
-          selectedCount={selection.selectedFontIds.size}
-          onOpenDiff={() => handleOpenDiffModal()}
         />
 
         <LocationBar
@@ -585,7 +644,7 @@ export default function App() {
           fontsCount={library.filteredFonts.length}
           selectedCount={selection.selectedFontIds.size}
           detailMode={detailMode}
-          onDetailModeChange={setDetailMode}
+          onDetailModeChange={handleDetailModeChange}
           sortSettings={sortSettings}
           onSortSettingsChange={handleSortSettingsChange}
           onOpenFolder={handleOpenFolder}
@@ -689,6 +748,7 @@ export default function App() {
           onBulkAddToSet={actions.handleBulkAddToSet}
           onBulkRemoveFromSet={actions.handleBulkRemoveFromSet}
           onRequestUninstall={handleRequestUninstall}
+          onRequestDeactivate={handleRequestDeactivate}
           onRequestRemoveFromSet={handleRequestRemoveFromSet}
           onRefreshList={() => void library.refreshList()}
           onActionFeedback={showToast}
@@ -796,6 +856,63 @@ export default function App() {
         />
       )}
 
+      {/* 5-3. 임시 활성화 해제 확인 모달 */}
+      {deactivateConfirmFonts && deactivateConfirmFonts.length > 0 && (
+        <ConfirmModal
+          isOpen={true}
+          onClose={() => setDeactivateConfirmFonts(null)}
+          onConfirm={async () => {
+            const fontsToDeact = [...deactivateConfirmFonts];
+            setDeactivateConfirmFonts(null);
+            if (fontsToDeact.length === 1) {
+              await actions.handleToggleActivate(fontsToDeact[0]);
+            } else {
+              await actions.handleBulkActivate(
+                fontsToDeact.map((f) => f.id),
+                false
+              );
+            }
+          }}
+          title={
+            deactivateConfirmFonts.length === 1
+              ? t("confirm.deactivate_font_title", "임시활성화 해제")
+              : t("confirm.bulk_deactivate_title", "임시활성화 일괄 해제")
+          }
+          itemName={
+            deactivateConfirmFonts.length === 1
+              ? (deactivateConfirmFonts[0].full_name || deactivateConfirmFonts[0].family_name)
+              : t("confirm.bulk_deactivate_item", {
+                  count: deactivateConfirmFonts.length,
+                  defaultValue: `${deactivateConfirmFonts.length}개 선택된 글꼴`,
+                })
+          }
+          description={
+            <div className="space-y-3">
+              <p>
+                {deactivateConfirmFonts.length === 1
+                  ? t("confirm.deactivate_font_desc", "이 글꼴의 임시활성화를 해제하시겠습니까?")
+                  : t("confirm.bulk_deactivate_desc", {
+                      count: deactivateConfirmFonts.length,
+                      defaultValue: `선택한 ${deactivateConfirmFonts.length}개 글꼴의 임시활성화를 해제하시겠습니까?`,
+                    })}
+              </p>
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
+                <span className="text-sm shrink-0">⚠️</span>
+                <span>
+                  {t(
+                    "confirm.deactivate_warning",
+                    "임시활성화를 해제하면 현재 실행 중인 그래픽/문서 편집 프로그램에서 글꼴이 즉시 제외됩니다."
+                  )}
+                </span>
+              </div>
+            </div>
+          }
+          confirmText={t("confirm.deactivate_btn", "임시활성화 해제")}
+          cancelText={t("common.cancel", "취소")}
+          isDanger={true}
+        />
+      )}
+
       <GlyphDiffModal
         isOpen={isDiffModalOpen}
         onClose={() => setIsDiffModalOpen(false)}
@@ -825,7 +942,6 @@ export default function App() {
         settings={previewSettings}
         minFontSize={appSettings.minFontSize}
         maxFontSize={appSettings.maxFontSize}
-        defaultFontSize={appSettings.defaultFontSize}
         defaultText={appSettings.defaultPreviewText}
         onClose={() => setIsPreviewModalOpen(false)}
         onApply={(newSettings) => setPreviewSettings(newSettings)}
@@ -872,47 +988,18 @@ export default function App() {
             </p>
 
             {/* 실시간 프로그레스 바 영역 */}
-            <div className="w-full space-y-2">
-              <div className="w-full h-2.5 rounded-full bg-theme-hover overflow-hidden p-0.5 border border-theme-border/70">
-                <div
-                  className="h-full rounded-full bg-theme-accent transition-all duration-200 ease-out shadow-xs"
-                  style={{
-                    width: `${library.scanProgress && library.scanProgress.total > 0
-                      ? Math.min(
-                        100,
-                        Math.round(
-                          (library.scanProgress.current /
-                            library.scanProgress.total) *
-                          100
-                        )
-                      )
-                      : 20
-                      }%`,
-                  }}
-                />
-              </div>
-
-              {/* 진행률 수치 및 퍼센트 */}
-              <div className="flex items-center justify-between text-[11px] text-theme-text-secondary font-mono px-0.5">
-                <span>
-                  {library.scanProgress && library.scanProgress.total > 0
-                    ? `${library.scanProgress.current.toLocaleString()} / ${library.scanProgress.total.toLocaleString()}${t("common.count_unit", "개")}`
-                    : t("common.loading", "분석 중...")}
-                </span>
-                <span className="font-semibold text-theme-accent">
-                  {library.scanProgress && library.scanProgress.total > 0
-                    ? `${Math.min(
-                      100,
-                      Math.round(
-                        (library.scanProgress.current /
-                          library.scanProgress.total) *
-                        100
-                      )
-                    )}%`
-                    : ""}
-                </span>
-              </div>
-            </div>
+            <ProgressBar
+              value={library.scanProgress?.current ?? 0}
+              max={library.scanProgress?.total ?? 100}
+              size="md"
+              showLabel
+              label={
+                library.scanProgress && library.scanProgress.total > 0
+                  ? `${library.scanProgress.current.toLocaleString()} / ${library.scanProgress.total.toLocaleString()}${t("common.count_unit", "개")}`
+                  : t("common.loading", "분석 중...")
+              }
+              className="w-full"
+            />
           </div>
         </div>
       )}
@@ -921,11 +1008,13 @@ export default function App() {
       <FolderDropOverlay isVisible={isDraggingOver && !isDiffModalOpen} />
 
       {/* 7. Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl bg-[#2d2824]/95 text-[#fbf8f2] shadow-xl backdrop-blur-md border border-[#484039] text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <Check className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
+      {toastInfo && (
+        <Toast
+          message={toastInfo.message}
+          variant={toastInfo.variant}
+          duration={appConfig.ui.toastDurationMs}
+          onClose={() => setToastInfo(null)}
+        />
       )}
     </div>
   );

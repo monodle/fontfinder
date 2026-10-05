@@ -249,7 +249,7 @@ export function ColorPresetPicker({
           {/* 추천 프리셋 색상 그리드 (20종 내추럴 컬러) */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider">
-              Presets
+              {t("toolbar.color_presets", "Presets")}
             </span>
             <ColorPresetChips
               presets={presets}
