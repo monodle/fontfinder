@@ -17,6 +17,7 @@
   <img src="./images/main-01.png" alt="App Preview" width="100%" />
 
 <br>
+
 ### 📥 최신 버전 다운로드
 
 깃허브 릴리즈에서 운영체제에 맞는 설치 파일을 다운로드하세요.
