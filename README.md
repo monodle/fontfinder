@@ -14,7 +14,7 @@
 <br>
 
   <!-- 메인 대표 스크린샷 -->
-  <img src="https://raw.githubusercontent.com/monodle/fontfinder/refs/heads/main/images/main-01.png" alt="App Preview" width="100%" />
+  <img src="https://raw.githubusercontent.com/monodle/fontfinder/refs/heads/main/images/main-02.png" alt="App Preview" width="100%" />
 
 <br>
 
