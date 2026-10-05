@@ -39,7 +39,7 @@ export const CREATORS: CreatorInfo[] = [
     githubUrl: "https://github.com/sojoongpapa",
     githubHandle: "@sojoongpapa",
     avatarUrl: "https://github.com/sojoongpapa.png",
-    bio: "천재 디발자 꿈꾸는 Ken",
+    bio: "Ken, the dreamer",
   },
 ];
 
