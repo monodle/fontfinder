@@ -52,6 +52,7 @@ export function useFontActions({
   loadSystemFonts,
   loadDbState,
   refreshSets,
+  refreshSetCount,
   refreshList,
   handleClearSelection,
   showToast,
@@ -336,7 +337,9 @@ export function useFontActions({
       try {
         const targetFont = fonts.find((f) => f.id === fontId);
         await fontService.addFontToSet(setId, fontId);
-        if (refreshSets) {
+        if (refreshSetCount) {
+          await refreshSetCount(setId);
+        } else if (refreshSets) {
           await refreshSets();
         } else {
           await loadDbState();
@@ -350,7 +353,7 @@ export function useFontActions({
         console.error("세트에 추가 실패:", err);
       }
     },
-    [fonts, loadDbState, refreshSets, showToast, t]
+    [fonts, loadDbState, refreshSetCount, refreshSets, showToast, t]
   );
 
   // 일괄 세트 추가
@@ -360,7 +363,9 @@ export function useFontActions({
         if (fontIds.length > 0) {
           await fontService.addFontsToSetBulk(setId, fontIds);
         }
-        if (refreshSets) {
+        if (refreshSetCount) {
+          await refreshSetCount(setId);
+        } else if (refreshSets) {
           await refreshSets();
         } else {
           await loadDbState();
@@ -375,7 +380,7 @@ export function useFontActions({
         console.error("일괄 세트 추가 실패:", err);
       }
     },
-    [handleClearSelection, loadDbState, refreshSets, showToast, t]
+    [handleClearSelection, loadDbState, refreshSetCount, refreshSets, showToast, t]
   );
 
   // 단일 세트에서 폰트 제거
@@ -384,7 +389,9 @@ export function useFontActions({
       try {
         const targetFont = fonts.find((f) => f.id === fontId);
         await fontService.removeFontFromSet(setId, fontId);
-        if (refreshSets) {
+        if (refreshSetCount) {
+          await refreshSetCount(setId);
+        } else if (refreshSets) {
           await refreshSets();
         } else {
           await loadDbState();
@@ -405,7 +412,7 @@ export function useFontActions({
         );
       }
     },
-    [fonts, handleClearSelection, loadDbState, refreshSets, showToast, t]
+    [fonts, handleClearSelection, loadDbState, refreshSetCount, refreshSets, showToast, t]
   );
 
   // 일괄 세트에서 폰트 제거
@@ -415,7 +422,9 @@ export function useFontActions({
         if (fontIds.length > 0) {
           await fontService.removeFontsFromSetBulk(setId, fontIds);
         }
-        if (refreshSets) {
+        if (refreshSetCount) {
+          await refreshSetCount(setId);
+        } else if (refreshSets) {
           await refreshSets();
         } else {
           await loadDbState();
@@ -436,7 +445,7 @@ export function useFontActions({
         );
       }
     },
-    [handleClearSelection, loadDbState, refreshSets, showToast, t]
+    [handleClearSelection, loadDbState, refreshSetCount, refreshSets, showToast, t]
   );
 
   // 여러 폴더 경로 일괄 추가 (드래그앤드롭 및 탐색기 공용)

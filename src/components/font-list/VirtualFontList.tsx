@@ -1,6 +1,7 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FontMetadata, PreviewSettings, FontLibraryTag } from "../../types/font";
+import { FontMetadata, PreviewSettings, FontLibraryTag, FontSection } from "../../types/font";
 import { FontItem } from "../font-card/FontItem";
 import { appConfig } from "../../config/appConfig";
 import { isFontFavorite } from "../../utils/fontSortUtils";
@@ -9,6 +10,7 @@ import { FontDetailMode } from "../font-card/types";
 
 interface VirtualFontListProps {
   fonts: FontMetadata[];
+  sections?: FontSection[];
   previewText?: string;
   fontSize?: number;
   previewSettings?: PreviewSettings;
@@ -40,8 +42,17 @@ interface SelectionBox {
   currentY: number;
 }
 
+interface VirtualRowItem {
+  type: "header" | "empty" | "font-row";
+  section?: FontSection;
+  rowFonts?: FontMetadata[];
+  rowIndex?: number;
+  rowKey: string;
+}
+
 export function VirtualFontList({
   fonts,
+  sections,
   previewText,
   fontSize,
   previewSettings,
@@ -58,6 +69,7 @@ export function VirtualFontList({
   onContextMenu,
   onSelectLibrary,
 }: VirtualFontListProps) {
+  const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
 
   // 드래그 선택 상태
@@ -76,24 +88,90 @@ export function VirtualFontList({
 
   // 리스트 모드일 때는 1열, 그리드 모드일 때는 설정된 gridColumns (2~5) 배치
   const columns = viewMode === "grid" ? gridColumns : 1;
-  const rowCount = Math.ceil(fonts.length / columns);
+
+  // 가상화 대상 평탄화 행 목록 생성 (섹션이 있는 경우 헤더와 폰트 행 결합)
+  const virtualRows = useMemo<VirtualRowItem[]>(() => {
+    if (!sections || sections.length === 0) {
+      const rows: VirtualRowItem[] = [];
+      const count = Math.ceil(fonts.length / columns);
+      for (let r = 0; r < count; r++) {
+        const startIndex = r * columns;
+        rows.push({
+          type: "font-row",
+          rowFonts: fonts.slice(startIndex, startIndex + columns),
+          rowIndex: r,
+          rowKey: `row-${r}`,
+        });
+      }
+      return rows;
+    }
+
+    const rows: VirtualRowItem[] = [];
+    sections.forEach((section) => {
+      // 1. 섹션 헤더 (1depth 서재 또는 2depth 폴더)
+      rows.push({
+        type: "header",
+        section,
+        rowKey: `sec-header-${section.id}`,
+      });
+
+      // 2. 섹션 내 폰트가 없는 경우
+      if (section.fonts.length === 0) {
+        rows.push({
+          type: "empty",
+          section,
+          rowKey: `sec-empty-${section.id}`,
+        });
+        return;
+      }
+
+      // 3. 섹션 내 폰트 그리드 행들
+      const secRowCount = Math.ceil(section.fonts.length / columns);
+      for (let r = 0; r < secRowCount; r++) {
+        const startIndex = r * columns;
+        rows.push({
+          type: "font-row",
+          section,
+          rowFonts: section.fonts.slice(startIndex, startIndex + columns),
+          rowIndex: r,
+          rowKey: `sec-row-${section.id}-${r}`,
+        });
+      }
+    });
+
+    return rows;
+  }, [sections, fonts, columns]);
+
+  const rowCount = virtualRows.length;
 
   const effectiveText = previewSettings?.text ?? previewText ?? "";
   const effectiveFontSize = previewSettings?.fontSize ?? fontSize ?? 24;
   const effectiveLineHeight = previewSettings?.lineHeight ?? 1.45;
 
   // 아이템 대략적 높이: 줄 수와 폰트 크기 및 줄간격에 따라 정밀 추정 (간단 모드/상세 모드 구분)
-  const estimateSize = useCallback(() => {
-    const lineCount = (effectiveText.match(/\n/g) || []).length + 1;
-    const baseOffset = detailMode === "simple" ? 50 : 80;
-    const minHeight = detailMode === "simple" ? 105 : 130;
-    return Math.max(minHeight, effectiveFontSize * effectiveLineHeight * lineCount + baseOffset);
-  }, [detailMode, effectiveFontSize, effectiveLineHeight, effectiveText]);
+  const estimateRowHeight = useCallback(
+    (rowIndex: number) => {
+      const item = virtualRows[rowIndex];
+      if (item) {
+        if (item.type === "header") {
+          return rowIndex === 0 ? 46 : 62;
+        }
+        if (item.type === "empty") {
+          return 56;
+        }
+      }
+      const lineCount = (effectiveText.match(/\n/g) || []).length + 1;
+      const baseOffset = detailMode === "simple" ? 50 : 80;
+      const minHeight = detailMode === "simple" ? 105 : 130;
+      return Math.max(minHeight, effectiveFontSize * effectiveLineHeight * lineCount + baseOffset);
+    },
+    [virtualRows, detailMode, effectiveFontSize, effectiveLineHeight, effectiveText]
+  );
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize,
+    estimateSize: estimateRowHeight,
     overscan: appConfig.performance.virtualScrollOverscan,
   });
 
@@ -118,7 +196,7 @@ export function VirtualFontList({
           break;
         }
       }
-      const est = estimateSize();
+      const est = estimateRowHeight(rowIndex);
       const start =
         PADDING_TOP +
         (lastCachedIndex >= 0 ? baseEnd + (rowIndex - lastCachedIndex - 1) * est : rowIndex * est);
@@ -127,7 +205,7 @@ export function VirtualFontList({
         end: start + est,
       };
     },
-    [estimateSize, rowVirtualizer.measurementsCache]
+    [estimateRowHeight, rowVirtualizer.measurementsCache]
   );
 
   // 선택 박스 및 폰트 교차 선택 업데이트
@@ -198,17 +276,19 @@ export function VirtualFontList({
           const { start: rStart, end: rEnd } = getRowBounds(r);
 
           if (boxTop <= rEnd && boxBottom >= rStart) {
-            for (let c = 0; c < columns; c++) {
-              if (isColIntersecting(c)) {
-                const fontIndex = r * columns + c;
-                if (fontIndex < fonts.length) {
-                  const targetFont = fonts[fontIndex];
-                  const isUnplugged =
-                    targetFont.isMissing ||
-                    targetFont.install_status === "unplugged" ||
-                    targetFont.install_status === "deleted";
-                  if (!isUnplugged) {
-                    draggedFontIds.add(targetFont.id);
+            const rowItem = virtualRows[r];
+            if (rowItem && rowItem.type === "font-row" && rowItem.rowFonts) {
+              for (let c = 0; c < columns; c++) {
+                if (isColIntersecting(c)) {
+                  if (c < rowItem.rowFonts.length) {
+                    const targetFont = rowItem.rowFonts[c];
+                    const isUnplugged =
+                      targetFont.isMissing ||
+                      targetFont.install_status === "unplugged" ||
+                      targetFont.install_status === "deleted";
+                    if (!isUnplugged) {
+                      draggedFontIds.add(targetFont.id);
+                    }
                   }
                 }
               }
@@ -238,7 +318,7 @@ export function VirtualFontList({
         }
       }
     },
-    [columns, fonts, getRowBounds, isDragging, onSelectionChange, rowCount]
+    [columns, getRowBounds, isDragging, onSelectionChange, rowCount, virtualRows]
   );
 
   // 최신 updateSelection 함수를 참조하기 위한 ref (rAF 루프 및 이벤트 핸들러의 안정성 보장)
@@ -487,12 +567,69 @@ export function VirtualFontList({
           }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const startIndex = virtualRow.index * columns;
-            const rowFonts = fonts.slice(startIndex, startIndex + columns);
+            const item = virtualRows[virtualRow.index];
+            if (!item) return null;
 
+            // 1. 섹션 헤더 렌더링 (1depth 서재 / 2depth 폴더 구분선)
+            if (item.type === "header" && item.section) {
+              const sec = item.section;
+              const isTop = virtualRow.index === 0;
+              return (
+                <div
+                  key={item.rowKey}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  className="absolute top-0 left-0 w-full"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div className={`pb-2.5 ${isTop ? "pt-1" : "pt-7"}`}>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs ring-2 ring-theme-border/40"
+                        style={{ backgroundColor: sec.color || "#0ea5e9" }}
+                      />
+                      <span className="font-bold text-[14px] text-theme-text-primary tracking-tight">
+                        {sec.title}
+                      </span>
+                      <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-theme-bg-secondary text-theme-text-muted border border-theme-border/70 shadow-2xs">
+                        {sec.count}
+                      </span>
+                      {/* 우측 구분선 */}
+                      <div className="flex-1 h-px bg-theme-border/70 ml-2" />
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // 2. 해당 섹션 내 폰트가 없는 경우 안내
+            if (item.type === "empty" && item.section) {
+              return (
+                <div
+                  key={item.rowKey}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  className="absolute top-0 left-0 w-full"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div className="pb-3 pt-1">
+                    <div className="flex items-center justify-center py-4 px-3 rounded-lg border border-dashed border-theme-border/70 bg-theme-bg-secondary/20 text-xs text-theme-text-muted">
+                      {t("empty.no_fonts_title")}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // 3. 일반 폰트 그리드/리스트 행 렌더링
+            const rowFonts = item.rowFonts || [];
             return (
               <div
-                key={virtualRow.key}
+                key={item.rowKey}
                 data-index={virtualRow.index}
                 ref={rowVirtualizer.measureElement}
                 className="absolute top-0 left-0 w-full"
@@ -505,38 +642,38 @@ export function VirtualFontList({
                     columns > 1 ? `grid ${gridColsMap[columns] || "grid-cols-2"} gap-3` : "flex flex-col"
                   }`}
                 >
-                  {rowFonts.map((font) => {
+                  {rowFonts.map((font, colIdx) => {
                     const isUnplugged =
                       font.isMissing ||
                       font.install_status === "unplugged" ||
                       font.install_status === "deleted";
                     return (
                       <div
-                        key={font.id}
+                        key={`${item.section?.id ?? "font"}-${font.id}-${colIdx}`}
                         data-font-card-id={font.id}
                         data-unplugged={isUnplugged ? "true" : undefined}
                         className="min-w-0 h-full"
                       >
-                      <FontItem
-                        font={font}
-                        previewText={previewText}
-                        fontSize={fontSize}
-                        previewSettings={previewSettings}
-                        detailMode={detailMode}
-                        columns={columns}
-                        isSelected={selectedFontIds.has(font.id)}
-                        isFavorite={favoriteIds ? isFontFavorite(font, favoriteIds) : false}
-                        isActivated={activatedFontIds?.has(font.id)}
-                        onSelect={onSelectFont}
-                        onToggleFavorite={onToggleFavorite}
-                        onToggleActivate={onToggleActivate}
-                        onContextMenu={onContextMenu}
-                        onSelectLibrary={onSelectLibrary}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                        <FontItem
+                          font={font}
+                          previewText={previewText}
+                          fontSize={fontSize}
+                          previewSettings={previewSettings}
+                          detailMode={detailMode}
+                          columns={columns}
+                          isSelected={selectedFontIds.has(font.id)}
+                          isFavorite={favoriteIds ? isFontFavorite(font, favoriteIds) : false}
+                          isActivated={activatedFontIds?.has(font.id)}
+                          onSelect={onSelectFont}
+                          onToggleFavorite={onToggleFavorite}
+                          onToggleActivate={onToggleActivate}
+                          onContextMenu={onContextMenu}
+                          onSelectLibrary={onSelectLibrary}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

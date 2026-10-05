@@ -195,6 +195,7 @@ export default function App() {
     loadSystemFonts: library.loadSystemFonts,
     loadDbState: library.loadDbState,
     refreshSets: library.refreshSets,
+    refreshSetCount: library.refreshSetCount,
     refreshList: library.refreshList,
     handleClearSelection: selection.handleClearSelection,
     showToast,
@@ -699,6 +700,7 @@ export default function App() {
           ) : (
             <VirtualFontList
               fonts={library.filteredFonts}
+              sections={library.fontSections}
               previewSettings={previewSettings}
               viewMode={viewMode}
               detailMode={detailMode}

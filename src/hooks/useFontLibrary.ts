@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import {
   FontMetadata,
   FontSet,
+  FontSection,
   CustomFolder,
   FontLibraryTag,
   FontInstallStatus,
@@ -15,6 +16,32 @@ import { sortFonts } from "../utils/fontSortUtils";
 import { deduplicateFonts, getFontUniqueKey } from "../utils/fontDeduplication";
 import { matchesFontSearch } from "../utils/fontLocalization";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "../types/sort";
+
+/**
+ * 서재 세트 목록의 실시간 카운트 계산
+ * - 자식이 있는 1depth 세트: 자기 자신 직접 등록 수 + 직속 2depth 자식 세트들의 카운트 합계
+ * - 자식이 없는 1depth 세트 및 2depth 하위 세트: 해당 세트 자체에 직접 등록된 DB 폰트 수
+ * - setMap이 제공되면 Set 크기를 우선 참조하여 상태 누적 오염을 원천 방지
+ */
+export function calculateSetCounts(sets: FontSet[], setMap?: Map<number, Set<number>>): FontSet[] {
+  const directMap = new Map<number, number>();
+  for (const s of sets) {
+    const directCount = setMap?.get(s.id)?.size ?? s.count ?? 0;
+    directMap.set(s.id, directCount);
+  }
+
+  return sets.map((s) => {
+    const isParent = s.parent_id == null;
+    const childSets = isParent ? sets.filter((c) => c.parent_id === s.id) : [];
+
+    if (isParent && childSets.length > 0) {
+      const ownCount = directMap.get(s.id) ?? 0;
+      const sum = ownCount + childSets.reduce((acc, child) => acc + (directMap.get(child.id) ?? 0), 0);
+      return { ...s, count: sum };
+    }
+    return { ...s, count: directMap.get(s.id) ?? 0 };
+  });
+}
 
 interface UseFontLibraryProps {
   defaultCategory?: string;
@@ -126,13 +153,14 @@ export function useFontLibrary({
           // ignore parsing error
         }
       }
+      // DB 원본 sets는 순수 direct count 상태로 보관 (오염 및 누적 합산 방지)
       setSets(fetchedSets);
 
       // 모든 세트의 폰트 ID 목록을 단일 쿼리로 일괄 로드하여 1+N 쿼리/IPC 방지
       const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>));
       const newSetMap = new Map<number, Set<number>>();
       for (const s of fetchedSets) {
-        const ids = allSetFonts[s.id] ?? [];
+        const ids = (allSetFonts as any)[s.id] ?? (allSetFonts as any)[String(s.id)] ?? [];
         newSetMap.set(s.id, new Set(ids));
       }
       setSetMap(newSetMap);
@@ -150,6 +178,43 @@ export function useFontLibrary({
       return [];
     }
   }, []);
+
+  // 서재 세트 폰트 갯수 갱신 전용 핸들러
+  // 1. targetSetId 미지정 시: 최초 앱 실행 시 모든 서재 갯수 일괄 갱신
+  // 2. targetSetId 지정 시: 서재에 폰트 등록/삭제 시 해당 서재만 갯수 갱신
+  const refreshSetCount = useCallback(
+    async (targetSetId?: number) => {
+      try {
+        if (targetSetId !== undefined) {
+          const ids = await fontService.getSetFontIds(targetSetId);
+          const idSet = new Set(ids);
+
+          setSetMap((prev) => {
+            const next = new Map(prev);
+            next.set(targetSetId, idSet);
+            return next;
+          });
+
+          if (activeCategoryRef.current === `set:${targetSetId}`) {
+            setSetFontIds(idSet);
+          }
+
+          // sets 상태에는 해당 세트의 순수 direct count만 갱신 (파생 카운트는 enrichedSets에서 실시간 계산)
+          setSets((prevSets) =>
+            prevSets.map((s) =>
+              s.id === targetSetId ? { ...s, count: ids.length } : s
+            )
+          );
+          return;
+        }
+
+        await refreshSets();
+      } catch (err) {
+        console.error(`서재 폰트 갯수 갱신 실패 (setId: ${targetSetId}):`, err);
+      }
+    },
+    [refreshSets]
+  );
 
   // DB 상태 로드 (캐시 우선 렌더링 + 세트, 즐겨찾기, 등록 폴더, 활성화 폰트, 순서)
   const loadDbState = useCallback(async () => {
@@ -714,38 +779,6 @@ export function useFontLibrary({
     return map;
   }, [customFolders, processedFonts]);
 
-  // 2. 서재 세트별 실시간 폰트 수 동적 계산 (모든 파일 기준, 1depth는 직속 2depth 하위 세트 통합 합산)
-  const setCounts = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const set of sets) {
-      const isParent = set.parent_id == null;
-      const childIds = isParent ? sets.filter((s) => s.parent_id === set.id).map((s) => s.id) : [];
-      const targetIds = [set.id, ...childIds];
-
-      const idsInSet = new Set<number>();
-      for (const tId of targetIds) {
-        const sIds = setMap.get(tId);
-        if (sIds) {
-          sIds.forEach((id) => idsInSet.add(id));
-        }
-      }
-      if (idsInSet.size === 0 && setFontIds) {
-        setFontIds.forEach((id) => idsInSet.add(id));
-      }
-
-      if (idsInSet.size === 0) {
-        map.set(set.id, 0);
-        continue;
-      }
-      const matchesSet = (font: FontMetadata) => idsInSet.has(font.id);
-
-      const activeInSet = processedFonts.filter(matchesSet);
-      const unpluggedInSet = unpluggedFonts.filter(matchesSet);
-      map.set(set.id, activeInSet.length + unpluggedInSet.length);
-    }
-    return map;
-  }, [sets, setMap, setFontIds, processedFonts, unpluggedFonts]);
-
   // 실시간 계산된 고유 폰트 수가 반영된 폴더 및 서재 세트 목록
   const enrichedCustomFolders = useMemo(() => {
     return customFolders.map((folder) => {
@@ -763,16 +796,27 @@ export function useFontLibrary({
     });
   }, [customFolders, folderCounts]);
 
+  // 서재 세트 목록 (부모 세트는 자기 자신 + 하위 자식 세트들의 카운트를 실시간 합산하여 제공, 상태 누적 오염 방지)
   const enrichedSets = useMemo(() => {
-    return sets.map((set) => ({
-      ...set,
-      count: setCounts.get(set.id) ?? set.count ?? 0,
-    }));
-  }, [sets, setCounts]);
+    return calculateSetCounts(sets, setMap);
+  }, [sets, setMap]);
 
-  // 필터링된 폰트 목록 (중복 폰트 탭에서만 대표 1개 노출 및 중복 배지 표시, 그 외 일반 리스트는 모든 폰트 파일 노출)
-  const filteredFonts = useMemo(() => {
+  // 필터링된 폰트 목록 및 서재 1depth 섹션 정보 (1depth 서재는 자기 자신 및 2depth 폴더별로 섹션 분리 및 독립 정렬)
+  const { filteredFonts, fontSections } = useMemo(() => {
     let result: FontMetadata[] = [];
+    let sections: FontSection[] | undefined = undefined;
+
+    const sortGroup = (fontsToSort: FontMetadata[]) => {
+      return sortFonts(
+        fontsToSort,
+        {
+          favoriteIds,
+          activatedFontIds,
+        },
+        sortSettings,
+        i18n.language
+      );
+    };
 
     if (activeCategory === "all") {
       result = processedFonts.filter(
@@ -805,26 +849,80 @@ export function useFontLibrary({
       }));
     } else if (activeCategory.startsWith("set:")) {
       const setId = Number(activeCategory.replace("set:", ""));
-      // 1depth 세트인 경우 직속 2depth 자식 세트들의 폰트 ID까지 모두 합산 (Rollup 집계)
-      const childSetIds = sets.filter((s) => s.parent_id === setId).map((s) => s.id);
-      const targetSetIds = [setId, ...childSetIds];
+      const targetSet = sets.find((s) => s.id === setId);
+      const isParent = targetSet ? targetSet.parent_id == null : false;
+      const childSets = isParent ? sets.filter((c) => c.parent_id === setId) : [];
 
-      const idsInSet = new Set<number>();
-      for (const sId of targetSetIds) {
-        const sIds = setMap.get(sId);
-        if (sIds) {
-          sIds.forEach((id) => idsInSet.add(id));
+      if (isParent && childSets.length > 0 && targetSet) {
+        // 자식이 있는 1depth 상위 세트:
+        // 자기 자신(1depth)을 포함하여 2depth 자식 세트들까지 섹션별로 분리
+        // 각 서재 폴더 섹션 내에서만 개별 정렬 수행 ("정렬은 자신의 서재 폴더에만 적용되게")
+        const getSetFonts = (sId: number) => {
+          const sIds = setMap.get(sId);
+          if (!sIds || sIds.size === 0) return [];
+          const matchesSet = (font: FontMetadata) => sIds.has(font.id);
+          const activeInSet = processedFonts.filter(matchesSet);
+          const unpluggedInSet = unpluggedFonts.filter(matchesSet);
+          let matched = [...activeInSet, ...unpluggedInSet];
+          if (searchQuery.trim()) {
+            matched = matched.filter((f) => matchesFontSearch(f, searchQuery));
+          }
+          return sortGroup(matched);
+        };
+
+        const secList: FontSection[] = [];
+
+        // 1) 1depth 서재 자신
+        const ownFonts = getSetFonts(targetSet.id);
+        secList.push({
+          id: `set-${targetSet.id}`,
+          setId: targetSet.id,
+          title: targetSet.name,
+          color: targetSet.color,
+          isParent: true,
+          count: ownFonts.length,
+          fonts: ownFonts,
+        });
+
+        // 2) 2depth 자식 세트들
+        for (const child of childSets) {
+          const childFonts = getSetFonts(child.id);
+          secList.push({
+            id: `set-${child.id}`,
+            setId: child.id,
+            title: child.name,
+            color: child.color,
+            isParent: false,
+            count: childFonts.length,
+            fonts: childFonts,
+          });
+        }
+
+        // 검색어가 있을 때는 결과가 있는 섹션만 유지
+        const visibleSections = searchQuery.trim()
+          ? secList.filter((s) => s.fonts.length > 0)
+          : secList;
+
+        sections = visibleSections;
+        result = visibleSections.flatMap((s) => s.fonts);
+
+        // 1depth 세트 뷰에서는 전체 일괄 재정렬을 하지 않고, 각 섹션별로 정렬된 순서를 유지하여 반환
+        return {
+          filteredFonts: result,
+          fontSections: sections,
+        };
+      } else {
+        // 자식이 없는 세트: 해당 세트 자체의 폰트 목록
+        const sIds = setMap.get(setId);
+        if (sIds && sIds.size > 0) {
+          const matchesSet = (font: FontMetadata) => sIds.has(font.id);
+          const activeInSet = processedFonts.filter(matchesSet);
+          const unpluggedInSet = unpluggedFonts.filter(matchesSet);
+          result = [...activeInSet, ...unpluggedInSet];
+        } else {
+          result = [];
         }
       }
-      if (idsInSet.size === 0 && setFontIds) {
-        setFontIds.forEach((id) => idsInSet.add(id));
-      }
-
-      const matchesSet = (font: FontMetadata) => idsInSet.has(font.id);
-
-      const activeInSet = processedFonts.filter(matchesSet);
-      const unpluggedInSet = unpluggedFonts.filter(matchesSet);
-      result = [...activeInSet, ...unpluggedInSet];
     } else if (activeCategory.startsWith("folder:")) {
       const folderPath = activeCategory.replace("folder:", "");
       result = processedFonts.filter((f) => isPathInFolder(f.file_path, folderPath));
@@ -834,15 +932,10 @@ export function useFontLibrary({
       result = result.filter((f) => matchesFontSearch(f, searchQuery));
     }
 
-    return sortFonts(
-      result,
-      {
-        favoriteIds,
-        activatedFontIds,
-      },
-      sortSettings,
-      i18n.language
-    );
+    return {
+      filteredFonts: sortGroup(result),
+      fontSections: undefined,
+    };
   }, [
     processedFonts,
     activeCategory,
@@ -966,6 +1059,7 @@ export function useFontLibrary({
     fonts,
     setFonts,
     filteredFonts,
+    fontSections,
     unpluggedFonts,
     isLoading,
     setIsLoading,
@@ -990,6 +1084,7 @@ export function useFontLibrary({
     loadSystemFonts,
     loadDbState,
     refreshSets,
+    refreshSetCount,
     refreshList,
     handleSelectSet,
     handleRelinkFolder,

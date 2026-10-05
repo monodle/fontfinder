@@ -75,6 +75,16 @@ export interface FontSet {
   parent_id?: number | null;
 }
 
+export interface FontSection {
+  id: string;
+  setId?: number;
+  title: string;
+  color?: string;
+  isParent?: boolean;
+  count: number;
+  fonts: FontMetadata[];
+}
+
 export interface PreviewSettings {
   text: string;
   fontSize: number;
