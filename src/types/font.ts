@@ -44,6 +44,7 @@ export interface FontMetadata {
   subfamily_name: string;
   full_name: string;
   postscript_name: string;
+  localized_names?: Record<string, string>;
   format: FontFormat;
   source: FontSource;
   glyph_count: number;

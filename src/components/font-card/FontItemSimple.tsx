@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { FontDuplicateBadge } from "../FontBadge";
+import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontCardRenderProps } from "./types";
 
 export function FontItemSimple({
@@ -18,7 +19,8 @@ export function FontItemSimple({
   onSelect,
   onContextMenu,
 }: FontCardRenderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const displayName = getFontFamilyName(font, i18n.language);
 
   return (
     <div
@@ -56,7 +58,7 @@ export function FontItemSimple({
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {/* 폰트 이름 */}
           <span className="font-semibold text-xs text-theme-text tracking-tight truncate group-hover:text-theme-accent transition-colors">
-            {font.family_name}
+            {displayName}
           </span>
 
           {/* 폰트 Weight (Subfamily 값) */}

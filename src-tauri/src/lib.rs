@@ -10,6 +10,15 @@ pub mod window_manager;
 use std::sync::Arc;
 use tauri::Manager;
 
+static IS_FOCUS_CHECKING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+struct FocusCheckGuard;
+impl Drop for FocusCheckGuard {
+    fn drop(&mut self) {
+        IS_FOCUS_CHECKING.store(false, std::sync::atomic::Ordering::Release);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -85,6 +94,33 @@ pub fn run() {
             if let Some(wm) = window.try_state::<Arc<window_manager::WindowManager>>() {
                 wm.handle_window_event(window, event);
             }
+
+            // 창 포커스 복귀 시 백그라운드에서 발생한 연결 끊김 및 복구(외장 드라이브/폴더명 변경) 즉시 양방향 점검
+            // 메인 UI 스레드 블로킹 방지 및 이전 점검 태스크 진행 중일 때의 중복 spawn 방어
+            if let tauri::WindowEvent::Focused(true) = event {
+                if let Some(state) = window.try_state::<commands::AppState>() {
+                    if IS_FOCUS_CHECKING
+                        .compare_exchange(
+                            false,
+                            true,
+                            std::sync::atomic::Ordering::AcqRel,
+                            std::sync::atomic::Ordering::Relaxed,
+                        )
+                        .is_ok()
+                    {
+                        let watcher_clone = Arc::clone(&state.watcher);
+                        tauri::async_runtime::spawn(async move {
+                            let _guard = FocusCheckGuard;
+                            let _ = tokio::task::spawn_blocking(move || {
+                                if let Ok(mut w) = watcher_clone.lock() {
+                                    let _ = w.check_missing_folders();
+                                    let _ = w.check_and_recover_missing();
+                                }
+                            }).await;
+                        });
+                    }
+                }
+            }
         })
         .setup(|app| {
             let app_data_dir = app
@@ -109,6 +145,94 @@ pub fn run() {
             }
 
             let window_manager = Arc::new(window_manager::WindowManager::new(Arc::clone(&database)));
+
+            // Windows 환경: USB/외장 드라이브 마운트(WM_DEVICECHANGE)를 실시간 수신하여 끊긴 폴더 자동 복구
+            #[cfg(target_os = "windows")]
+            {
+                use windows_sys::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
+                use windows_sys::Win32::UI::WindowsAndMessaging::{WM_DEVICECHANGE, WM_NCDESTROY};
+                use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+
+                unsafe extern "system" fn subclass_proc(
+                    hwnd: HWND,
+                    msg: u32,
+                    wparam: WPARAM,
+                    lparam: LPARAM,
+                    _uid_subclass: usize,
+                    ref_data: usize,
+                ) -> LRESULT {
+                    if msg == WM_DEVICECHANGE {
+                        // DBT_DEVICEARRIVAL (0x8000): 새 볼륨 마운트 발생
+                        // DBT_DEVICEREMOVECOMPLETE (0x8004): 볼륨 언마운트 발생
+                        if wparam == 0x8000 || wparam == 0x8004 {
+                            // 마우스/키보드/블루투스 등 HID 장치 무관 이벤트 차단: 볼륨(드라이브) 이벤트만 선별
+                            const DBT_DEVTYP_VOLUME: u32 = 0x00000002;
+                            let is_volume_event = if lparam != 0 {
+                                // DEV_BROADCAST_HDR: offset 0(dbch_size: u32), offset 4(dbch_devicetype: u32)
+                                // dbch_size가 최소 8바이트 이상인지 검증하여 비정상 버퍼 역참조 차단
+                                unsafe {
+                                    let dbch_size = *(lparam as *const u32);
+                                    dbch_size >= 8 && *((lparam as *const u8).add(4) as *const u32) == DBT_DEVTYP_VOLUME
+                                }
+                            } else {
+                                true
+                            };
+
+                            if is_volume_event {
+                                let watcher_ptr = ref_data as *const std::sync::Mutex<watcher::FontFolderWatcher>;
+                                if !watcher_ptr.is_null() {
+                                    unsafe {
+                                        std::sync::Arc::increment_strong_count(watcher_ptr);
+                                    }
+                                    let watcher_arc = unsafe { std::sync::Arc::from_raw(watcher_ptr) };
+                                    tauri::async_runtime::spawn(async move {
+                                        if wparam == 0x8000 {
+                                            // USB/외장 볼륨 마운트 직후 OS 파일시스템 마운트 I/O 안정화 대기 (150ms)
+                                            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                                            let _ = tokio::task::spawn_blocking(move || {
+                                                if let Ok(mut w) = watcher_arc.lock() {
+                                                    let _ = w.check_and_recover_missing();
+                                                }
+                                            }).await;
+                                        } else {
+                                            let _ = tokio::task::spawn_blocking(move || {
+                                                if let Ok(mut w) = watcher_arc.lock() {
+                                                    let _ = w.check_missing_folders();
+                                                }
+                                            }).await;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    } else if msg == WM_NCDESTROY {
+                        // 창 소멸 시 서브클래스 먼저 해제 후 Arc 힙 메모리 안전 회수
+                        RemoveWindowSubclass(hwnd, Some(subclass_proc), 1001);
+                        let watcher_ptr = ref_data as *mut std::sync::Mutex<watcher::FontFolderWatcher>;
+                        if !watcher_ptr.is_null() {
+                            drop(unsafe { Arc::from_raw(watcher_ptr) });
+                        }
+                    }
+                    DefSubclassProc(hwnd, msg, wparam, lparam)
+                }
+
+                if let Some(main_window) = app.get_webview_window("main") {
+                    if let Ok(hwnd) = main_window.hwnd() {
+                        let watcher_clone = Arc::clone(&watcher);
+                        let ref_data = Arc::into_raw(watcher_clone) as *const () as usize;
+                        let success = unsafe {
+                            SetWindowSubclass(hwnd.0 as _, Some(subclass_proc), 1001, ref_data)
+                        };
+                        if success == 0 {
+                            eprintln!("[platform] Failed to set window subclass for device change notifications");
+                            let watcher_ptr = ref_data as *mut std::sync::Mutex<watcher::FontFolderWatcher>;
+                            if !watcher_ptr.is_null() {
+                                drop(unsafe { Arc::from_raw(watcher_ptr) });
+                            }
+                        }
+                    }
+                }
+            }
 
             app.manage(commands::AppState {
                 db: Arc::clone(&database),

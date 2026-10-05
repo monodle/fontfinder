@@ -1,7 +1,7 @@
 {
   "name": "fontfinder",
   "private": true,
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "scripts": {
     "sync:version": "node scripts/sync-version.js",
@@ -13,12 +13,11 @@
     "preview": "vite preview",
     "pretauri": "node scripts/sync-version.js",
     "tauri": "tauri",
-    "fonts:setup": "node scripts/setup-fonts.mjs",
     "build:app": "node scripts/sync-version.js && tauri build"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.13",
-    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/api": "~2.11.1",
     "@tauri-apps/plugin-dialog": "2.7.0",
     "i18next": "^26.4.2",
     "lucide-react": "^1.48.0",
@@ -29,7 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@tauri-apps/cli": "^2.12.1",
+    "@tauri-apps/cli": "~2.11.5",
     "@types/node": "^22.20.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

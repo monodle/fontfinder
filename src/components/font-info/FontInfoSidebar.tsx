@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { FontMetadata } from "../../types/font";
+import { getFontFamilyName, matchesFontSearch } from "../../utils/fontLocalization";
 import { Search } from "lucide-react";
 
 interface FontInfoSidebarProps {
@@ -14,7 +15,7 @@ export function FontInfoSidebar({
   selectedIndex,
   onSelect,
 }: FontInfoSidebarProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const activeItemRef = useRef<HTMLButtonElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -27,12 +28,7 @@ export function FontInfoSidebar({
     }
     return fonts
       .map((f, originalIndex) => ({ font: f, originalIndex }))
-      .filter(
-        ({ font }) =>
-          font.family_name.toLowerCase().includes(q) ||
-          font.subfamily_name.toLowerCase().includes(q) ||
-          font.file_name.toLowerCase().includes(q)
-      );
+      .filter(({ font }) => matchesFontSearch(font, q));
   }, [fonts, searchQuery]);
 
   // 선택된 항목이 변경되었을 때 화면 스크롤 자동 동기화
@@ -107,7 +103,7 @@ export function FontInfoSidebar({
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-xs truncate font-medium">
-                    {font.family_name}
+                    {getFontFamilyName(font, i18n.language)}
                   </span>
                   <span
                     className={`text-[9px] px-1 py-0.2 rounded font-mono shrink-0 ${

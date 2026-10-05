@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -38,6 +39,8 @@ pub struct FontMetadata {
     pub subfamily_name: String,
     pub full_name: String,
     pub postscript_name: String,
+    #[serde(default)]
+    pub localized_names: Option<HashMap<String, String>>,
     pub format: FontFormat,
     pub source: FontSource,
     pub glyph_count: u16,

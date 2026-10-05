@@ -726,18 +726,19 @@ export default function App() {
             <div className="space-y-3">
               <p>
                 {uninstallConfirmFonts.length === 1
-                  ? t("confirm.uninstall_font_desc", "이 글꼴을 운영체제 시스템(Fonts 폴더)에서 완전히 삭제하시겠습니까?")
+                  ? t("confirm.uninstall_font_desc", "이 글꼴을 시스템(Fonts 폴더)에서 제거하여 휴지통으로 이동하시겠습니까?")
                   : t("confirm.bulk_uninstall_desc", {
                     count: uninstallConfirmFonts.length,
-                    defaultValue: `선택한 ${uninstallConfirmFonts.length}개의 글꼴을 운영체제 시스템(Fonts 폴더)에서 완전히 삭제하시겠습니까?`,
+                    defaultValue: `선택한 ${uninstallConfirmFonts.length}개의 글꼴을 시스템(Fonts 폴더)에서 제거하여 휴지통으로 이동하시겠습니까?`,
                   })}
               </p>
-              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 font-medium text-xs leading-relaxed text-left">
-                ⚠️ {t("confirm.uninstall_warning", "실제 파일이 시스템 디스크에서 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.")}
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
+                <span className="text-sm shrink-0">🗑️</span>
+                <span>{t("confirm.uninstall_warning", "글꼴 파일은 시스템 휴지통으로 안전하게 이동되며, 필요한 경우 휴지통에서 언제든 복구할 수 있습니다.")}</span>
               </div>
             </div>
           }
-          confirmText={t("confirm.uninstall_btn", "시스템에서 삭제")}
+          confirmText={t("confirm.uninstall_btn", "휴지통으로 이동")}
           cancelText={t("common.cancel", "취소")}
           isDanger={true}
         />

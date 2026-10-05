@@ -3,6 +3,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use percent_encoding::percent_decode_str;
 use tauri::http::{header, Response, StatusCode};
+use unicode_normalization::UnicodeNormalization;
 
 use tauri::Manager;
 
@@ -73,15 +74,80 @@ pub fn strip_unc_prefix(path: &Path) -> PathBuf {
     }
 }
 
-/// 경로 일치 또는 하위 경로 검증 (Windows 대소문자 비구분 및 경로 구분자 정규화 포함)
+/// 유니코드 정규화(NFC) 경로 반환 헬퍼 (macOS 자소 분리 NFD 방어)
+pub fn normalize_unicode_path(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    let nfc: String = s.nfc().collect();
+    PathBuf::from(nfc)
+}
+
+/// POSIX 표준 포워드 슬래시(/) 정규화 경로 반환 유틸리티
+/// - \\?\ UNC 접두사 제거
+/// - 모든 경로 구분자를 / 로 통일
+/// - Windows 드라이브 문자 대문자화 (예: "c:/" -> "C:/")
+/// - 루트(예: '/', 'C:/')를 제외한 끝 슬래시/역슬래시 제거
+/// - macOS NFD 자소 분리 방어용 NFC 정규화 적용
+pub fn to_posix_normalized_path(path: &Path) -> PathBuf {
+    let clean = strip_unc_prefix(path);
+    let s = clean.to_string_lossy();
+    let mut normalized: String = s.replace('\\', "/").nfc().collect();
+
+    if normalized.is_empty() {
+        return PathBuf::new();
+    }
+
+    // Windows 드라이브 문자 단독(예: "C:", "c:")인 경우 "C:/"로 루트 보정
+    if normalized.len() == 2
+        && normalized.ends_with(':')
+        && normalized.chars().next().map_or(false, |c| c.is_ascii_alphabetic())
+    {
+        normalized.push('/');
+    }
+
+    // Windows 드라이브 문자(예: "c:/...", "c:\...") 시작 시 드라이브 문자 대문자화 ("C:/...")
+    if normalized.len() >= 2 {
+        let first = normalized.chars().next().unwrap();
+        let second = normalized.chars().nth(1).unwrap();
+        if first.is_ascii_alphabetic() && second == ':' && first.is_ascii_lowercase() {
+            let upper = first.to_ascii_uppercase();
+            normalized.replace_range(0..1, &upper.to_string());
+        }
+    }
+
+    // 루트 디렉토리 판별 (Unix "/", Windows "C:/" 등)
+    let is_root = normalized == "/"
+        || (normalized.len() == 3
+            && normalized.ends_with(":/")
+            && normalized.chars().next().map_or(false, |c| c.is_ascii_alphabetic()));
+
+    if !is_root {
+        while normalized.len() > 1 && normalized.ends_with('/') {
+            normalized.pop();
+        }
+    }
+
+    PathBuf::from(normalized)
+}
+
+/// Windows 네이티브 백슬래시(\) 경로 반환 유틸리티 (OS FFI 및 Win32 API 호출 직전 전용)
+/// - \\?\ UNC 접두사 제거
+/// - 모든 경로 구분자를 \ 로 통일
+/// - Windows 드라이브 문자 대문자화 보장
+pub fn to_windows_native_path(path: &Path) -> PathBuf {
+    let posix = to_posix_normalized_path(path);
+    let win_str = posix.to_string_lossy().replace('/', "\\");
+    PathBuf::from(win_str)
+}
+
+/// 경로 일치 또는 하위 경로 검증 (Windows 대소문자 비구분 및 macOS 자소 분리 NFC 정규화 포함)
 pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
     let clean_parent = strip_unc_prefix(parent);
     let clean_child = strip_unc_prefix(child);
 
     #[cfg(target_os = "windows")]
     {
-        let parent_str = clean_parent.to_string_lossy().replace('/', "\\").to_lowercase();
-        let child_str = clean_child.to_string_lossy().replace('/', "\\").to_lowercase();
+        let parent_str: String = clean_parent.to_string_lossy().replace('/', "\\").to_lowercase().nfc().collect();
+        let child_str: String = clean_child.to_string_lossy().replace('/', "\\").to_lowercase().nfc().collect();
 
         let clean_parent_str = parent_str.trim_end_matches('\\');
         if child_str == clean_parent_str {
@@ -95,7 +161,28 @@ pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
 
     #[cfg(not(target_os = "windows"))]
     {
-        clean_child.starts_with(&clean_parent)
+        if clean_child.starts_with(&clean_parent) {
+            return true;
+        }
+        // macOS NFD(자소 분리) vs NFC 정규화 비교 폴백
+        let parent_nfc = normalize_unicode_path(&clean_parent);
+        let child_nfc = normalize_unicode_path(&clean_child);
+        if child_nfc.starts_with(&parent_nfc) {
+            return true;
+        }
+
+        // macOS APFS 기본 파일시스템: 대소문자 비구분(Case-Insensitive) 지원 폴백
+        #[cfg(target_os = "macos")]
+        {
+            let parent_lower: String = parent_nfc.to_string_lossy().to_lowercase();
+            let child_lower: String = child_nfc.to_string_lossy().to_lowercase();
+            let clean_p = parent_lower.trim_end_matches('/');
+            if child_lower == clean_p || child_lower.starts_with(&format!("{}/", clean_p)) {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -205,12 +292,29 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
             }
 
             // 2-2. 폰트 캐시 DB에 등록된 유효한 폰트 경로인지 검증
-            // (Windows UNC 접두사 제거 경로 및 원본 경로 모두 대조)
-            let clean_path = strip_unc_prefix(path);
-            let clean_path_str = clean_path.to_string_lossy();
-            if let Ok(true) = state.db.is_font_path_cached(&clean_path_str) {
+            // (POSIX 표준 경로 최우선 대조로 SQLite COLLATE NOCASE 일치 보장, 이후 레거시 경로 폴백)
+            let posix_path = to_posix_normalized_path(path);
+            let posix_path_str = posix_path.to_string_lossy();
+            if let Ok(true) = state.db.is_font_path_cached(&posix_path_str) {
                 remember_verified_path(path);
                 return true;
+            }
+
+            let clean_path = strip_unc_prefix(path);
+            let clean_path_str = clean_path.to_string_lossy();
+            if clean_path_str != posix_path_str {
+                if let Ok(true) = state.db.is_font_path_cached(&clean_path_str) {
+                    remember_verified_path(path);
+                    return true;
+                }
+            }
+
+            let nfc_path_str: String = clean_path_str.nfc().collect();
+            if nfc_path_str != clean_path_str {
+                if let Ok(true) = state.db.is_font_path_cached(&nfc_path_str) {
+                    remember_verified_path(path);
+                    return true;
+                }
             }
 
             let raw_path_str = path.to_string_lossy();
@@ -341,12 +445,28 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
     };
 
     // 6. 허용된 경로(시스템 폰트, 감시 폴더, 캐시된 폰트 라이브러리) 검증
-    if !is_font_path_allowed(&canonical_path, Some(ctx.app_handle())) {
+    // 심볼릭 링크 지원: 정규화된 대상 경로(canonical_path) 또는 요청된 심볼릭 링크 경로(file_path) 중
+    // 어느 하나라도 인가된 폴더 또는 DB 카탈로그에 속해 있다면 안전하게 허용합니다.
+    let is_allowed = is_font_path_allowed(&canonical_path, Some(ctx.app_handle()))
+        || is_font_path_allowed(&file_path, Some(ctx.app_handle()));
+
+    if !is_allowed {
         eprintln!("[font protocol] Access denied: unauthorized path {:?}", canonical_path);
         return Response::builder()
             .status(StatusCode::FORBIDDEN)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
             .body(b"Forbidden: Path is not in authorized font directories or catalog".to_vec())
+            .unwrap_or_default();
+    }
+
+    // 6-1. 심볼릭 링크 악용(CWE-59 / Traversal) 방어:
+    // canonical_path 대상 파일 역시 허용된 폰트 확장자를 가지고 있는지 2차 검증
+    if get_allowed_font_mime_type(&canonical_path).is_none() {
+        eprintln!("[font protocol] Access denied: symlink target is not a font file: {:?}", canonical_path);
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+            .body(b"Forbidden: Symlink target is not an allowed font file".to_vec())
             .unwrap_or_default();
     }
 
@@ -395,6 +515,26 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
             .body(format!("Failed to read file: {}", err).into_bytes())
+            .unwrap_or_default();
+    }
+
+    // 8-1. 폰트 매직 바이트 검증: 비-폰트 바이너리 및 시스템 텍스트 파일(Passwd, SSH 키 등)의 인가 우회 반환 원천 차단
+    let is_valid_font_magic = buffer.len() >= 4 && (
+        buffer.starts_with(b"\x00\x01\x00\x00") // TrueType 1.0
+        || buffer.starts_with(b"OTTO")           // OpenType with PostScript CFF
+        || buffer.starts_with(b"ttcf")           // TrueType / OpenType Collection
+        || buffer.starts_with(b"true")           // Apple TrueType
+        || buffer.starts_with(b"typ1")           // PostScript Type 1
+        || buffer.starts_with(b"wOFF")           // WOFF 1.0
+        || buffer.starts_with(b"wOF2")           // WOFF 2.0
+    );
+
+    if !is_valid_font_magic {
+        eprintln!("[font protocol] Access denied: invalid font binary header for {:?}", canonical_path);
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+            .body(b"Forbidden: File content is not a recognized font binary".to_vec())
             .unwrap_or_default();
     }
 
@@ -620,5 +760,57 @@ mod tests {
     #[test]
     fn test_max_font_file_size_constant() {
         assert_eq!(MAX_FONT_FILE_SIZE, 100 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_to_posix_normalized_path() {
+        assert_eq!(
+            to_posix_normalized_path(Path::new(r"C:\Windows\Fonts\")),
+            PathBuf::from("C:/Windows/Fonts")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new(r"c:\windows\fonts\")),
+            PathBuf::from("C:/windows/fonts")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new(r"\\?\C:\Users\Fonts\")),
+            PathBuf::from("C:/Users/Fonts")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new("/System/Library/Fonts/")),
+            PathBuf::from("/System/Library/Fonts")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new("/")),
+            PathBuf::from("/")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new("C:/")),
+            PathBuf::from("C:/")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new("c:/")),
+            PathBuf::from("C:/")
+        );
+        assert_eq!(
+            to_posix_normalized_path(Path::new("c:")),
+            PathBuf::from("C:/")
+        );
+    }
+
+    #[test]
+    fn test_to_windows_native_path() {
+        assert_eq!(
+            to_windows_native_path(Path::new("C:/Windows/Fonts")),
+            PathBuf::from(r"C:\Windows\Fonts")
+        );
+        assert_eq!(
+            to_windows_native_path(Path::new("c:/windows/fonts/")),
+            PathBuf::from(r"C:\windows\fonts")
+        );
+        assert_eq!(
+            to_windows_native_path(Path::new(r"\\?\c:\users\fonts\")),
+            PathBuf::from(r"C:\users\fonts")
+        );
     }
 }

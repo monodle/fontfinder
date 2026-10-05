@@ -3,6 +3,7 @@ import { Heart, Zap } from "lucide-react";
 import { FontFormatBadge, FontInstallStatusBadge, FontVersionBadge, FontDuplicateBadge } from "../FontBadge";
 import { LibraryAvatarStack } from "../LibraryAvatarStack";
 import { formatFileSize } from "../../utils/fileSize";
+import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontCardRenderProps } from "./types";
 
 export function FontItemDetailed({
@@ -26,7 +27,8 @@ export function FontItemDetailed({
   onSelectLibrary,
   handleActivate,
 }: FontCardRenderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const displayName = getFontFamilyName(font, i18n.language);
 
   return (
     <div
@@ -78,7 +80,7 @@ export function FontItemDetailed({
           </button>
 
           <span className="font-semibold text-xs text-theme-text tracking-tight truncate group-hover:text-theme-accent transition-colors">
-            {font.family_name}
+            {displayName}
           </span>
 
           <span

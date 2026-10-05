@@ -1,6 +1,6 @@
 [package]
 name = "fontfinder"
-version = "0.2.3"
+version = "0.2.4"
 description = "Font Finder - Modern Cross-platform Font Manager"
 authors = ["Font Finder"]
 edition = "2021"
@@ -31,6 +31,9 @@ tauri-plugin-single-instance = "2"
 sha2 = "0.10"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 window-vibrancy = "0.6"
+trash = "5.2"
+unicode-normalization = "0.1"
+encoding_rs = "0.8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
@@ -40,6 +43,11 @@ core-text = "20.1"
 windows-sys = { version = "0.59", features = [
     "Win32_Graphics_Gdi",
     "Win32_Foundation",
+    "Win32_Security",
     "Win32_System_Registry",
-    "Win32_UI_WindowsAndMessaging"
+    "Win32_System_Com",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_Storage_FileSystem",
 ] }
+

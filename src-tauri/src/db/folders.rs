@@ -51,19 +51,16 @@ impl Database {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
-      let normalized = if path.ends_with('/') || path.ends_with('\\') {
-        path.to_string()
-      } else {
-        format!("{}/", path)
-      };
-      let like = format!("{}%", normalized);
+      let clean_path = path.trim_end_matches(['/', '\\']);
+      let like_slash = format!("{}/%", clean_path);
+      let like_backslash = format!("{}\\%", clean_path);
       tx.execute("DELETE FROM watched_folders WHERE path = ?1", params![path])?;
 
       // 서재 세트(set_fonts)나 즐겨찾기(favorites)에 보존된 폰트는 캐시를 유지하고,
       // 어디에도 등록되지 않은 단순 외부 폰트 캐시만 정리
       tx.execute(
         "DELETE FROM font_cache
-         WHERE (file_path = ?1 OR file_path LIKE ?2)
+         WHERE (file_path = ?1 OR file_path = ?2 OR file_path LIKE ?3 OR file_path LIKE ?4)
            AND NOT EXISTS (
              SELECT 1 FROM set_fonts sf
              WHERE sf.font_id = font_cache.id
@@ -72,7 +69,7 @@ impl Database {
              SELECT 1 FROM favorites fv
              WHERE fv.font_id = font_cache.id
            )",
-        params![path, like],
+        params![path, clean_path, like_slash, like_backslash],
       )?;
     }
     tx.commit()?;
@@ -88,27 +85,31 @@ impl Database {
         params![new_path, new_name, old_path],
       )?;
 
-      let old_normalized = if old_path.ends_with('/') || old_path.ends_with('\\') {
-        old_path.to_string()
-      } else {
-        format!("{}/", old_path)
-      };
-      let old_like = format!("{}%", old_normalized);
+      let clean_old = old_path.trim_end_matches(['/', '\\']);
+      let clean_new = new_path.trim_end_matches(['/', '\\']);
+      let old_like_slash = format!("{}/%", clean_old);
+      let old_like_backslash = format!("{}\\%", clean_old);
 
       // 폰트 고유 ID는 불변이므로, 캐시 및 활성화 테이블의 file_path 문자열만 갱신
       tx.execute(
         "UPDATE font_cache
-         SET file_path = ?2 || substr(file_path, length(?1) + 1),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE file_path = ?1 OR file_path LIKE ?3",
-        params![old_path, new_path, old_like],
+         SET file_path = CASE
+           WHEN file_path = ?1 OR file_path = ?5 THEN ?2
+           ELSE ?2 || substr(file_path, length(?1) + 1)
+         END,
+         updated_at = CURRENT_TIMESTAMP
+         WHERE file_path = ?1 OR file_path = ?5 OR file_path LIKE ?3 OR file_path LIKE ?4",
+        params![clean_old, clean_new, old_like_slash, old_like_backslash, old_path],
       )?;
 
       tx.execute(
         "UPDATE activated_fonts
-         SET file_path = ?2 || substr(file_path, length(?1) + 1)
-         WHERE file_path = ?1 OR file_path LIKE ?3",
-        params![old_path, new_path, old_like],
+         SET file_path = CASE
+           WHEN file_path = ?1 OR file_path = ?5 THEN ?2
+           ELSE ?2 || substr(file_path, length(?1) + 1)
+         END
+         WHERE file_path = ?1 OR file_path = ?5 OR file_path LIKE ?3 OR file_path LIKE ?4",
+        params![clean_old, clean_new, old_like_slash, old_like_backslash, old_path],
       )?;
     }
     tx.commit()?;
@@ -119,15 +120,15 @@ impl Database {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
-      let normalized = if path.ends_with('/') || path.ends_with('\\') {
-        path.to_string()
-      } else {
-        format!("{}/", path)
-      };
-      let like = format!("{}%", normalized);
+      let clean_path = path.trim_end_matches(['/', '\\']);
+      let like_slash = format!("{}/%", clean_path);
+      let like_backslash = format!("{}\\%", clean_path);
       tx.execute("DELETE FROM watched_folders WHERE path = ?1", params![path])?;
       // font_cache 삭제 시 CASCADE로 set_fonts, tag_fonts, favorites, activated_fonts가 자동 정리됨
-      tx.execute("DELETE FROM font_cache WHERE file_path = ?1 OR file_path LIKE ?2", params![path, like])?;
+      tx.execute(
+        "DELETE FROM font_cache WHERE file_path = ?1 OR file_path = ?2 OR file_path LIKE ?3 OR file_path LIKE ?4",
+        params![path, clean_path, like_slash, like_backslash],
+      )?;
     }
     tx.commit()?;
     Ok(())

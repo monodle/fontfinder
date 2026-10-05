@@ -11,6 +11,7 @@ import type {
   AppBackupData,
   BackupCategorySelection,
   BackupFolder,
+  BackupFontHashRef,
   BackupSet,
   BackupSummary,
 } from "../types/backup";
@@ -185,6 +186,20 @@ function sanitizeSets(raw: unknown): BackupSet[] {
     const name = sanitizeString(item.name, 100);
     if (!name) continue;
 
+    const fontHashes: BackupFontHashRef[] = [];
+    if (Array.isArray(item.fontHashes)) {
+      for (const fref of item.fontHashes.slice(0, MAX_FONTS_PER_SET)) {
+        if (fref && typeof fref === "object") {
+          const fastHash = sanitizeString((fref as { fastHash?: unknown }).fastHash, 64);
+          if (fastHash) {
+            const rawDeep = (fref as { deepHash?: unknown }).deepHash;
+            const deepHash = rawDeep ? sanitizeString(rawDeep, 128) : null;
+            fontHashes.push({ fastHash, deepHash: deepHash || null });
+          }
+        }
+      }
+    }
+
     const fontIds: number[] = [];
     if (Array.isArray(item.fontIds)) {
       for (const fid of item.fontIds.slice(0, MAX_FONTS_PER_SET)) {
@@ -196,6 +211,7 @@ function sanitizeSets(raw: unknown): BackupSet[] {
     validSets.push({
       name,
       color: sanitizeColor(item.color, "#6366f1"),
+      fontHashes,
       fontIds,
     });
   }
@@ -291,13 +307,39 @@ export const backupService = {
     }
 
     if (selection.sets) {
-      const sets = await fontService.getSets();
-      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>));
-      payload.sets = sets.map((s) => ({
-        name: s.name,
-        color: s.color,
-        fontIds: allSetFonts[s.id] ?? [],
-      }));
+      const [sets, allSetFonts, cachedFonts] = await Promise.all([
+        fontService.getSets().catch(() => []),
+        fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>)),
+        fontService.getCachedFonts().catch(() => []),
+      ]);
+
+      const fontHashMap = new Map<number, BackupFontHashRef>();
+      for (const font of cachedFonts) {
+        if (font.id && font.fast_hash) {
+          fontHashMap.set(font.id, {
+            fastHash: font.fast_hash,
+            deepHash: font.deep_hash || null,
+          });
+        }
+      }
+
+      payload.sets = sets.map((s) => {
+        const ids = allSetFonts[s.id] ?? [];
+        const hashes: BackupFontHashRef[] = [];
+        for (const id of ids) {
+          const hashRef = fontHashMap.get(id);
+          if (hashRef) {
+            hashes.push(hashRef);
+          }
+        }
+
+        return {
+          name: s.name,
+          color: s.color,
+          fontHashes: hashes,
+          fontIds: ids,
+        };
+      });
     }
 
     return payload;
@@ -458,7 +500,7 @@ export const backupService = {
       }
     }
 
-    // 3. 서재 세트 복원 (사전 일괄 조회로 1+N 쿼리 및 IPC 방지)
+    // 3. 서재 세트 복원 (사전 일괄 조회 및 폰트 해시 매핑으로 1+N 쿼리/기기 간 PK 불일치 방어)
     if (selection.sets && backup.sets && backup.sets.length > 0) {
       const [currentSets, allSetFonts] = await Promise.all([
         fontService.getSets().catch(() => []),
@@ -468,6 +510,36 @@ export const backupService = {
       const existingSetFontsMap = new Map<number, Set<number>>(
         Object.entries(allSetFonts).map(([k, v]) => [Number(k), new Set(v)])
       );
+
+      // 백업 파일의 모든 fontHashes 수집
+      const allHashesToLookup = new Set<string>();
+      for (const setItem of backup.sets) {
+        if (Array.isArray(setItem.fontHashes)) {
+          for (const ref of setItem.fontHashes) {
+            if (ref.deepHash) allHashesToLookup.add(ref.deepHash);
+            if (ref.fastHash) allHashesToLookup.add(ref.fastHash);
+          }
+        }
+      }
+
+      // 현재 PC의 로컬 폰트 캐시에서 해시 매칭 (fast_hash, deep_hash, file_hash 기반)
+      const matchedFonts = allHashesToLookup.size > 0
+        ? await fontService.getCachedFontsByHashes(Array.from(allHashesToLookup)).catch(() => [])
+        : [];
+
+      // hash -> 현재 PC의 로컬 font.id 매핑 테이블 구축
+      const hashToLocalIdMap = new Map<string, number>();
+      for (const font of matchedFonts) {
+        if (font.deep_hash) {
+          hashToLocalIdMap.set(font.deep_hash, font.id);
+        }
+        if (font.fast_hash && !hashToLocalIdMap.has(font.fast_hash)) {
+          hashToLocalIdMap.set(font.fast_hash, font.id);
+        }
+        if (font.file_hash && !hashToLocalIdMap.has(font.file_hash)) {
+          hashToLocalIdMap.set(font.file_hash, font.id);
+        }
+      }
 
       for (const setItem of backup.sets) {
         if (!setItem.name) continue;
@@ -485,13 +557,31 @@ export const backupService = {
             setsAdded++;
           }
 
-          if (Array.isArray(setItem.fontIds) && setItem.fontIds.length > 0) {
-            const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<number>();
-            const toAdd = setItem.fontIds.filter((fontId) => !existingFontIds.has(fontId));
-            if (toAdd.length > 0) {
-              await fontService.addFontsToSetBulk(targetSetId, toAdd).catch(() => {});
-              toAdd.forEach((id) => existingFontIds.add(id));
+          const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<number>();
+          const candidateFontIds: number[] = [];
+
+          if (Array.isArray(setItem.fontHashes) && setItem.fontHashes.length > 0) {
+            // 1순위: 해시 기반 로컬 ID 매핑 (기기/OS/PK 불일치 완벽 방어)
+            for (const ref of setItem.fontHashes) {
+              const localId = (ref.deepHash && hashToLocalIdMap.get(ref.deepHash))
+                || (ref.fastHash && hashToLocalIdMap.get(ref.fastHash));
+              if (localId && !existingFontIds.has(localId)) {
+                candidateFontIds.push(localId);
+              }
             }
+          } else if (Array.isArray(setItem.fontIds) && setItem.fontIds.length > 0) {
+            // 2순위 (레거시 백업 호환): fontIds 직접 사용
+            for (const fontId of setItem.fontIds) {
+              if (!existingFontIds.has(fontId)) {
+                candidateFontIds.push(fontId);
+              }
+            }
+          }
+
+          if (candidateFontIds.length > 0) {
+            const uniqueToAdd = Array.from(new Set(candidateFontIds));
+            await fontService.addFontsToSetBulk(targetSetId, uniqueToAdd).catch(() => {});
+            uniqueToAdd.forEach((id) => existingFontIds.add(id));
           }
         } catch (e) {
           console.warn(`세트 복원 실패 (${setItem.name}):`, e);

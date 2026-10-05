@@ -30,42 +30,41 @@
   --color-theme-accent-text: var(--theme-accent-text);
 }
 @layer base {
-  /* Base Font Stacks (Google Web Fonts with OS Native Fallback) */
+  /* Native OS System Font Stacks */
   :root {
-    --font-mono: 'JetBrains Mono', monospace;
-    /* OS Native Default Fallback Font Stack */
-    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Yu Gothic UI", "Hiragino Sans", "Microsoft YaHei", sans-serif;
-    /* Default Latin Web Font + System Fallback */
-    --font-sans: 'Noto Sans', 'Noto Sans KR', var(--font-system);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    /* OS Native Default Font Stack */
+    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: var(--font-system);
   }
 
-  /* Language-specific Noto Sans Web Font & OS System Font Stacks */
+  /* Language-optimized OS Native Font Stacks */
   :root[lang="ko"],
   [data-lang="ko"],
   :lang(ko) {
-    --font-system: "Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-sans: 'Noto Sans KR', 'Noto Sans', var(--font-system);
+    --font-system: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: var(--font-system);
   }
 
   :root[lang="ja"],
   [data-lang="ja"],
   :lang(ja) {
-    --font-system: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-sans: 'Noto Sans JP', 'Noto Sans', var(--font-system);
+    --font-system: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: var(--font-system);
   }
 
   :root[lang="zh-CN"],
   [data-lang="zh-CN"],
   :lang(zh-CN) {
-    --font-system: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-sans: 'Noto Sans SC', 'Noto Sans', var(--font-system);
+    --font-system: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: var(--font-system);
   }
 
   :root[lang="zh-TW"],
   [data-lang="zh-TW"],
   :lang(zh-TW) {
-    --font-system: "PingFang TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-sans: 'Noto Sans TC', 'Noto Sans', var(--font-system);
+    --font-system: "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei", "微軟正黑體", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans: var(--font-system);
   }
 
   :root[lang="en"],
@@ -76,8 +75,8 @@
   [data-lang="de"],
   :root[lang="fr"],
   [data-lang="fr"] {
-    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-    --font-sans: 'Noto Sans', 'Noto Sans KR', var(--font-system);
+    --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: var(--font-system);
   }
 
   .font-system {

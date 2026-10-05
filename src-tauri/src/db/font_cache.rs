@@ -13,6 +13,8 @@ pub struct FontCacheEntry {
   pub mtime: i64,
   pub fast_hash: String,
   pub deep_hash: Option<String>,
+  pub source: String,
+  pub has_localized: bool,
 }
 
 impl Database {
@@ -26,23 +28,25 @@ impl Database {
   pub fn get_all_cached_fonts(&self) -> AppResult<Vec<FontMetadata>> {
     let conn = self.conn()?;
     let mut stmt = conn.prepare(
-      "SELECT id, fast_hash, deep_hash, metadata_json FROM font_cache ORDER BY family_name COLLATE NOCASE ASC, id ASC",
+      "SELECT id, file_path, fast_hash, deep_hash, metadata_json FROM font_cache ORDER BY family_name COLLATE NOCASE ASC, id ASC",
     )?;
     let rows = stmt.query_map([], |row| {
       let id: i64 = row.get(0)?;
-      let fast_hash: String = row.get(1)?;
-      let deep_hash: Option<String> = row.get(2)?;
-      let json: String = row.get(3)?;
-      Ok((id, fast_hash, deep_hash, json))
+      let file_path: String = row.get(1)?;
+      let fast_hash: String = row.get(2)?;
+      let deep_hash: Option<String> = row.get(3)?;
+      let json: String = row.get(4)?;
+      Ok((id, file_path, fast_hash, deep_hash, json))
     })?;
 
     let mut fonts = Vec::new();
     let mut deep_counts: HashMap<String, u32> = HashMap::new();
 
     for row in rows {
-      let (id, fast_hash, deep_hash, json_str) = row?;
+      let (id, file_path, fast_hash, deep_hash, json_str) = row?;
       if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json_str) {
         meta.id = id;
+        meta.file_path = file_path;
         meta.fast_hash = fast_hash.clone();
         meta.deep_hash = deep_hash.clone();
         meta.file_hash = deep_hash.as_ref().unwrap_or(&fast_hash).clone();
@@ -135,7 +139,7 @@ impl Database {
   pub fn get_font_cache_full_entries(&self) -> AppResult<HashMap<(String, u32), FontCacheEntry>> {
     let conn = self.conn()?;
     let mut stmt = conn.prepare(
-      "SELECT id, file_path, font_index, file_size, mtime, fast_hash, deep_hash FROM font_cache",
+      "SELECT id, file_path, font_index, file_size, mtime, fast_hash, deep_hash, source, (metadata_json LIKE '%\"localized_names\"%') FROM font_cache",
     )?;
     let rows = stmt.query_map([], |row| {
       Ok(FontCacheEntry {
@@ -146,6 +150,8 @@ impl Database {
         mtime: row.get(4)?,
         fast_hash: row.get(5)?,
         deep_hash: row.get(6)?,
+        source: row.get(7)?,
+        has_localized: row.get::<_, i32>(8)? != 0,
       })
     })?;
 
@@ -247,23 +253,25 @@ impl Database {
         .collect::<Vec<_>>()
         .join(",");
       let sql = format!(
-        "SELECT id, fast_hash, deep_hash, metadata_json FROM font_cache WHERE id IN ({})",
+        "SELECT id, file_path, fast_hash, deep_hash, metadata_json FROM font_cache WHERE id IN ({})",
         placeholders
       );
       let mut stmt = conn.prepare(&sql)?;
       let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
       let rows = stmt.query_map(params.as_slice(), |row| {
         let id: i64 = row.get(0)?;
-        let fast_hash: String = row.get(1)?;
-        let deep_hash: Option<String> = row.get(2)?;
-        let json: String = row.get(3)?;
-        Ok((id, fast_hash, deep_hash, json))
+        let file_path: String = row.get(1)?;
+        let fast_hash: String = row.get(2)?;
+        let deep_hash: Option<String> = row.get(3)?;
+        let json: String = row.get(4)?;
+        Ok((id, file_path, fast_hash, deep_hash, json))
       })?;
 
       for row in rows {
-        let (id, fast_hash, deep_hash, json) = row?;
+        let (id, file_path, fast_hash, deep_hash, json) = row?;
         if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json) {
           meta.id = id;
+          meta.file_path = file_path;
           meta.fast_hash = fast_hash.clone();
           meta.deep_hash = deep_hash.clone();
           meta.file_hash = deep_hash.as_ref().unwrap_or(&fast_hash).clone();
@@ -288,24 +296,26 @@ impl Database {
         .collect::<Vec<_>>()
         .join(",");
       let sql = format!(
-        "SELECT id, fast_hash, deep_hash, metadata_json FROM font_cache WHERE fast_hash IN ({0}) OR deep_hash IN ({0}) OR file_hash IN ({0})",
+        "SELECT id, file_path, fast_hash, deep_hash, metadata_json FROM font_cache WHERE fast_hash IN ({0}) OR deep_hash IN ({0}) OR file_hash IN ({0})",
         placeholders
       );
       let mut stmt = conn.prepare(&sql)?;
       let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
       let rows = stmt.query_map(params.as_slice(), |row| {
         let id: i64 = row.get(0)?;
-        let fast_hash: String = row.get(1)?;
-        let deep_hash: Option<String> = row.get(2)?;
-        let json: String = row.get(3)?;
-        Ok((id, fast_hash, deep_hash, json))
+        let file_path: String = row.get(1)?;
+        let fast_hash: String = row.get(2)?;
+        let deep_hash: Option<String> = row.get(3)?;
+        let json: String = row.get(4)?;
+        Ok((id, file_path, fast_hash, deep_hash, json))
       })?;
 
       for row in rows {
-        let (id, fast_hash, deep_hash, json) = row?;
+        let (id, file_path, fast_hash, deep_hash, json) = row?;
         if seen_ids.insert(id) {
           if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json) {
             meta.id = id;
+            meta.file_path = file_path;
             meta.fast_hash = fast_hash.clone();
             meta.deep_hash = deep_hash.clone();
             meta.file_hash = deep_hash.as_ref().unwrap_or(&fast_hash).clone();
@@ -317,6 +327,28 @@ impl Database {
     Ok(fonts)
   }
 
+  pub fn delete_cached_fonts_by_ids(&self, ids: &[i64]) -> AppResult<()> {
+    if ids.is_empty() {
+      return Ok(());
+    }
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    {
+      for chunk in ids.chunks(200) {
+        let placeholders = (1..=chunk.len())
+          .map(|i| format!("?{}", i))
+          .collect::<Vec<_>>()
+          .join(",");
+        let sql = format!("DELETE FROM font_cache WHERE id IN ({})", placeholders);
+        let mut stmt = tx.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        stmt.execute(params.as_slice())?;
+      }
+    }
+    tx.commit()?;
+    Ok(())
+  }
+
   pub fn delete_cached_fonts_by_paths(&self, paths: &[String]) -> AppResult<()> {
     if paths.is_empty() {
       return Ok(());
@@ -324,9 +356,15 @@ impl Database {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
-      let mut stmt = tx.prepare_cached("DELETE FROM font_cache WHERE file_path = ?1")?;
-      for path in paths {
-        stmt.execute(params![path])?;
+      for chunk in paths.chunks(200) {
+        let placeholders = (1..=chunk.len())
+          .map(|i| format!("?{}", i))
+          .collect::<Vec<_>>()
+          .join(",");
+        let sql = format!("DELETE FROM font_cache WHERE file_path IN ({})", placeholders);
+        let mut stmt = tx.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+        stmt.execute(params.as_slice())?;
       }
     }
     tx.commit()?;
@@ -392,13 +430,19 @@ impl Database {
       return Ok(0);
     }
 
-    // 4. 트랜잭션 기반 일괄 삭제
+    // 4. 트랜잭션 기반 청크 단위 일괄 삭제 (N+1 삭제 구문 실행 방지)
     let deleted_count = to_delete.len();
     let tx = conn.transaction()?;
     {
-      let mut del_stmt = tx.prepare_cached("DELETE FROM font_cache WHERE id = ?1")?;
-      for del_id in &to_delete {
-        del_stmt.execute(params![del_id])?;
+      for chunk in to_delete.chunks(200) {
+        let placeholders = (1..=chunk.len())
+          .map(|i| format!("?{}", i))
+          .collect::<Vec<_>>()
+          .join(",");
+        let sql = format!("DELETE FROM font_cache WHERE id IN ({})", placeholders);
+        let mut stmt = tx.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        stmt.execute(params.as_slice())?;
       }
     }
     tx.commit()?;

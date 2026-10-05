@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { fontService } from "../services/fontService";
 import { isFontFavorite } from "../utils/fontSortUtils";
+import { getFontFamilyName } from "../utils/fontLocalization";
+import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../utils/batchFeedback";
 
 interface SetGroupItem {
   parent: FontSet;
@@ -85,7 +87,7 @@ export function ContextMenu({
   onOpenDiff,
   onOpenFontInfo,
 }: ContextMenuProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const isMulti = fonts.length > 1;
   const primaryFont = fonts[0];
@@ -366,7 +368,7 @@ export function ContextMenu({
     !f.isMissing && f.install_status !== "unplugged" && f.install_status !== "deleted";
 
   const handleCopyName = () => {
-    const names = fonts.map((f) => f.family_name).join("\n");
+    const names = fonts.map((f) => getFontFamilyName(f, i18n.language)).join("\n");
     navigator.clipboard.writeText(names);
     onActionFeedback?.(isMulti ? t("toast.copy_names", { count: fonts.length }) : t("toast.copy_name"));
     onClose();
@@ -394,10 +396,12 @@ export function ContextMenu({
     onClose();
   };
 
+  const isWoffFont = (f: { format: string }) => f.format === "Woff" || f.format === "Woff2";
+
   const isPrimaryActivatable =
-    isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user";
+    isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && !isWoffFont(primaryFont);
   const activatableFonts = fonts.filter(
-    (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user"
+    (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user" && !isWoffFont(f)
   );
   const hasActivatable = activatableFonts.length > 0;
 
@@ -423,7 +427,7 @@ export function ContextMenu({
 
   const handleInstallAll = async () => {
     const installableFonts = fonts.filter(
-      (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user"
+      (f) => isFontUsable(f) && f.source !== "system" && f.source !== "user" && !isWoffFont(f)
     );
     if (installableFonts.length === 0) {
       onActionFeedback?.(t("toast.no_installable_fonts"));
@@ -450,8 +454,8 @@ export function ContextMenu({
 
       // 2. 그 다음 설치 진행
       const paths = installableFonts.map((f) => f.file_path);
-      const installed = await fontService.installFonts(paths);
-      onActionFeedback?.(t("toast.bulk_installed", { count: installed.length }));
+      const result = await fontService.installFonts(paths);
+      onActionFeedback?.(formatBatchInstallFeedback(result, t));
       onRefreshList?.();
       onClearSelection?.();
     } catch (e) {
@@ -567,8 +571,8 @@ export function ContextMenu({
     }
     try {
       const paths = uninstallableFonts.map((f) => f.file_path);
-      const count = await fontService.uninstallFonts(paths);
-      onActionFeedback?.(t("toast.bulk_uninstalled", { count }));
+      const result = await fontService.uninstallFonts(paths);
+      onActionFeedback?.(formatBatchUninstallFeedback(result, t));
       onRefreshList?.();
       onClearSelection?.();
     } catch (e) {
@@ -583,7 +587,7 @@ export function ContextMenu({
     : activatedFontIds?.has(primaryFont.id) ?? false;
 
   const installableFonts = fonts.filter(
-    (f) => f.source !== "system" && f.source !== "user"
+    (f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)
   );
   const hasInstallable = installableFonts.length > 0;
   const isAllSystem = isMulti && fonts.length > 0 && fonts.every((f) => f.source === "system");
@@ -609,7 +613,7 @@ export function ContextMenu({
           ) : (
             <>
               <p className="font-semibold text-xs text-theme-text truncate">
-                {primaryFont.family_name}
+                {getFontFamilyName(primaryFont, i18n.language)}
               </p>
               <p className="text-[10px] text-theme-text-muted truncate font-mono">
                 {primaryFont.subfamily_name} · {primaryFont.format}
@@ -684,14 +688,25 @@ export function ContextMenu({
           )
         ) : (
           isFontUsable(primaryFont) && primaryFont.source !== "system" && primaryFont.source !== "user" && (
-            <button
-              onClick={handleInstallAll}
-              onMouseEnter={closeSubmenuImmediately}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5 text-theme-text-muted" />
-              <span>{t("context_menu.install")}</span>
-            </button>
+            !isWoffFont(primaryFont) ? (
+              <button
+                onClick={handleInstallAll}
+                onMouseEnter={closeSubmenuImmediately}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-theme-hover text-theme-text transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-theme-text-muted" />
+                <span>{t("context_menu.install")}</span>
+              </button>
+            ) : (
+              <div
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-theme-text-muted select-none cursor-default opacity-60"
+                title={t("context_menu.woff_unsupported_title", "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.")}
+                onMouseEnter={closeSubmenuImmediately}
+              >
+                <Download className="w-3.5 h-3.5 text-theme-text-muted" />
+                <span>{t("context_menu.web_only_font", "웹 전용 폰트 (설치 불가)")}</span>
+              </div>
+            )
           )
         )}
 

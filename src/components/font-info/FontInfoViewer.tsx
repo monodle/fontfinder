@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { FontDetailedInfo, FontMetadata } from "../../types/font";
 import { fontService } from "../../services/fontService";
 import { loadFontIntoDocument, getCustomFontFamily } from "../../utils/fontLoader";
+import { getFontFamilyName } from "../../utils/fontLocalization";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { MetricsTab } from "./tabs/MetricsTab";
 import { CoverageTab } from "./tabs/CoverageTab";
@@ -30,7 +31,8 @@ const DEFAULT_PREVIEW_TEXT =
   "다람쥐 헌 쳇바퀴에 타고파. The quick brown fox jumps over the lazy dog. 1234567890 !@#$%^&*";
 
 export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const displayName = getFontFamilyName(font, i18n.language);
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [details, setDetails] = useState<FontDetailedInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +116,7 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-theme-text truncate">
-                {font.family_name}
+                {displayName}
               </h3>
               <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-theme-hover border border-theme-border-subtle text-theme-text-muted">
                 {font.subfamily_name}

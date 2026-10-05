@@ -44,6 +44,7 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
   conn.execute_batch(
     "
     PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000;
     PRAGMA synchronous = NORMAL;
     PRAGMA temp_store = MEMORY;
     PRAGMA mmap_size = 67108864;
@@ -129,11 +130,15 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
     CREATE INDEX IF NOT EXISTS idx_font_cache_path ON font_cache(file_path COLLATE NOCASE);
     CREATE INDEX IF NOT EXISTS idx_font_cache_fast_hash ON font_cache(fast_hash, font_index);
     CREATE INDEX IF NOT EXISTS idx_font_cache_deep_hash ON font_cache(deep_hash) WHERE deep_hash IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_font_cache_file_hash ON font_cache(file_hash) WHERE file_hash IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_font_cache_family ON font_cache(family_name COLLATE NOCASE ASC, id ASC);
     CREATE INDEX IF NOT EXISTS idx_font_cache_source ON font_cache(source);
+    CREATE INDEX IF NOT EXISTS idx_font_cache_external ON font_cache(id, file_path) WHERE source = 'external';
     CREATE INDEX IF NOT EXISTS idx_set_fonts_font_id ON set_fonts(font_id);
     CREATE INDEX IF NOT EXISTS idx_tag_fonts_font_id ON tag_fonts(font_id);
+    CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC, font_id);
     CREATE INDEX IF NOT EXISTS idx_activated_fonts_activated_at ON activated_fonts(activated_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_activated_fonts_path ON activated_fonts(file_path);
     ",
   )?;
 

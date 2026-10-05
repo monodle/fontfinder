@@ -13,6 +13,7 @@ import { fontService } from "../services/fontService";
 import { isPathInFolder, normalizePath } from "../utils/pathUtils";
 import { sortFonts } from "../utils/fontSortUtils";
 import { deduplicateFonts, getFontUniqueKey } from "../utils/fontDeduplication";
+import { matchesFontSearch } from "../utils/fontLocalization";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "../types/sort";
 
 interface UseFontLibraryProps {
@@ -26,7 +27,7 @@ export function useFontLibrary({
   sortSettings = DEFAULT_SORT_SETTINGS,
   onToast,
 }: UseFontLibraryProps = {}) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [fonts, setFonts] = useState<FontMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>(defaultCategory);
@@ -332,15 +333,19 @@ export function useFontLibrary({
           const updatedIds = new Set(updated.map((u) => u.id));
           const removedFonts = existingInFolder.filter((f) => !updatedIds.has(f.id));
 
-          // 개별 삭제된 폰트 중 임시 활성화 상태였던 것 자동 해제
+          // 개별 삭제된 폰트 중 임시 활성화 상태였던 것 일괄 자동 해제 (N+1 방지)
           if (removedFonts.length > 0) {
             setActivatedFontIds((prevIds) => {
               const next = new Set(prevIds);
+              const toDeactivate: Array<{ font_id: number; path: string }> = [];
               for (const rf of removedFonts) {
                 if (next.has(rf.id)) {
-                  void fontService.deactivateFont(rf.file_path, rf.id);
+                  toDeactivate.push({ font_id: rf.id, path: rf.file_path });
                   next.delete(rf.id);
                 }
+              }
+              if (toDeactivate.length > 0) {
+                void fontService.deactivateFonts(toDeactivate);
               }
               return next;
             });
@@ -793,14 +798,7 @@ export function useFontLibrary({
     }
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.family_name.toLowerCase().includes(query) ||
-          f.subfamily_name.toLowerCase().includes(query) ||
-          f.full_name.toLowerCase().includes(query) ||
-          f.postscript_name.toLowerCase().includes(query)
-      );
+      result = result.filter((f) => matchesFontSearch(f, searchQuery));
     }
 
     return sortFonts(
@@ -809,7 +807,8 @@ export function useFontLibrary({
         favoriteIds,
         activatedFontIds,
       },
-      sortSettings
+      sortSettings,
+      i18n.language
     );
   }, [
     processedFonts,
@@ -822,6 +821,7 @@ export function useFontLibrary({
     duplicateFontIds,
     activatedFontIds,
     sortSettings,
+    i18n.language,
   ]);
 
   // 폴더 위치 재지정 (Relink)

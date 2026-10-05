@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { FontMetadata } from "../../types/font";
+import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontInfoSidebar } from "./FontInfoSidebar";
 import { FontInfoViewer } from "./FontInfoViewer";
 import { X, Info } from "lucide-react";
@@ -21,7 +22,7 @@ export function FontInfoModal({
   initialPreviewText,
   onClose,
 }: FontInfoModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // 초기 선택 인덱스 결정
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -80,7 +81,7 @@ export function FontInfoModal({
                   : t("font_info.title")}
               </h2>
               <p className="text-[11px] text-theme-text-muted">
-                {activeFont.family_name} · {activeFont.subfamily_name}
+                {getFontFamilyName(activeFont, i18n.language)} · {activeFont.subfamily_name}
               </p>
             </div>
           </div>

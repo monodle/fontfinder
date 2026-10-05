@@ -6,10 +6,16 @@ export interface BackupFolder {
   color?: string;
 }
 
+export interface BackupFontHashRef {
+  fastHash: string;
+  deepHash?: string | null;
+}
+
 export interface BackupSet {
   name: string;
   color?: string;
-  fontIds: number[];
+  fontHashes?: BackupFontHashRef[];
+  fontIds?: number[];
 }
 
 /**

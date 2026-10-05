@@ -1,4 +1,5 @@
 import { FontMetadata } from "../types/font";
+import { getFontFamilyName } from "./fontLocalization";
 import {
   FontSortBlock,
   FontSortField,
@@ -64,7 +65,8 @@ export function compareFontsByField(
   a: FontMetadata,
   b: FontMetadata,
   field: FontSortField = "fontName",
-  order: FontSortOrder = "asc"
+  order: FontSortOrder = "asc",
+  currentLang?: string
 ): number {
   let diff = 0;
 
@@ -76,9 +78,9 @@ export function compareFontsByField(
       sensitivity: "base",
     });
   } else {
-    // fontName 기준 (family_name -> full_name -> postscript_name -> subfamily_name)
-    const nameA = a.family_name || a.full_name || a.postscript_name || "";
-    const nameB = b.family_name || b.full_name || b.postscript_name || "";
+    // fontName 기준 (getFontFamilyName -> full_name -> postscript_name -> subfamily_name)
+    const nameA = getFontFamilyName(a, currentLang) || a.full_name || a.postscript_name || "";
+    const nameB = getFontFamilyName(b, currentLang) || b.full_name || b.postscript_name || "";
     diff = nameA.localeCompare(nameB, undefined, {
       numeric: true,
       sensitivity: "base",
@@ -100,8 +102,8 @@ export function compareFontsByField(
 /**
  * 다국어(한글/영문/숫자) 패밀리명 오름차순 기본 비교 (하위 호환)
  */
-export function compareFontNames(a: FontMetadata, b: FontMetadata): number {
-  return compareFontsByField(a, b, "fontName", "asc");
+export function compareFontNames(a: FontMetadata, b: FontMetadata, currentLang?: string): number {
+  return compareFontsByField(a, b, "fontName", "asc", currentLang);
 }
 
 /**
@@ -110,7 +112,8 @@ export function compareFontNames(a: FontMetadata, b: FontMetadata): number {
 export function sortFonts(
   fonts: FontMetadata[],
   ctx: FontSortContext,
-  sortSettings: FontSortSettings = DEFAULT_SORT_SETTINGS
+  sortSettings: FontSortSettings = DEFAULT_SORT_SETTINGS,
+  currentLang?: string
 ): FontMetadata[] {
   if (!fonts || fonts.length <= 1) {
     return fonts;
@@ -119,7 +122,7 @@ export function sortFonts(
   // 1. 이름순 정렬 모드: 상태와 무관하게 모든 폰트를 설정된 필드 및 방향으로 정렬
   if (sortSettings.mode === "name") {
     return [...fonts].sort((a, b) =>
-      compareFontsByField(a, b, sortSettings.nameField, sortSettings.nameOrder)
+      compareFontsByField(a, b, sortSettings.nameField, sortSettings.nameOrder, currentLang)
     );
   }
 
@@ -150,7 +153,7 @@ export function sortFonts(
       }
     }
 
-    return compareFontsByField(a, b, field, order);
+    return compareFontsByField(a, b, field, order, currentLang);
   });
 }
 

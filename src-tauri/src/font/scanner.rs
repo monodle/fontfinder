@@ -8,6 +8,7 @@ use super::model::{FontMetadata, FontSource};
 use super::parser::FontParser;
 use crate::db::{Database, FontCacheEntry};
 use crate::error::{AppError, AppResult};
+use crate::platform::Platform;
 
 pub struct FontScanner;
 
@@ -36,7 +37,14 @@ impl FontScanner {
             .into_iter()
             .filter_map(|entry| entry.ok())
             .filter(|entry| {
-                if !entry.file_type().is_file() {
+                let file_type = entry.file_type();
+                let path = entry.path();
+                let is_regular_file = file_type.is_file() || (file_type.is_symlink() && path.is_file());
+                if !is_regular_file {
+                    return false;
+                }
+                let file_name = entry.file_name().to_string_lossy();
+                if file_name.starts_with("._") || file_name.starts_with('.') {
                     return false;
                 }
                 let ext = entry
@@ -76,11 +84,14 @@ impl FontScanner {
     ) -> AppResult<Vec<FontMetadata>> {
         // 1. DB 캐시 1회 전량 사전 로딩 (In-Memory Lookup 구성)
         let full_cache = db.get_font_cache_full_entries().unwrap_or_default();
-        let mut cache_size_mtime_map: HashMap<String, (u64, i64)> = HashMap::with_capacity(full_cache.len());
+        let mut cache_size_mtime_map: HashMap<String, (u64, i64, String, bool)> = HashMap::with_capacity(full_cache.len());
         let mut fast_hash_to_cached: HashMap<String, Vec<FontCacheEntry>> = HashMap::new();
 
         for entry in full_cache.values() {
-            cache_size_mtime_map.insert(entry.file_path.clone(), (entry.file_size, entry.mtime));
+            let posix_path = crate::protocol::to_posix_normalized_path(Path::new(&entry.file_path));
+            let path_key = posix_path.to_string_lossy().to_string();
+            let has_localized = entry.has_localized;
+            cache_size_mtime_map.insert(path_key, (entry.file_size, entry.mtime, entry.source.clone(), has_localized));
             fast_hash_to_cached.entry(entry.fast_hash.clone()).or_default().push(entry.clone());
         }
 
@@ -94,10 +105,18 @@ impl FontScanner {
             valid_root_dirs.push(dir.clone());
 
             for entry in WalkDir::new(dir).into_iter().filter_map(|e| e.ok()) {
-                if !entry.file_type().is_file() {
+                let file_type = entry.file_type();
+                let path = entry.path();
+                let is_regular_file = file_type.is_file() || (file_type.is_symlink() && path.is_file());
+                if !is_regular_file {
                     continue;
                 }
-                let path = entry.path();
+
+                let file_name = entry.file_name().to_string_lossy();
+                if file_name.starts_with("._") || file_name.starts_with('.') {
+                    continue;
+                }
+
                 let ext = path
                     .extension()
                     .and_then(|e| e.to_str())
@@ -105,7 +124,7 @@ impl FontScanner {
                     .unwrap_or_default();
 
                 if Self::FONT_EXTENSIONS.contains(&ext.as_str()) {
-                    if let Ok(meta) = entry.metadata() {
+                    if let Ok(meta) = std::fs::metadata(path) {
                         let size = meta.len();
                         let mtime = meta
                             .modified()
@@ -123,12 +142,20 @@ impl FontScanner {
         let mut to_parse: Vec<(PathBuf, u64, i64)> = Vec::new();
 
         for (path, size, mtime) in &discovered_files {
-            let path_str = path.to_string_lossy().to_string();
+            let posix_path = crate::protocol::to_posix_normalized_path(path);
+            let path_str: String = posix_path.to_string_lossy().to_string();
             current_paths.insert(path_str.clone());
 
+            let current_source = Platform::classify_font_source(path);
+            let source_str = match current_source {
+                FontSource::System => "system",
+                FontSource::User => "user",
+                FontSource::External => "external",
+            };
+
             match cache_size_mtime_map.get(&path_str) {
-                Some(&(cached_size, cached_mtime)) => {
-                    if cached_size != *size || cached_mtime != *mtime {
+                Some(&(cached_size, cached_mtime, ref cached_source, has_localized)) => {
+                    if cached_size != *size || cached_mtime != *mtime || cached_source != source_str || !has_localized {
                         to_parse.push((path.clone(), *size, *mtime));
                     }
                 }
@@ -138,13 +165,16 @@ impl FontScanner {
             }
         }
 
-        // 삭제 대상 파일 캐시 식별
+        // 삭제 대상 파일 캐시 식별 (POSIX 표준 경로 대조)
         let mut to_delete = Vec::new();
-        for cached_path in cache_size_mtime_map.keys() {
-            let path_ref = Path::new(cached_path);
+        for (cached_key, entry) in full_cache.values().map(|e| {
+            let p = crate::protocol::to_posix_normalized_path(Path::new(&e.file_path)).to_string_lossy().to_string();
+            (p, e)
+        }) {
+            let path_ref = Path::new(&entry.file_path);
             let belongs_to_valid_dir = valid_root_dirs.iter().any(|root| crate::protocol::is_same_or_subpath(root, path_ref));
-            if belongs_to_valid_dir && !current_paths.contains(cached_path) && !path_ref.exists() {
-                to_delete.push(cached_path.clone());
+            if belongs_to_valid_dir && !current_paths.contains(&cached_key) && !path_ref.exists() {
+                to_delete.push(entry.file_path.clone());
             }
         }
 
@@ -251,14 +281,23 @@ impl FontScanner {
             cb(total_to_parse, total_to_parse);
         }
 
-        // 삭제된 파일 캐시 제거
+        // 삭제된 파일 캐시 제거 (Primary Key id 기반 고속 삭제)
         if !to_delete.is_empty() {
-            let _ = db.delete_cached_fonts_by_paths(&to_delete);
+            let delete_paths_set: HashSet<&str> = to_delete.iter().map(|s| s.as_str()).collect();
+            let to_delete_ids: Vec<i64> = full_cache
+                .values()
+                .filter(|entry| delete_paths_set.contains(entry.file_path.as_str()))
+                .map(|entry| entry.id)
+                .collect();
+
+            if !to_delete_ids.is_empty() {
+                let _ = db.delete_cached_fonts_by_ids(&to_delete_ids);
+            }
         }
 
         // 최종 최신 캐시 반환
         if dirs.len() == 1 && !return_all {
-            let prefix = dirs[0].to_string_lossy().to_string();
+            let prefix = crate::protocol::to_posix_normalized_path(&dirs[0]).to_string_lossy().to_string();
             db.get_cached_fonts_by_prefix(&prefix)
         } else {
             let all = db.get_all_cached_fonts()?;

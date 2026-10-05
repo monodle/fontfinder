@@ -13,7 +13,7 @@ export interface OpenSourceLicense {
   license: string;
   description: string;
   url: string;
-  category: "frontend" | "backend" | "fonts";
+  category: "frontend" | "backend";
 }
 
 export interface PrivacyPolicySection {
@@ -172,36 +172,6 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     description: "고성능 Rust 데이터 구조 직렬화 및 역직렬화 프레임워크",
     url: "https://github.com/serde-rs/serde",
     category: "backend",
-  },
-
-  // Fonts
-  {
-    name: "Pretendard",
-    license: "SIL Open Font License 1.1",
-    description: "본문 가독성에 최적화된 시스템 친화적 오픈소스 글꼴",
-    url: "https://github.com/orioncactus/pretendard",
-    category: "fonts",
-  },
-  {
-    name: "Noto Sans KR",
-    license: "SIL Open Font License 1.1",
-    description: "구글의 오픈소스 다국어 지원 산세리프 글꼴",
-    url: "https://fonts.google.com/noto/specimen/Noto+Sans+KR",
-    category: "fonts",
-  },
-  {
-    name: "Inter",
-    license: "SIL Open Font License 1.1",
-    description: "컴퓨터 화면을 위해 특별히 설계된 고품질 영문 서체",
-    url: "https://rsms.me/inter",
-    category: "fonts",
-  },
-  {
-    name: "JetBrains Mono",
-    license: "SIL Open Font License 1.1",
-    description: "개발자와 타이포그래피 애호가를 위한 고정폭 코딩 글꼴",
-    url: "https://www.jetbrains.com/lp/mono",
-    category: "fonts",
   },
 ];
 

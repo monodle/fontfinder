@@ -17,6 +17,7 @@ fn create_dummy_font(id: i64, file_path: &str, family: &str, source: FontSource,
     subfamily_name: "Regular".to_string(),
     full_name: format!("{} Regular", family),
     postscript_name: family.to_string(),
+    localized_names: None,
     format: FontFormat::TrueType,
     source,
     glyph_count: 100,
@@ -309,4 +310,29 @@ fn test_font_cache_active_filtering_and_orphan_cleanup() {
   assert!(remaining_paths.contains(&"/Users/test/Fonts/ext1.ttf".to_string()));
   assert!(remaining_paths.contains(&"/Users/test/Other/ext2.ttf".to_string()));
   assert!(!remaining_paths.contains(&"/tmp/orphan.ttf".to_string()));
+}
+
+#[test]
+fn test_windows_backslash_folder_operations() {
+  let db = Database::new_in_memory().unwrap();
+
+  // 1. Windows 백슬래시 경로 폴더 및 폰트 등록
+  db.add_folder(r"C:\Fonts", "Win Fonts", None).unwrap();
+  let f_win = create_dummy_font(0, r"C:\Fonts\sub\test.ttf", "WinFont", FontSource::External, "hash_win");
+  db.save_cached_fonts(&[(f_win, 1000)]).unwrap();
+
+  let cached = db.get_all_cached_fonts().unwrap();
+  assert_eq!(cached.len(), 1);
+  assert_eq!(cached[0].file_path, r"C:\Fonts\sub\test.ttf");
+
+  // 2. update_folder_path 실행 (C:\Fonts -> D:\NewFonts)
+  db.update_folder_path(r"C:\Fonts", r"D:\NewFonts", "Relinked").unwrap();
+  let updated_cached = db.get_all_cached_fonts().unwrap();
+  assert_eq!(updated_cached.len(), 1);
+  assert_eq!(updated_cached[0].file_path, r"D:\NewFonts\sub\test.ttf");
+
+  // 3. remove_folder 실행 시 백슬래시 하위 폰트 정상 삭제 확인
+  db.remove_folder(r"D:\NewFonts").unwrap();
+  let after_del = db.get_all_cached_fonts().unwrap();
+  assert!(after_del.is_empty(), "Windows backslash sub-fonts must be cleaned up on remove_folder");
 }

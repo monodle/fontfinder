@@ -7,6 +7,19 @@ import {
   FolderStatus,
   FontDetailedInfo,
 } from "../types/font";
+import { normalizePath } from "../utils/pathUtils";
+
+export interface BatchInstallResult {
+  installed: string[];
+  failed_count: number;
+  errors: string[];
+}
+
+export interface BatchUninstallResult {
+  deleted_count: number;
+  failed_count: number;
+  errors: string[];
+}
 
 export const fontService = {
   async getFontDetails(filePath: string, fontIndex: number = 0): Promise<FontDetailedInfo> {
@@ -60,12 +73,12 @@ export const fontService = {
     return await invoke<void>("show_in_folder", { path });
   },
 
-  async installFonts(paths: string[]): Promise<string[]> {
-    return await invoke<string[]>("install_fonts", { paths });
+  async installFonts(paths: string[]): Promise<BatchInstallResult> {
+    return await invoke<BatchInstallResult>("install_fonts", { paths });
   },
 
-  async uninstallFonts(paths: string[]): Promise<number> {
-    return await invoke<number>("uninstall_fonts", { paths });
+  async uninstallFonts(paths: string[]): Promise<BatchUninstallResult> {
+    return await invoke<BatchUninstallResult>("uninstall_fonts", { paths });
   },
 
   // --- Sets ---
@@ -140,14 +153,14 @@ export const fontService = {
 
 
   getFontUrl(filePath: string): string {
+    const cleanPath = normalizePath(filePath);
     try {
-      return convertFileSrc(filePath, "font");
+      return convertFileSrc(cleanPath, "font");
     } catch {
       const isWindows =
         typeof navigator !== "undefined" &&
         (navigator.userAgent.includes("Windows") || navigator.platform?.includes("Win"));
-      const normalized = filePath.replace(/\\/g, "/");
-      const parts = normalized.split("/").map((seg) => encodeURIComponent(seg));
+      const parts = cleanPath.split("/").map((seg) => encodeURIComponent(seg));
       const joined = parts.join("/");
       if (isWindows) {
         return `http://font.localhost/${joined.replace(/^\/+/, "")}`;

@@ -32,7 +32,7 @@ export function AboutSection() {
   const { t } = useTranslation();
   const [activeSubTab, setActiveSubTab] = useState<AboutSubSection>("all");
   const [licenseCategory, setLicenseCategory] = useState<
-    "all" | "frontend" | "backend" | "fonts"
+    "all" | "frontend" | "backend"
   >("all");
   const [isPrivacyExpanded, setIsPrivacyExpanded] = useState(true);
 
@@ -227,14 +227,13 @@ export function AboutSection() {
               { id: "all", label: t("about.filter_all", "전체") },
               { id: "frontend", label: t("about.filter_frontend", "프론트엔드") },
               { id: "backend", label: t("about.filter_backend", "백엔드 (Rust)") },
-              { id: "fonts", label: t("about.filter_fonts", "내장 글꼴") },
             ].map((cat) => (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() =>
                   setLicenseCategory(
-                    cat.id as "all" | "frontend" | "backend" | "fonts"
+                    cat.id as "all" | "frontend" | "backend"
                   )
                 }
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${licenseCategory === cat.id

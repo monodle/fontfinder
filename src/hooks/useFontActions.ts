@@ -6,6 +6,7 @@ import { fontService } from "../services/fontService";
 import { getRandomLibraryColor } from "../config/colorPresets";
 import { isPathInFolder } from "../utils/pathUtils";
 import { deduplicateFonts } from "../utils/fontDeduplication";
+import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../utils/batchFeedback";
 
 interface UseFontActionsProps {
   fonts: FontMetadata[];
@@ -121,6 +122,10 @@ export function useFontActions({
         return;
       }
       const isCurrentlyActive = activatedFontIds.has(font.id);
+      if (!isCurrentlyActive && (font.format === "Woff" || font.format === "Woff2")) {
+        showToast(t("toast.woff_activate_unsupported", "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화를 지원하지 않습니다."));
+        return;
+      }
       try {
         if (isCurrentlyActive) {
           await fontService.deactivateFont(font.file_path, font.id);
@@ -156,7 +161,8 @@ export function useFontActions({
           f.source !== "user" &&
           !f.isMissing &&
           f.install_status !== "unplugged" &&
-          f.install_status !== "deleted"
+          f.install_status !== "deleted" &&
+          (activate ? f.format !== "Woff" && f.format !== "Woff2" : true)
       );
       if (targetFonts.length === 0) {
         showToast(t("toast.no_external_selected_activate"));
@@ -198,7 +204,9 @@ export function useFontActions({
         f.source !== "user" &&
         !f.isMissing &&
         f.install_status !== "unplugged" &&
-        f.install_status !== "deleted"
+        f.install_status !== "deleted" &&
+        f.format !== "Woff" &&
+        f.format !== "Woff2"
     );
     if (installable.length === 0) {
       showToast(t("toast.no_external_selected_install"));
@@ -226,8 +234,8 @@ export function useFontActions({
 
       // 2. 시스템 등록 진행
       const paths = installable.map((f) => f.file_path);
-      const installed = await fontService.installFonts(paths);
-      showToast(t("toast.bulk_installed", { count: installed.length }));
+      const result = await fontService.installFonts(paths);
+      showToast(formatBatchInstallFeedback(result, t));
       setActivatedFontIds((prev) => {
         const next = new Set(prev);
         installable.forEach((f) => next.delete(f.id));
@@ -264,8 +272,8 @@ export function useFontActions({
     }
     try {
       const paths = uninstallable.map((f) => f.file_path);
-      const count = await fontService.uninstallFonts(paths);
-      showToast(t("toast.bulk_uninstalled", { count }));
+      const result = await fontService.uninstallFonts(paths);
+      showToast(formatBatchUninstallFeedback(result, t));
       handleClearSelection();
       if (refreshList) {
         await refreshList();

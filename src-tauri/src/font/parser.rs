@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -121,7 +122,9 @@ impl FontParser {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        let file_path = path_ref.to_string_lossy().to_string();
+        let file_path = crate::protocol::to_posix_normalized_path(path_ref)
+            .to_string_lossy()
+            .to_string();
 
         let ext = path_ref
             .extension()
@@ -148,15 +151,60 @@ impl FontParser {
         let sample_len = prefix_buf.len().min(32_768);
         let fast_hash = Self::compute_fast_hash(&prefix_buf[..sample_len], file_size);
 
-        // 128KB 버퍼 내에서 Face 메타데이터 파싱 시도
-        match Self::parse_bytes_with_hash(&prefix_buf, &file_path, &file_name, file_size, default_format.clone(), &fast_hash) {
+        // fontTools 방식 핀포인트 검사: name 테이블 위치 확인
+        let name_bounds = Self::find_table_bounds(&prefix_buf, b"name");
+        let raw_name_table = if let Some((offset, length)) = name_bounds {
+            if offset + length > prefix_limit && length > 0 && length < 10_000_000 && (offset as u64 + length as u64) <= file_size {
+                // 128KB 범위를 초과하는 대형 CJK 폰트: 전체를 읽지 않고 오직 name 테이블(수 KB)만 핀포인트 seek & read
+                if file.seek(SeekFrom::Start(offset as u64)).is_ok() {
+                    let mut name_buf = vec![0u8; length];
+                    if file.read_exact(&mut name_buf).is_ok() {
+                        Some(name_buf)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // 128KB 버퍼 + 핀포인트 name_table로 Face 메타데이터 파싱 시도
+        match Self::parse_bytes_with_hash_and_names(
+            &prefix_buf,
+            &file_path,
+            &file_name,
+            file_size,
+            default_format.clone(),
+            &fast_hash,
+            raw_name_table.as_deref(),
+        ) {
             Ok(results) => Ok((results, fast_hash)),
             Err(_) => {
-                // 메타데이터 테이블이 128KB 범위를 초과하는 특수 폰트 대상 Fallback:
+                // 메타데이터 테이블이 128KB 범위를 초과하거나 손상된 특수 폰트 대상 Fallback:
+                // 대용량 비-폰트 바이너리 인입으로 인한 OOM(메모리 고갈) 방어
+                if file_size > crate::protocol::MAX_FONT_FILE_SIZE {
+                    return Err(AppError::FontParse(format!(
+                        "Font file size exceeds maximum limit ({} MB)",
+                        crate::protocol::MAX_FONT_FILE_SIZE / (1024 * 1024)
+                    )));
+                }
                 file.seek(SeekFrom::Start(0))?;
-                let mut full_buf = Vec::with_capacity(file_size as usize);
-                file.read_to_end(&mut full_buf)?;
-                let results = Self::parse_bytes_with_hash(&full_buf, &file_path, &file_name, file_size, default_format, &fast_hash)?;
+                let mut full_buf = Vec::with_capacity(file_size.min(crate::protocol::MAX_FONT_FILE_SIZE) as usize);
+                file.take(crate::protocol::MAX_FONT_FILE_SIZE + 1).read_to_end(&mut full_buf)?;
+                let results = Self::parse_bytes_with_hash_and_names(
+                    &full_buf,
+                    &file_path,
+                    &file_name,
+                    file_size,
+                    default_format,
+                    &fast_hash,
+                    None,
+                )?;
                 Ok((results, fast_hash))
             }
         }
@@ -187,6 +235,18 @@ impl FontParser {
         format: FontFormat,
         fast_hash: &str,
     ) -> AppResult<Vec<FontMetadata>> {
+        Self::parse_bytes_with_hash_and_names(data, file_path, file_name, file_size, format, fast_hash, None)
+    }
+
+    pub fn parse_bytes_with_hash_and_names(
+        data: &[u8],
+        file_path: &str,
+        file_name: &str,
+        file_size: u64,
+        format: FontFormat,
+        fast_hash: &str,
+        raw_name_table: Option<&[u8]>,
+    ) -> AppResult<Vec<FontMetadata>> {
         let num_fonts = ttf_parser::fonts_in_collection(data).unwrap_or(1);
         let mut results = Vec::with_capacity(num_fonts as usize);
 
@@ -204,27 +264,63 @@ impl FontParser {
                 }
             };
 
-            let family_name = Self::extract_best_name(&face, name_id::TYPOGRAPHIC_FAMILY)
-                .or_else(|| Self::extract_best_name(&face, name_id::FAMILY))
-                .unwrap_or_else(|| {
-                    path_to_display_name(file_name)
-                });
+            // 1. Face::names()에서 localized_names와 기본 이름들 추출
+            let mut localized_names = Self::extract_localized_names(&face);
+            let mut face_family = Self::extract_best_name(&face, name_id::TYPOGRAPHIC_FAMILY)
+                .or_else(|| Self::extract_best_name(&face, name_id::FAMILY));
+            let mut face_subfamily = Self::extract_best_name(&face, name_id::TYPOGRAPHIC_SUBFAMILY)
+                .or_else(|| Self::extract_best_name(&face, name_id::SUBFAMILY));
+            let mut face_full = Self::extract_best_name(&face, name_id::FULL_NAME);
+            let mut face_ps = Self::extract_best_name(&face, name_id::POST_SCRIPT_NAME);
+            let mut face_version = Self::extract_best_name(&face, name_id::VERSION);
+            let mut face_designer = Self::extract_best_name(&face, name_id::DESIGNER);
+            let mut face_copyright = Self::extract_best_name(&face, name_id::COPYRIGHT_NOTICE);
+            let mut face_license = Self::extract_best_name(&face, name_id::LICENSE);
 
-            let subfamily_name = Self::extract_best_name(&face, name_id::TYPOGRAPHIC_SUBFAMILY)
-                .or_else(|| Self::extract_best_name(&face, name_id::SUBFAMILY))
-                .unwrap_or_else(|| "Regular".to_string());
+            // 2. 만약 raw_name_table이 제공되었거나 face_family가 없는 경우, 핀포인트 파싱 결과로 보강
+            if let Some(name_bytes) = raw_name_table {
+                let parsed_names = parse_raw_name_table(name_bytes);
+                for (k, v) in parsed_names.localized_names {
+                    localized_names.entry(k).or_insert(v);
+                }
+                if face_family.is_none() {
+                    face_family = parsed_names.family_name;
+                }
+                if face_subfamily.is_none() {
+                    face_subfamily = parsed_names.subfamily_name;
+                }
+                if face_full.is_none() {
+                    face_full = parsed_names.full_name;
+                }
+                if face_ps.is_none() {
+                    face_ps = parsed_names.postscript_name;
+                }
+                if face_version.is_none() {
+                    face_version = parsed_names.version;
+                }
+                if face_designer.is_none() {
+                    face_designer = parsed_names.designer;
+                }
+                if face_copyright.is_none() {
+                    face_copyright = parsed_names.copyright;
+                }
+                if face_license.is_none() {
+                    face_license = parsed_names.license;
+                }
+            }
 
-            let full_name = Self::extract_best_name(&face, name_id::FULL_NAME)
-                .unwrap_or_else(|| format!("{} {}", family_name, subfamily_name));
+            let family_name = face_family.unwrap_or_else(|| path_to_display_name(file_name));
+            let subfamily_name = face_subfamily.unwrap_or_else(|| "Regular".to_string());
+            let full_name = face_full.unwrap_or_else(|| format!("{} {}", family_name, subfamily_name));
+            let postscript_name = face_ps.unwrap_or_else(|| {
+                format!("{}-{}", family_name.replace(' ', ""), subfamily_name.replace(' ', ""))
+            });
 
-            let postscript_name = Self::extract_best_name(&face, name_id::POST_SCRIPT_NAME)
-                .unwrap_or_else(|| format!("{}-{}", family_name.replace(' ', ""), subfamily_name.replace(' ', "")));
-
-            let version = Self::extract_best_name(&face, name_id::VERSION);
+            let version = face_version;
             let version_num = Self::extract_version_num(&face, version.as_deref());
-            let designer = Self::extract_best_name(&face, name_id::DESIGNER);
-            let copyright = Self::extract_best_name(&face, name_id::COPYRIGHT_NOTICE);
-            let license = Self::extract_best_name(&face, name_id::LICENSE);
+            let designer = face_designer;
+            let copyright = face_copyright;
+            let license = face_license;
 
             let glyph_count = face.number_of_glyphs();
             let weight = face.weight().to_number();
@@ -233,6 +329,11 @@ impl FontParser {
             let is_variable = face.is_variable();
 
             let source = Platform::classify_font_source(Path::new(file_path));
+            let localized_names_opt = if localized_names.is_empty() {
+                None
+            } else {
+                Some(localized_names)
+            };
 
             results.push(FontMetadata {
                 id: 0, // DB 저장 시 auto_increment id 부여
@@ -248,6 +349,7 @@ impl FontParser {
                 subfamily_name,
                 full_name,
                 postscript_name,
+                localized_names: localized_names_opt,
                 format: format.clone(),
                 source,
                 glyph_count,
@@ -309,7 +411,101 @@ impl FontParser {
         Ok(glyphs)
     }
 
+    pub fn find_table_bounds(header_data: &[u8], tag_to_find: &[u8; 4]) -> Option<(usize, usize)> {
+        if header_data.len() < 12 {
+            return None;
+        }
+
+        let tag = &header_data[0..4];
+        if tag == b"\x00\x01\x00\x00" || tag == b"OTTO" || tag == b"true" || tag == b"typ1" {
+            let num_tables = u16::from_be_bytes([header_data[4], header_data[5]]) as usize;
+            let directory_size = 12 + num_tables * 16;
+            if header_data.len() >= directory_size {
+                for i in 0..num_tables {
+                    let entry_start = 12 + i * 16;
+                    if &header_data[entry_start..entry_start + 4] == tag_to_find {
+                        let offset = u32::from_be_bytes([
+                            header_data[entry_start + 8],
+                            header_data[entry_start + 9],
+                            header_data[entry_start + 10],
+                            header_data[entry_start + 11],
+                        ]) as usize;
+                        let length = u32::from_be_bytes([
+                            header_data[entry_start + 12],
+                            header_data[entry_start + 13],
+                            header_data[entry_start + 14],
+                            header_data[entry_start + 15],
+                        ]) as usize;
+                        return Some((offset, length));
+                    }
+                }
+            }
+        } else if tag == b"ttcf" && header_data.len() >= 16 {
+            let first_offset = u32::from_be_bytes([
+                header_data[12],
+                header_data[13],
+                header_data[14],
+                header_data[15],
+            ]) as usize;
+            if header_data.len() >= first_offset + 12 {
+                let sub = &header_data[first_offset..];
+                let num_tables = u16::from_be_bytes([sub[4], sub[5]]) as usize;
+                let directory_size = 12 + num_tables * 16;
+                if sub.len() >= directory_size {
+                    for i in 0..num_tables {
+                        let entry_start = 12 + i * 16;
+                        if &sub[entry_start..entry_start + 4] == tag_to_find {
+                            let offset = u32::from_be_bytes([
+                                sub[entry_start + 8],
+                                sub[entry_start + 9],
+                                sub[entry_start + 10],
+                                sub[entry_start + 11],
+                            ]) as usize;
+                            let length = u32::from_be_bytes([
+                                sub[entry_start + 12],
+                                sub[entry_start + 13],
+                                sub[entry_start + 14],
+                                sub[entry_start + 15],
+                            ]) as usize;
+                            return Some((offset, length));
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn extract_localized_names(face: &Face) -> HashMap<String, String> {
+        let mut map: HashMap<String, (u8, String)> = HashMap::new();
+        for name in face.names() {
+            if name.name_id == name_id::FAMILY || name.name_id == name_id::TYPOGRAPHIC_FAMILY {
+                let plat_u16 = match name.platform_id {
+                    ttf_parser::PlatformId::Unicode => 0,
+                    ttf_parser::PlatformId::Macintosh => 1,
+                    ttf_parser::PlatformId::Iso => 2,
+                    ttf_parser::PlatformId::Windows => 3,
+                    ttf_parser::PlatformId::Custom => 4,
+                };
+                if let Some(text) = decode_raw_name_bytes(plat_u16, name.encoding_id, name.language_id, name.name) {
+                    if let Some(lang) = map_lang_id(plat_u16, name.language_id) {
+                        // 우선순위: Windows(3)/Unicode(0) = 10, Macintosh(1) = 1
+                        let priority: u8 = if plat_u16 == 3 || plat_u16 == 0 { 10 } else { 1 };
+                        match map.get(lang) {
+                            Some((curr_prio, _)) if *curr_prio >= priority => {}
+                            _ => {
+                                map.insert(lang.to_string(), (priority, text));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        map.into_iter().map(|(k, (_, v))| (k, v)).collect()
+    }
+
     fn extract_best_name(face: &Face, name_id: u16) -> Option<String> {
+        let mut korean_name = None;
         let mut english_name = None;
         let mut unicode_name = None;
 
@@ -318,32 +514,47 @@ impl FontParser {
                 continue;
             }
 
-            if let Some(text) = name.to_string() {
-                let trimmed = text.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
+            let plat_u16 = match name.platform_id {
+                ttf_parser::PlatformId::Unicode => 0,
+                ttf_parser::PlatformId::Macintosh => 1,
+                ttf_parser::PlatformId::Iso => 2,
+                ttf_parser::PlatformId::Windows => 3,
+                ttf_parser::PlatformId::Custom => 4,
+            };
 
-                // 한국어/다국어 우선 또는 Unicode 플랫폼 (0) / Windows(3) 우선
-                if name.platform_id == ttf_parser::PlatformId::Windows {
-                    if name.language_id == 0x0412 {
-                        // 한국어 (0x0412) 발견 시 최우선 조기 반환
-                        return Some(trimmed.to_string());
-                    }
-                    if name.language_id == 0x0409 {
-                        english_name = Some(trimmed.to_string());
-                    } else {
-                        unicode_name = Some(trimmed.to_string());
-                    }
-                } else if name.platform_id == ttf_parser::PlatformId::Unicode {
-                    unicode_name = Some(trimmed.to_string());
-                } else if english_name.is_none() {
-                    english_name = Some(trimmed.to_string());
+            let Some(text) = decode_raw_name_bytes(plat_u16, name.encoding_id, name.language_id, name.name) else {
+                continue;
+            };
+
+            // 한국어 최우선 검출
+            if (plat_u16 == 3 && name.language_id == 0x0412) || (plat_u16 == 1 && name.language_id == 23) {
+                if plat_u16 == 3 {
+                    return Some(text);
                 }
+                if korean_name.is_none() {
+                    korean_name = Some(text);
+                }
+                continue;
+            }
+
+            if plat_u16 == 3 {
+                if name.language_id == 0x0409 {
+                    if english_name.is_none() {
+                        english_name = Some(text);
+                    }
+                } else if unicode_name.is_none() {
+                    unicode_name = Some(text);
+                }
+            } else if plat_u16 == 0 {
+                if unicode_name.is_none() {
+                    unicode_name = Some(text);
+                }
+            } else if english_name.is_none() && (name.language_id == 0 || name.language_id == 0x0409) {
+                english_name = Some(text);
             }
         }
 
-        unicode_name.or(english_name)
+        korean_name.or(unicode_name).or(english_name)
     }
 
     fn extract_version_num(face: &Face, version_str: Option<&str>) -> Option<f32> {
@@ -389,12 +600,21 @@ impl FontParser {
 
         let metadata = std::fs::metadata(path_ref)?;
         let file_size = metadata.len();
+        if file_size > crate::protocol::MAX_FONT_FILE_SIZE {
+            return Err(AppError::FontParse(format!(
+                "Font file size exceeds maximum limit ({} MB)",
+                crate::protocol::MAX_FONT_FILE_SIZE / (1024 * 1024)
+            )));
+        }
+
         let file_name = path_ref
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        let file_path = path_ref.to_string_lossy().to_string();
+        let file_path = crate::protocol::to_posix_normalized_path(path_ref)
+            .to_string_lossy()
+            .to_string();
 
         let ext = path_ref
             .extension()
@@ -411,9 +631,9 @@ impl FontParser {
             _ => FontFormat::Unknown,
         };
 
-        let mut file = File::open(path_ref)?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
+        let file = File::open(path_ref)?;
+        let mut buffer = Vec::with_capacity(file_size.min(crate::protocol::MAX_FONT_FILE_SIZE) as usize);
+        file.take(crate::protocol::MAX_FONT_FILE_SIZE + 1).read_to_end(&mut buffer)?;
 
         let face = Face::parse(&buffer, font_index)
             .map_err(|e| AppError::FontParse(format!("Failed to parse font for details: {:?}", e)))?;
@@ -614,7 +834,7 @@ impl FontParser {
                     continue;
                 }
 
-                if let Some(text) = name.to_string() {
+                if let Some(text) = decode_name_record(&name) {
                     let trimmed = text.trim();
                     if trimmed.is_empty() {
                         continue;
@@ -994,5 +1214,381 @@ fn path_to_display_name(file_name: &str) -> String {
         None => file_name,
     };
     name_without_ext.replace(['-', '_'], " ")
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ParsedNameTable {
+    pub family_name: Option<String>,
+    pub subfamily_name: Option<String>,
+    pub full_name: Option<String>,
+    pub postscript_name: Option<String>,
+    pub version: Option<String>,
+    pub designer: Option<String>,
+    pub copyright: Option<String>,
+    pub license: Option<String>,
+    pub localized_names: HashMap<String, String>,
+}
+
+fn map_lang_id(platform_id: u16, language_id: u16) -> Option<&'static str> {
+    match platform_id {
+        3 | 0 => match language_id {
+            0x0412 => Some("ko"),
+            0x0409 | 0x0809 | 0x0c09 | 0x1009 | 0x1409 | 0x1809 => Some("en"),
+            0x0411 => Some("ja"),
+            0x0804 | 0x1004 => Some("zh-CN"),
+            0x0404 | 0x0c04 | 0x1404 => Some("zh-TW"),
+            0x040c | 0x080c => Some("fr"),
+            0x0407 | 0x0807 => Some("de"),
+            0x040a | 0x080a => Some("es"),
+            _ => None,
+        },
+        1 => match language_id {
+            0 => Some("en"),
+            23 => Some("ko"),
+            11 => Some("ja"),
+            33 => Some("zh-CN"),
+            19 => Some("zh-TW"),
+            1 => Some("fr"),
+            2 => Some("de"),
+            8 => Some("es"),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+pub fn decode_raw_name_bytes(
+    platform_id: u16,
+    encoding_id: u16,
+    language_id: u16,
+    bytes: &[u8],
+) -> Option<String> {
+    if bytes.is_empty() {
+        return None;
+    }
+
+    match platform_id {
+        // 0: Unicode, 3: Windows
+        0 | 3 => {
+            // Windows & Unicode는 일반적으로 UTF-16BE (2바이트 정렬)
+            if bytes.len() % 2 == 0 {
+                let u16_chars: Vec<u16> = bytes
+                    .chunks_exact(2)
+                    .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
+                    .collect();
+                if let Ok(s) = String::from_utf16(&u16_chars) {
+                    let trimmed = s.trim().to_string();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed);
+                    }
+                }
+            }
+            // Fallback: UTF-8 시도
+            if let Ok(s) = std::str::from_utf8(bytes) {
+                let trimmed = s.trim().to_string();
+                if !trimmed.is_empty() {
+                    return Some(trimmed);
+                }
+            }
+            None
+        }
+        // 1: Macintosh
+        1 => {
+            // Korean: encoding_id == 3 또는 language_id == 23 (MacKorean)
+            if encoding_id == 3 || language_id == 23 {
+                let (cow, _enc, malformed) = encoding_rs::EUC_KR.decode(bytes);
+                if !malformed {
+                    let trimmed = cow.trim().to_string();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed);
+                    }
+                }
+            }
+            // Japanese: encoding_id == 1 또는 language_id == 11
+            if encoding_id == 1 || language_id == 11 {
+                let (cow, _enc, malformed) = encoding_rs::SHIFT_JIS.decode(bytes);
+                if !malformed {
+                    let trimmed = cow.trim().to_string();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed);
+                    }
+                }
+            }
+            // Traditional Chinese: encoding_id == 2 또는 language_id == 19
+            if encoding_id == 2 || language_id == 19 {
+                let (cow, _enc, malformed) = encoding_rs::BIG5.decode(bytes);
+                if !malformed {
+                    let trimmed = cow.trim().to_string();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed);
+                    }
+                }
+            }
+            // Simplified Chinese: encoding_id == 25 또는 language_id == 33
+            if encoding_id == 25 || language_id == 33 {
+                let (cow, _enc, malformed) = encoding_rs::GBK.decode(bytes);
+                if !malformed {
+                    let trimmed = cow.trim().to_string();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed);
+                    }
+                }
+            }
+
+            // UTF-8 검사
+            if let Ok(s) = std::str::from_utf8(bytes) {
+                let trimmed = s.trim().to_string();
+                if !trimmed.is_empty() {
+                    return Some(trimmed);
+                }
+            }
+
+            // 순수 ASCII인 경우
+            if bytes.iter().all(|&b| b < 0x80) {
+                let s = String::from_utf8_lossy(bytes).trim().to_string();
+                if !s.is_empty() {
+                    return Some(s);
+                }
+            }
+
+            // Fallback: 비-ASCII 바이트가 있다면 EUC-KR 시도 (한국어 폰트 잘못된 메타 방어)
+            let (cow, _enc, malformed) = encoding_rs::EUC_KR.decode(bytes);
+            if !malformed {
+                let trimmed = cow.trim().to_string();
+                if !trimmed.is_empty() {
+                    return Some(trimmed);
+                }
+            }
+
+            None
+        }
+        _ => {
+            if let Ok(s) = std::str::from_utf8(bytes) {
+                let trimmed = s.trim().to_string();
+                if !trimmed.is_empty() {
+                    return Some(trimmed);
+                }
+            }
+            None
+        }
+    }
+}
+
+pub fn decode_name_record(name: &ttf_parser::name::Name) -> Option<String> {
+    let plat_id = match name.platform_id {
+        ttf_parser::PlatformId::Unicode => 0,
+        ttf_parser::PlatformId::Macintosh => 1,
+        ttf_parser::PlatformId::Iso => 2,
+        ttf_parser::PlatformId::Windows => 3,
+        ttf_parser::PlatformId::Custom => 4,
+    };
+    decode_raw_name_bytes(plat_id, name.encoding_id, name.language_id, name.name)
+}
+
+pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
+    let mut result = ParsedNameTable::default();
+    if name_data.len() < 6 {
+        return result;
+    }
+
+    let count = u16::from_be_bytes([name_data[2], name_data[3]]) as usize;
+    let string_offset = u16::from_be_bytes([name_data[4], name_data[5]]) as usize;
+
+    if name_data.len() < 6 + count * 12 {
+        return result;
+    }
+
+    let mut ko_family = None;
+    let mut en_family = None;
+    let mut other_family = None;
+
+    let mut ko_subfamily = None;
+    let mut en_subfamily = None;
+    let mut other_subfamily = None;
+
+    let mut ko_full_name = None;
+    let mut en_full_name = None;
+    let mut other_full_name = None;
+
+    let mut postscript_name = None;
+    let mut version = None;
+    let mut designer = None;
+    let mut copyright = None;
+    let mut license = None;
+
+    for i in 0..count {
+        let entry_start = 6 + i * 12;
+        let plat_id = u16::from_be_bytes([name_data[entry_start], name_data[entry_start + 1]]);
+        let enc_id = u16::from_be_bytes([name_data[entry_start + 2], name_data[entry_start + 3]]);
+        let lang_id = u16::from_be_bytes([name_data[entry_start + 4], name_data[entry_start + 5]]);
+        let name_id = u16::from_be_bytes([name_data[entry_start + 6], name_data[entry_start + 7]]);
+        let length = u16::from_be_bytes([name_data[entry_start + 8], name_data[entry_start + 9]]) as usize;
+        let offset = u16::from_be_bytes([name_data[entry_start + 10], name_data[entry_start + 11]]) as usize;
+
+        let str_start = string_offset + offset;
+        let str_end = str_start + length;
+        if str_end > name_data.len() {
+            continue;
+        }
+
+        let raw_bytes = &name_data[str_start..str_end];
+        let Some(text) = decode_raw_name_bytes(plat_id, enc_id, lang_id, raw_bytes) else {
+            continue;
+        };
+
+        let lang_code = map_lang_id(plat_id, lang_id);
+        let is_win_or_uni = plat_id == 3 || plat_id == 0;
+
+        match name_id {
+            1 | 16 => {
+                if let Some(code) = lang_code {
+                    if is_win_or_uni || !result.localized_names.contains_key(code) {
+                        result.localized_names.insert(code.to_string(), text.clone());
+                    }
+                    if code == "ko" {
+                        if is_win_or_uni || ko_family.is_none() {
+                            ko_family = Some(text.clone());
+                        }
+                    } else if code == "en" {
+                        if is_win_or_uni || en_family.is_none() {
+                            en_family = Some(text.clone());
+                        }
+                    }
+                } else if other_family.is_none() {
+                    other_family = Some(text.clone());
+                }
+            }
+            2 | 17 => {
+                if let Some(code) = lang_code {
+                    if code == "ko" {
+                        if is_win_or_uni || ko_subfamily.is_none() {
+                            ko_subfamily = Some(text.clone());
+                        }
+                    } else if code == "en" {
+                        if is_win_or_uni || en_subfamily.is_none() {
+                            en_subfamily = Some(text.clone());
+                        }
+                    }
+                } else if other_subfamily.is_none() {
+                    other_subfamily = Some(text.clone());
+                }
+            }
+            4 => {
+                if let Some(code) = lang_code {
+                    if code == "ko" {
+                        if is_win_or_uni || ko_full_name.is_none() {
+                            ko_full_name = Some(text.clone());
+                        }
+                    } else if code == "en" {
+                        if is_win_or_uni || en_full_name.is_none() {
+                            en_full_name = Some(text.clone());
+                        }
+                    }
+                } else if other_full_name.is_none() {
+                    other_full_name = Some(text.clone());
+                }
+            }
+            6 => {
+                if is_win_or_uni || postscript_name.is_none() {
+                    postscript_name = Some(text);
+                }
+            }
+            5 => {
+                if is_win_or_uni || version.is_none() {
+                    version = Some(text);
+                }
+            }
+            9 => {
+                if is_win_or_uni || designer.is_none() {
+                    designer = Some(text);
+                }
+            }
+            0 => {
+                if is_win_or_uni || copyright.is_none() {
+                    copyright = Some(text);
+                }
+            }
+            13 => {
+                if is_win_or_uni || license.is_none() {
+                    license = Some(text);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    result.family_name = ko_family.or(en_family).or(other_family);
+    result.subfamily_name = ko_subfamily.or(en_subfamily).or(other_subfamily);
+    result.full_name = ko_full_name.or(en_full_name).or(other_full_name);
+    result.postscript_name = postscript_name;
+    result.version = version;
+    result.designer = designer;
+    result.copyright = copyright;
+    result.license = license;
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_parse_malgun_and_d2coding() {
+        let home = std::env::var("HOME").unwrap_or_default();
+        let malgun_path = PathBuf::from(&home).join("Library/Fonts/malgun.ttf");
+        if malgun_path.exists() {
+            let res = FontParser::parse_file(&malgun_path);
+            assert!(res.is_ok(), "Failed to parse malgun.ttf: {:?}", res.err());
+            let fonts = res.unwrap();
+            assert!(!fonts.is_empty());
+            let font = &fonts[0];
+            println!("Malgun parsed: family_name='{}', localized_names={:?}", font.family_name, font.localized_names);
+            assert_eq!(font.family_name, "맑은 고딕");
+            assert!(font.localized_names.is_some());
+            let loc = font.localized_names.as_ref().unwrap();
+            assert_eq!(loc.get("ko").map(|s| s.as_str()), Some("맑은 고딕"));
+            assert_eq!(loc.get("en").map(|s| s.as_str()), Some("Malgun Gothic"));
+        }
+
+        let d2_path = PathBuf::from(&home).join("Library/Fonts/D2Coding-Ver1.3.2-20180524.ttf");
+        if d2_path.exists() {
+            let res = FontParser::parse_file(&d2_path);
+            assert!(res.is_ok(), "Failed to parse D2Coding: {:?}", res.err());
+            let fonts = res.unwrap();
+            assert!(!fonts.is_empty());
+            let font = &fonts[0];
+            println!("D2Coding parsed: family_name='{}', localized_names={:?}", font.family_name, font.localized_names);
+            assert_eq!(font.family_name, "D2Coding");
+        }
+
+        let jalnan_path = PathBuf::from("/Users/monodoro/Documents/fontfinder/폰트/bbb1/JalnanGothicTTF.ttf");
+        if jalnan_path.exists() {
+            let res = FontParser::parse_file(&jalnan_path);
+            assert!(res.is_ok(), "Failed to parse JalnanGothicTTF.ttf: {:?}", res.err());
+            let fonts = res.unwrap();
+            assert!(!fonts.is_empty());
+            let font = &fonts[0];
+            println!("Jalnan parsed: family_name='{}', localized_names={:?}", font.family_name, font.localized_names);
+            assert!(font.family_name.contains("여기어때"), "Expected Korean name but got: {}", font.family_name);
+            if let Some(loc) = &font.localized_names {
+                if let Some(ko) = loc.get("ko") {
+                    assert!(ko.contains("여기어때"), "Expected Korean name in localized_names['ko'] but got: {}", ko);
+                }
+            }
+        }
+
+        let nanum_path = PathBuf::from("/Users/monodoro/Documents/fontfinder/폰트/bbb1/NanumSquareNeo-Variable.ttf");
+        if nanum_path.exists() {
+            let res = FontParser::parse_file(&nanum_path);
+            assert!(res.is_ok(), "Failed to parse NanumSquareNeo: {:?}", res.err());
+            let fonts = res.unwrap();
+            assert!(!fonts.is_empty());
+            let font = &fonts[0];
+            println!("Nanum parsed: family_name='{}', localized_names={:?}", font.family_name, font.localized_names);
+            assert!(font.family_name.contains("나눔스퀘어"), "Expected Korean name but got: {}", font.family_name);
+        }
+    }
 }
 
