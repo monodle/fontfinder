@@ -11,7 +11,7 @@ import {
   Info,
   Check,
 } from "lucide-react";
-import { cn } from "../utils/cn";
+import { cn } from "../../utils/cn";
 import {
   FontSortMode,
   FontSortSettings,
@@ -19,8 +19,8 @@ import {
   FontSortField,
   FontSortOrder,
   DEFAULT_SORT_BLOCK_ORDER,
-} from "../types/sort";
-import { SortableSidebarList } from "./SortableSidebarList";
+} from "../../types/sort";
+import { SortableSidebarList } from "../common";
 
 interface FontSortSettingsSectionProps {
   settings: FontSortSettings;

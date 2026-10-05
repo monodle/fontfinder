@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { List, Grid } from "lucide-react";
-import { SegmentedControl, SegmentOption } from "./common/SegmentedControl";
+import { SegmentedControl, SegmentOption } from "../common/SegmentedControl";
 
 export interface ViewModeControlProps {
   viewMode: "list" | "grid";

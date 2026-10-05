@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { GripVertical, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { DIFF_SLOT_CONFIGS, DiffSlotState } from "../../types/diff";
-import { SortableSidebarList } from "../SortableSidebarList";
+import { SortableSidebarList } from "../common";
 
 interface VerticalDepthRailProps {
   slots: DiffSlotState[];

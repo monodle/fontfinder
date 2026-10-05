@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { FontDuplicateBadge } from "../FontBadge";
+import { FontDuplicateBadge } from "./FontBadge";
 import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontCardRenderProps } from "./types";
 

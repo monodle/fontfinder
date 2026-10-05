@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { AlignLeft, LayoutList } from "lucide-react";
-import { FontDetailMode } from "./font-card/types";
-import { SegmentedControl, SegmentOption } from "./common/SegmentedControl";
+import { FontDetailMode } from "../font-card/types";
+import { SegmentedControl, SegmentOption } from "../common/SegmentedControl";
 
 export interface DetailModeControlProps {
   detailMode: FontDetailMode;

@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import { CustomFolder, FontSet } from "../../types/font";
 import { FontDetailMode } from "../font-card/types";
-import { DetailModeControl } from "../DetailModeControl";
-import { SortModeControl } from "../SortModeControl";
+import { DetailModeControl } from "../controls/DetailModeControl";
+import { SortModeControl } from "../controls/SortModeControl";
 import { FontSortSettings } from "../../types/sort";
 import { ColorDot } from "../common";
 import { normalizePath } from "../../utils/pathUtils";

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { APP_THEMES, AppTheme } from "../config/appConfig";
-import { OptionCard, OptionCardGrid, ColorDot } from "./common";
+import { APP_THEMES, AppTheme } from "../../config/appConfig";
+import { OptionCard, OptionCardGrid, ColorDot } from "../common";
 
 export interface ThemeSelectorProps {
   selectedTheme: AppTheme;

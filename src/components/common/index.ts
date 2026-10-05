@@ -23,3 +23,4 @@ export * from "./ColorDot";
 export * from "./Divider";
 export * from "./IconButton";
 export * from "./CopyButton";
+export * from "./SortableSidebarList";

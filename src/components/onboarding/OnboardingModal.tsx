@@ -4,16 +4,16 @@ import { Sparkles, Globe, Palette, ArrowRight, Laptop, RefreshCw } from "lucide-
 import {
   AppTheme,
   getDefaultPreviewText,
-} from "../config/appConfig";
-import { ModalDialog } from "./ModalDialog";
-import { ThemeSelector } from "./ThemeSelector";
-import { LanguageSelector } from "./LanguageSelector";
-import { changeLanguage } from "../i18n";
+} from "../../config/appConfig";
+import { ModalDialog } from "../common";
+import { ThemeSelector } from "../controls/ThemeSelector";
+import { LanguageSelector } from "../controls/LanguageSelector";
+import { changeLanguage } from "../../i18n";
 import {
   settingsService,
   CustomAppSettings,
   applyTheme,
-} from "../services/settingsService";
+} from "../../services/settingsService";
 
 interface OnboardingModalProps {
   isOpen: boolean;

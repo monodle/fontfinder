@@ -1,11 +1,11 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { FontMetadata, PreviewSettings, FontLibraryTag } from "../types/font";
-import { FontItem } from "./FontItem";
-import { appConfig } from "../config/appConfig";
-import { isFontFavorite } from "../utils/fontSortUtils";
+import { FontMetadata, PreviewSettings, FontLibraryTag } from "../../types/font";
+import { FontItem } from "../font-card/FontItem";
+import { appConfig } from "../../config/appConfig";
+import { isFontFavorite } from "../../utils/fontSortUtils";
 
-import { FontDetailMode } from "./font-card/types";
+import { FontDetailMode } from "../font-card/types";
 
 interface VirtualFontListProps {
   fonts: FontMetadata[];

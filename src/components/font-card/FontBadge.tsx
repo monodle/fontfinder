@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Unplug, Trash2 } from "lucide-react";
-import { Badge } from "./common";
-import { cn } from "../utils/cn";
-import type { FontInstallStatus, FontVersionStatus } from "../types/font";
+import { Badge } from "../common";
+import { cn } from "../../utils/cn";
+import type { FontInstallStatus, FontVersionStatus } from "../../types/font";
 
 /**
  * 폰트 포맷 약어 변환 헬퍼 (TTC, OTF, TTF, WOFF2, WOFF)

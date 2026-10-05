@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { cn } from "../utils/cn";
+import { cn } from "../../utils/cn";
 
 const GRID_COLUMN_OPTIONS = [2, 3, 4, 5] as const;
 

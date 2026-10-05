@@ -1,5 +1,5 @@
-import { SUPPORTED_LANGUAGES } from "../i18n";
-import { Select, OptionCard, OptionCardGrid } from "./common";
+import { SUPPORTED_LANGUAGES } from "../../i18n";
+import { Select, OptionCard, OptionCardGrid } from "../common";
 
 export interface LanguageSelectorProps {
   selectedLanguage: string;

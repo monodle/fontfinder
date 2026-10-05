@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, ReactNode, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { FontSet } from "../types/font";
+import { FontSet } from "../../types/font";
 
 export interface FlatSetItem {
   set: FontSet;

@@ -4,7 +4,7 @@ import { Baseline, PaintBucket, RotateCcw, Check, ChevronDown } from "lucide-rea
 import {
   TEXT_COLOR_PRESETS,
   BG_COLOR_PRESETS,
-} from "../config/colorPresets";
+} from "../../config/colorPresets";
 import { ColorPresetChips } from "./ColorPresetChips";
 import { ColorPickerInput } from "./ColorPickerInput";
 

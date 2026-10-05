@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { FontMetadata, PreviewSettings, FontLibraryTag } from "../types/font";
-import { loadFontIntoDocument, retainFont, releaseFont } from "../utils/fontLoader";
-import { FontDetailMode } from "./font-card/types";
-import { FontItemDetailed } from "./font-card/FontItemDetailed";
-import { FontItemSimple } from "./font-card/FontItemSimple";
+import { FontMetadata, PreviewSettings, FontLibraryTag } from "../../types/font";
+import { loadFontIntoDocument, retainFont, releaseFont } from "../../utils/fontLoader";
+import { FontDetailMode } from "./types";
+import { FontItemDetailed } from "./FontItemDetailed";
+import { FontItemSimple } from "./FontItemSimple";
 
 export interface FontItemProps {
   font: FontMetadata;

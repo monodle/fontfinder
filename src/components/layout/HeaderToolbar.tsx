@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Sliders, Bold, Italic, Underline } from "lucide-react";
 import { PreviewSettings } from "../../types/font";
-import { ColorPresetPicker } from "../ColorPresetPicker";
-import { TextAlignDropdown } from "../TextAlignDropdown";
-import { ViewModeControl } from "../ViewModeControl";
-import { GridColumnsSelector } from "../GridColumnsSelector";
+import { ColorPresetPicker } from "../color/ColorPresetPicker";
+import { TextAlignDropdown } from "../controls/TextAlignDropdown";
+import { ViewModeControl } from "../controls/ViewModeControl";
+import { GridColumnsSelector } from "../controls/GridColumnsSelector";
 import { SearchInput, IconButton } from "../common";
 
 interface HeaderToolbarProps {

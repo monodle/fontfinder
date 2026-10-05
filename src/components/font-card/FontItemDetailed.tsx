@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Heart, Zap } from "lucide-react";
-import { FontFormatBadge, FontInstallStatusBadge, FontVersionBadge, FontDuplicateBadge } from "../FontBadge";
-import { LibraryAvatarStack } from "../LibraryAvatarStack";
+import { FontFormatBadge, FontInstallStatusBadge, FontVersionBadge, FontDuplicateBadge } from "./FontBadge";
+import { LibraryAvatarStack } from "./LibraryAvatarStack";
 import { formatFileSize } from "../../utils/fileSize";
 import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontCardRenderProps } from "./types";

@@ -10,13 +10,13 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
-import { ModalDialog, Input } from "./common";
-import { FontSet } from "../types/font";
+import { ModalDialog, Input } from "../common";
+import { FontSet } from "../../types/font";
 import {
   LIBRARY_LABEL_COLOR_PRESETS,
   getRandomLibraryColor,
   isLightColor,
-} from "../config/colorPresets";
+} from "../../config/colorPresets";
 
 type LibraryModalMode = "create_set" | "edit_set" | "edit_folder";
 

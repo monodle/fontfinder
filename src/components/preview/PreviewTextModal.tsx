@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCcw, Check, Sliders } from "lucide-react";
-import { PreviewSettings } from "../types/font";
-import { defaultPreviewSettings, appConfig } from "../config/appConfig";
+import { PreviewSettings } from "../../types/font";
+import { defaultPreviewSettings, appConfig } from "../../config/appConfig";
 import {
   PreviewTypographyForm,
   TypographyStyleValues,
 } from "./PreviewTypographyForm";
-import { ModalDialog } from "./ModalDialog";
+import { ModalDialog } from "../common";
 
 interface PreviewTextModalProps {
   isOpen: boolean;

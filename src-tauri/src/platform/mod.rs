@@ -1,6 +1,18 @@
 use std::path::{Path, PathBuf};
 use crate::font::FontSource;
 
+#[allow(dead_code)]
+static WINDOWS_INBOX_FONTS: std::sync::LazyLock<std::collections::HashSet<&'static str>> = std::sync::LazyLock::new(|| {
+    const JSON_DATA: &str = include_str!("../../../public/json/windows-font.json");
+    match serde_json::from_str::<Vec<&'static str>>(JSON_DATA) {
+        Ok(list) => list.into_iter().collect(),
+        Err(e) => {
+            eprintln!("Failed to parse windows-font.json: {}", e);
+            std::collections::HashSet::new()
+        }
+    }
+});
+
 pub struct Platform;
 
 impl Platform {
@@ -107,13 +119,33 @@ impl Platform {
         } else {
             PathBuf::from(r"C:\Windows\Fonts")
         };
-        if crate::protocol::is_same_or_subpath(&win_fonts, path) {
-            return FontSource::System;
-        }
-        if let Ok(canon_win) = win_fonts.canonicalize() {
-            if crate::protocol::is_same_or_subpath(&canon_win, path) {
+        let in_win_fonts = crate::protocol::is_same_or_subpath(&win_fonts, path)
+            || win_fonts
+                .canonicalize()
+                .map(|canon| crate::protocol::is_same_or_subpath(&canon, path))
+                .unwrap_or(false);
+
+        if in_win_fonts {
+            let file_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_lowercase())
+                .unwrap_or_default();
+
+            // 1단계: MS 공식 In-box 폰트 화이트리스트 대조 (I/O 없이 메모리 O(1) 초고속 즉시 확정)
+            if !file_name.is_empty() && WINDOWS_INBOX_FONTS.contains(file_name.as_str()) {
                 return FontSource::System;
             }
+
+            // 2단계: 화이트리스트에 없는 기타 다국어/FOD 폰트는 WinSxS 컴포넌트 스토어 연동 NTFS 하드링크 검사
+            if let Some(links) = get_file_hardlink_count(path) {
+                if links > 1 {
+                    return FontSource::System;
+                } else {
+                    return FontSource::User;
+                }
+            }
+            return FontSource::System;
         }
 
         FontSource::External
@@ -570,13 +602,45 @@ impl Platform {
         let clean_user_dir = crate::protocol::strip_unc_prefix(&user_fonts_dir);
         let canonical_user_dir = clean_user_dir.canonicalize().unwrap_or_else(|_| clean_user_dir.clone());
 
-        // 실제 물리적 부모 디렉토리가 OS 사용자 서체 디렉토리 직속인지 대소문자 비구분 검증
-        let parent_matches = canonical_font
+        let win_fonts = if let Ok(windir) = std::env::var("SystemRoot").or_else(|_| std::env::var("WINDIR")) {
+            PathBuf::from(windir).join("Fonts")
+        } else {
+            PathBuf::from(r"C:\Windows\Fonts")
+        };
+        let clean_win_dir = crate::protocol::strip_unc_prefix(&win_fonts);
+        let canonical_win_dir = clean_win_dir.canonicalize().unwrap_or_else(|_| clean_win_dir.clone());
+
+        let in_user_dir = canonical_font
             .parent()
             .map(|p| crate::protocol::is_same_or_subpath(p, &canonical_user_dir) && crate::protocol::is_same_or_subpath(&canonical_user_dir, p))
             .unwrap_or(false);
-        if !parent_matches {
+
+        let in_win_dir = canonical_font
+            .parent()
+            .map(|p| crate::protocol::is_same_or_subpath(p, &canonical_win_dir) && crate::protocol::is_same_or_subpath(&canonical_win_dir, p))
+            .unwrap_or(false);
+
+        if !in_user_dir && !in_win_dir {
             return Err("Cannot uninstall system-protected font".to_string());
+        }
+
+        // C:\Windows\Fonts에 위치한 경우 순정 시스템 폰트인지 2중 방어 검증 (화이트리스트 또는 하드링크 > 1)
+        if in_win_dir {
+            let file_name = canonical_font
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_lowercase())
+                .unwrap_or_default();
+
+            if !file_name.is_empty() && WINDOWS_INBOX_FONTS.contains(file_name.as_str()) {
+                return Err("Cannot uninstall system-protected font".to_string());
+            }
+
+            if let Some(links) = get_file_hardlink_count(&canonical_font) {
+                if links > 1 {
+                    return Err("Cannot uninstall system-protected font".to_string());
+                }
+            }
         }
 
         // Win32 GDI 및 Shell32(휴지통) API는 \\?\ (UNC Verbatim) 접두사를 지원하지 않으므로
@@ -834,11 +898,32 @@ fn register_font_in_registry(font_name: &str, font_path: &Path) -> Result<(), St
 }
 
 #[cfg(target_os = "windows")]
+fn get_file_hardlink_count(path: &Path) -> Option<u32> {
+    use std::fs::File;
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Foundation::HANDLE;
+    use windows_sys::Win32::Storage::FileSystem::{GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION};
+
+    let clean_path = crate::protocol::strip_unc_prefix(path);
+    let file = File::open(&clean_path).ok()?;
+    let handle = file.as_raw_handle() as HANDLE;
+    unsafe {
+        let mut info: BY_HANDLE_FILE_INFORMATION = std::mem::zeroed();
+        if GetFileInformationByHandle(handle, &mut info) != 0 {
+            Some(info.nNumberOfLinks)
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::System::Registry::{
-        RegOpenKeyExW, RegEnumValueW, RegDeleteValueW, RegCloseKey, HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE, REG_SZ,
+        RegCloseKey, RegDeleteValueW, RegEnumValueW, RegOpenKeyExW, HKEY_CURRENT_USER,
+        HKEY_LOCAL_MACHINE, KEY_READ, KEY_SET_VALUE, REG_SZ,
     };
 
     let subkey: Vec<u16> = OsStr::new(r"Software\Microsoft\Windows NT\CurrentVersion\Fonts")
@@ -846,78 +931,80 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
         .chain(std::iter::once(0))
         .collect();
 
-    let mut hkey = std::ptr::null_mut();
-    unsafe {
-        if RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_READ | KEY_SET_VALUE, &mut hkey) != 0 {
-            return Ok(());
-        }
+    let clean_target = crate::protocol::strip_unc_prefix(font_path);
+    let target_str = clean_target.to_string_lossy().replace('/', "\\").to_lowercase();
+    let target_file_name = font_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
 
-        let clean_target = crate::protocol::strip_unc_prefix(font_path);
-        let target_str = clean_target.to_string_lossy().replace('/', "\\").to_lowercase();
-        let target_file_name = font_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|s| s.to_lowercase())
-            .unwrap_or_default();
-
-        let mut index = 0;
-        let mut keys_to_delete = Vec::new();
-
-        loop {
-            // 대형 TTC/OTC 다중 서체 결합명(" & ")을 안전하게 수용하도록 버퍼 2048 와이드 문자로 대폭 확장
-            let mut name_buf = [0u16; 2048];
-            let mut name_len = name_buf.len() as u32;
-            let mut data_buf = [0u8; 4096];
-            let mut data_len = data_buf.len() as u32;
-            let mut val_type = 0u32;
-
-            let status = RegEnumValueW(
-                hkey,
-                index,
-                name_buf.as_mut_ptr(),
-                &mut name_len,
-                std::ptr::null_mut(),
-                &mut val_type,
-                data_buf.as_mut_ptr(),
-                &mut data_len,
-            );
-
-            // 234: ERROR_MORE_DATA (데이터 버퍼 1024바이트 초과).
-            // 다른 애플리케이션이 등록한 긴 데이터 등으로 인한 오류 발생 시 조기 break하지 않고 다음 항목으로 계속 이동
-            if status == 234 {
-                index += 1;
+    for root_key in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE] {
+        let mut hkey = std::ptr::null_mut();
+        unsafe {
+            if RegOpenKeyExW(root_key, subkey.as_ptr(), 0, KEY_READ | KEY_SET_VALUE, &mut hkey) != 0 {
                 continue;
             }
 
-            if status != 0 {
-                break;
-            }
+            let mut index = 0;
+            let mut keys_to_delete = Vec::new();
 
-            if val_type == REG_SZ {
-                let u16_slice = std::slice::from_raw_parts(
-                    data_buf.as_ptr() as *const u16,
-                    (data_len as usize) / std::mem::size_of::<u16>(),
+            loop {
+                // 대형 TTC/OTC 다중 서체 결합명(" & ")을 안전하게 수용하도록 버퍼 2048 와이드 문자로 대폭 확장
+                let mut name_buf = [0u16; 2048];
+                let mut name_len = name_buf.len() as u32;
+                let mut data_buf = [0u8; 4096];
+                let mut data_len = data_buf.len() as u32;
+                let mut val_type = 0u32;
+
+                let status = RegEnumValueW(
+                    hkey,
+                    index,
+                    name_buf.as_mut_ptr(),
+                    &mut name_len,
+                    std::ptr::null_mut(),
+                    &mut val_type,
+                    data_buf.as_mut_ptr(),
+                    &mut data_len,
                 );
-                let val_data = String::from_utf16_lossy(u16_slice)
-                    .trim_matches('\0')
-                    .replace('/', "\\")
-                    .to_lowercase();
 
-                if val_data == target_str || (!target_file_name.is_empty() && val_data == target_file_name) {
-                    keys_to_delete.push(name_buf[..name_len as usize].to_vec());
+                // 234: ERROR_MORE_DATA (데이터 버퍼 1024바이트 초과).
+                // 다른 애플리케이션이 등록한 긴 데이터 등으로 인한 오류 발생 시 조기 break하지 않고 다음 항목으로 계속 이동
+                if status == 234 {
+                    index += 1;
+                    continue;
                 }
+
+                if status != 0 {
+                    break;
+                }
+
+                if val_type == REG_SZ {
+                    let u16_slice = std::slice::from_raw_parts(
+                        data_buf.as_ptr() as *const u16,
+                        (data_len as usize) / std::mem::size_of::<u16>(),
+                    );
+                    let val_data = String::from_utf16_lossy(u16_slice)
+                        .trim_matches('\0')
+                        .replace('/', "\\")
+                        .to_lowercase();
+
+                    if val_data == target_str || (!target_file_name.is_empty() && val_data == target_file_name) {
+                        keys_to_delete.push(name_buf[..name_len as usize].to_vec());
+                    }
+                }
+
+                index += 1;
             }
 
-            index += 1;
-        }
+            for key_name in keys_to_delete {
+                let mut null_terminated = key_name;
+                null_terminated.push(0);
+                let _ = RegDeleteValueW(hkey, null_terminated.as_ptr());
+            }
 
-        for key_name in keys_to_delete {
-            let mut null_terminated = key_name;
-            null_terminated.push(0);
-            let _ = RegDeleteValueW(hkey, null_terminated.as_ptr());
+            RegCloseKey(hkey);
         }
-
-        RegCloseKey(hkey);
     }
 
     Ok(())
@@ -926,6 +1013,22 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
 #[cfg(not(target_os = "windows"))]
 fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_windows_inbox_fonts_whitelist() {
+        assert!(WINDOWS_INBOX_FONTS.len() >= 360, "Loaded {} fonts, expected >= 360", WINDOWS_INBOX_FONTS.len());
+        assert!(WINDOWS_INBOX_FONTS.contains("malgun.ttf"));
+        assert!(WINDOWS_INBOX_FONTS.contains("batang.ttc"));
+        assert!(WINDOWS_INBOX_FONTS.contains("gulim.ttc"));
+        assert!(WINDOWS_INBOX_FONTS.contains("segoeui.ttf"));
+        assert!(WINDOWS_INBOX_FONTS.contains("arial.ttf"));
+        assert!(!WINDOWS_INBOX_FONTS.contains("seoulnamsanb.ttf"));
+    }
 }
 
 

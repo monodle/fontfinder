@@ -11,9 +11,9 @@ import {
   AlignRight,
   Palette,
 } from "lucide-react";
-import { ColorPresetPicker } from "./ColorPresetPicker";
-import { RangeSliderControl } from "./common/RangeSliderControl";
-import { SegmentedControl } from "./common/SegmentedControl";
+import { ColorPresetPicker } from "../color/ColorPresetPicker";
+import { RangeSliderControl } from "../common/RangeSliderControl";
+import { SegmentedControl } from "../common/SegmentedControl";
 
 export interface TypographyStyleValues {
   text: string;

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { FontMetadata, FontSet } from "../types/font";
+import { FontMetadata, FontSet } from "../../types/font";
 import {
   Copy,
   Folder,
@@ -22,10 +22,10 @@ import {
   Info,
   CornerDownRight,
 } from "lucide-react";
-import { fontService } from "../services/fontService";
-import { isFontFavorite } from "../utils/fontSortUtils";
-import { getFontFamilyName } from "../utils/fontLocalization";
-import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../utils/batchFeedback";
+import { fontService } from "../../services/fontService";
+import { isFontFavorite } from "../../utils/fontSortUtils";
+import { getFontFamilyName } from "../../utils/fontLocalization";
+import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../../utils/batchFeedback";
 
 interface SetGroupItem {
   parent: FontSet;

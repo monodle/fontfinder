@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { cn } from "../utils/cn";
+import { cn } from "../../utils/cn";
 
 export interface ListRefreshButtonProps {
   onRefresh: () => void | Promise<void>;

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FontLibraryTag } from "../types/font";
-import { isLightColor } from "../config/colorPresets";
+import { FontLibraryTag } from "../../types/font";
+import { isLightColor } from "../../config/colorPresets";
 import { Folder, Bookmark } from "lucide-react";
 
 export interface LibraryAvatarStackProps {

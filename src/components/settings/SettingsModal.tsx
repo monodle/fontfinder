@@ -17,36 +17,34 @@ import {
   Info,
   ArrowDownAZ,
 } from "lucide-react";
-import { ModalDialog } from "./ModalDialog";
-import { SettingSection, SettingRow, Tabs, TabItem } from "./common";
+import { ModalDialog, ConfirmModal, SettingSection, SettingRow, Tabs, TabItem } from "../common";
 import {
   CustomAppSettings,
   getDefaultSettings,
   applyTheme,
   sanitizeFontSortSettings,
-} from "../services/settingsService";
-import { clearFontLoaderCache } from "../utils/fontLoader";
+} from "../../services/settingsService";
+import { clearFontLoaderCache } from "../../utils/fontLoader";
 import {
   LibraryCategory,
   getDefaultPreviewText,
   AppTheme,
-} from "../config/appConfig";
-import { changeLanguage } from "../i18n";
-import { ThemeSelector } from "./ThemeSelector";
-import { LanguageSelector } from "./LanguageSelector";
-import { ViewModeControl } from "./ViewModeControl";
-import { DetailModeControl } from "./DetailModeControl";
-import { GridColumnsSelector } from "./GridColumnsSelector";
+} from "../../config/appConfig";
+import { changeLanguage } from "../../i18n";
+import { ThemeSelector } from "../controls/ThemeSelector";
+import { LanguageSelector } from "../controls/LanguageSelector";
+import { ViewModeControl } from "../controls/ViewModeControl";
+import { DetailModeControl } from "../controls/DetailModeControl";
+import { GridColumnsSelector } from "../controls/GridColumnsSelector";
 import { FontSortSettingsSection } from "./FontSortSettingsSection";
-import { DEFAULT_SORT_SETTINGS } from "../types/sort";
-import { ConfirmModal } from "./ConfirmModal";
+import { DEFAULT_SORT_SETTINGS } from "../../types/sort";
 import { ExportModal } from "./ExportModal";
 import { ImportModal } from "./ImportModal";
-import { SponsorSection } from "./settings/SponsorSection";
-import { AboutSection } from "./settings/AboutSection";
-import { backupService } from "../services/backupService";
-import { fontService } from "../services/fontService";
-import type { AppBackupData } from "../types/backup";
+import { SponsorSection } from "./SponsorSection";
+import { AboutSection } from "./AboutSection";
+import { backupService } from "../../services/backupService";
+import { fontService } from "../../services/fontService";
+import type { AppBackupData } from "../../types/backup";
 
 export type SettingsTab =
   | "all"

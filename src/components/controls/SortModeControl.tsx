@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Sparkles, ArrowDownAZ, ArrowUpZA, SlidersHorizontal } from "lucide-react";
-import { FontSortMode, FontSortSettings } from "../types/sort";
-import { SegmentedControl, SegmentOption } from "./common/SegmentedControl";
+import { FontSortMode, FontSortSettings } from "../../types/sort";
+import { SegmentedControl, SegmentOption } from "../common/SegmentedControl";
 
 export interface SortModeControlProps {
   sortSettings: FontSortSettings;

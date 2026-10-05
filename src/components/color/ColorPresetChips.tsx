@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
-import { ColorPreset, isLightColor } from "../config/colorPresets";
-import { cn } from "../utils/cn";
+import { ColorPreset, isLightColor } from "../../config/colorPresets";
+import { cn } from "../../utils/cn";
 
 export interface ColorPresetChipsProps {
   presets: ColorPreset[];

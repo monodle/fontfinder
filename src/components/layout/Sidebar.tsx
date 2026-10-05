@@ -27,14 +27,13 @@ import {
   Search,
   X,
 } from "lucide-react";
-import type { SettingsTab } from "../SettingsModal";
+import type { SettingsTab } from "../settings/SettingsModal";
 import { FontSet, CustomFolder } from "../../types/font";
 import appIcon from "@/assets/128x128.png";
-import { SortableSidebarList } from "../SortableSidebarList";
-import { SortableTreeSetList, FlatSetItem } from "../SortableTreeSetList";
-import { LibraryItemModal } from "../LibraryItemModal";
-import { ConfirmModal } from "../ConfirmModal";
-import { ListRefreshButton } from "../ListRefreshButton";
+import { SortableSidebarList, ConfirmModal } from "../common";
+import { SortableTreeSetList, FlatSetItem } from "../sidebar/SortableTreeSetList";
+import { LibraryItemModal } from "../sidebar/LibraryItemModal";
+import { ListRefreshButton } from "../controls/ListRefreshButton";
 
 interface CategoryCounts {
   total: number;
