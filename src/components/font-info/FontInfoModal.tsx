@@ -90,7 +90,7 @@ export function FontInfoModal({
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-theme-hover text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
-            title={t("common.close_esc", "닫기 (Esc)")}
+            title={t("common.close_esc")}
           >
             <X className="w-4 h-4" />
           </button>

@@ -21,7 +21,8 @@
     "reset_to_default": "기본값으로 재설정",
     "clear": "지우기",
     "copy": "복사",
-    "close_esc": "닫기 (Esc)"
+    "close_esc": "닫기 (Esc)",
+    "copy_success": "클립보드에 복사되었습니다."
   },
   "dialog": {
     "cancel": "취소",

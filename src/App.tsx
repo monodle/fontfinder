@@ -218,7 +218,7 @@ export default function App() {
 
       if (targetFonts.length > 5) {
         showToast(
-          t("diff.top5_sliced_notice", "최대 5개 폰트만 비교 슬롯에 등록되었습니다.")
+          t("diff.top5_sliced_notice")
         );
         setDiffModalFonts(targetFonts.slice(0, 5));
       } else {
@@ -424,7 +424,7 @@ export default function App() {
     (path: string) => {
       fontService.showInFolder(path).catch((err) => {
         console.error("탐색기 열기 실패:", err);
-        showToast(t("toast.folder_open_failed", { defaultValue: "폴더를 열지 못했습니다." }));
+        showToast(t("toast.folder_open_failed"));
       });
     },
     [showToast, t]
@@ -658,25 +658,20 @@ export default function App() {
               <p className="text-sm font-semibold text-theme-text mb-1">
                 {t("empty.folder_scanning_title", {
                   name: activeScanningFolder.name,
-                  defaultValue: `'${activeScanningFolder.name}' 폴더를 스캔하는 중입니다...`,
                 })}
               </p>
               <p className="text-xs text-theme-text-muted max-w-sm">
                 {activeScanningFolder.scanProgress && activeScanningFolder.scanProgress.total > 0
                   ? `${activeScanningFolder.scanProgress.current} / ${activeScanningFolder.scanProgress.total} (${Math.round((activeScanningFolder.scanProgress.current / activeScanningFolder.scanProgress.total) * 100)}%)`
-                  : t("empty.folder_scanning_desc", {
-                      defaultValue: "외장 드라이브 또는 파일이 많은 경우 몇 분 정도 걸릴 수 있습니다.",
-                    })}
+                  : t("empty.folder_scanning_desc")}
               </p>
             </div>
           ) : activeMissingFolder ? (
             <div className="h-full flex items-center justify-center">
               <EmptyState
                 icon={<AlertTriangle className="w-8 h-8 text-amber-500" />}
-                title={t("folder.missing_title", { defaultValue: "폴더 위치 누락됨" })}
-                description={t("folder.missing_desc", {
-                  defaultValue: "폴더가 이동되었거나 연결이 끊어졌습니다. 글꼴을 표시하려면 폴더를 재연결하세요.",
-                })}
+                title={t("folder.missing_title")}
+                description={t("folder.missing_desc")}
                 action={
                   <button
                     type="button"
@@ -684,7 +679,7 @@ export default function App() {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors font-medium text-xs shadow-xs cursor-pointer"
                   >
                     <FolderSync className="w-4 h-4" />
-                    <span>{t("folder.relink", { defaultValue: "새 위치 재연결" })}</span>
+                    <span>{t("folder.relink")}</span>
                   </button>
                 }
               />
@@ -771,35 +766,33 @@ export default function App() {
           }}
           title={
             uninstallConfirmFonts.length === 1
-              ? t("confirm.uninstall_font_title", "시스템 글꼴 제거")
-              : t("confirm.bulk_uninstall_title", "시스템 글꼴 일괄 제거")
+              ? t("confirm.uninstall_font_title")
+              : t("confirm.bulk_uninstall_title")
           }
           itemName={
             uninstallConfirmFonts.length === 1
               ? (uninstallConfirmFonts[0].full_name || uninstallConfirmFonts[0].family_name)
               : t("confirm.bulk_uninstall_item", {
                 count: uninstallConfirmFonts.length,
-                defaultValue: `${uninstallConfirmFonts.length}개 선택된 글꼴`,
               })
           }
           description={
             <div className="space-y-3">
               <p>
                 {uninstallConfirmFonts.length === 1
-                  ? t("confirm.uninstall_font_desc", "이 글꼴을 시스템(Fonts 폴더)에서 제거하여 휴지통으로 이동하시겠습니까?")
+                  ? t("confirm.uninstall_font_desc")
                   : t("confirm.bulk_uninstall_desc", {
                     count: uninstallConfirmFonts.length,
-                    defaultValue: `선택한 ${uninstallConfirmFonts.length}개의 글꼴을 시스템(Fonts 폴더)에서 제거하여 휴지통으로 이동하시겠습니까?`,
                   })}
               </p>
               <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
                 <span className="text-sm shrink-0">🗑️</span>
-                <span>{t("confirm.uninstall_warning", "글꼴 파일은 시스템 휴지통으로 안전하게 이동되며, 필요한 경우 휴지통에서 언제든 복구할 수 있습니다.")}</span>
+                <span>{t("confirm.uninstall_warning")}</span>
               </div>
             </div>
           }
-          confirmText={t("confirm.uninstall_btn", "휴지통으로 이동")}
-          cancelText={t("common.cancel", "취소")}
+          confirmText={t("confirm.uninstall_btn")}
+          cancelText={t("common.cancel")}
           isDanger={true}
         />
       )}
@@ -820,15 +813,14 @@ export default function App() {
           }}
           title={
             removeFromSetConfirm.fonts.length === 1
-              ? t("confirm.remove_from_set_title", "서재 세트에서 제거")
-              : t("confirm.bulk_remove_from_set_title", "서재 세트에서 일괄 제거")
+              ? t("confirm.remove_from_set_title")
+              : t("confirm.bulk_remove_from_set_title")
           }
           itemName={
             removeFromSetConfirm.fonts.length === 1
               ? (removeFromSetConfirm.fonts[0].full_name || removeFromSetConfirm.fonts[0].family_name)
               : t("confirm.bulk_remove_from_set_item", {
                 count: removeFromSetConfirm.fonts.length,
-                defaultValue: `${removeFromSetConfirm.fonts.length}개 선택된 글꼴`,
               })
           }
           description={
@@ -837,21 +829,19 @@ export default function App() {
                 {removeFromSetConfirm.fonts.length === 1
                   ? t("confirm.remove_from_set_desc", {
                     setName: removeFromSetConfirm.setName,
-                    defaultValue: `'${removeFromSetConfirm.setName}' 서재 세트에서 이 글꼴을 제거하시겠습니까?`,
                   })
                   : t("confirm.bulk_remove_from_set_desc", {
                     setName: removeFromSetConfirm.setName,
                     count: removeFromSetConfirm.fonts.length,
-                    defaultValue: `'${removeFromSetConfirm.setName}' 서재 세트에서 선택한 ${removeFromSetConfirm.fonts.length}개 글꼴을 제거하시겠습니까?`,
                   })}
               </p>
               <p className="text-[11px] text-theme-text-muted">
-                {t("confirm.remove_from_set_notice", "(서재 세트에서만 제외되며, 실제 글꼴 파일은 삭제되지 않습니다.)")}
+                {t("confirm.remove_from_set_notice")}
               </p>
             </div>
           }
-          confirmText={t("confirm.remove_btn", "서재에서 제거")}
-          cancelText={t("common.cancel", "취소")}
+          confirmText={t("confirm.remove_btn")}
+          cancelText={t("common.cancel")}
           isDanger={true}
         />
       )}
@@ -875,40 +865,37 @@ export default function App() {
           }}
           title={
             deactivateConfirmFonts.length === 1
-              ? t("confirm.deactivate_font_title", "임시활성화 해제")
-              : t("confirm.bulk_deactivate_title", "임시활성화 일괄 해제")
+              ? t("confirm.deactivate_font_title")
+              : t("confirm.bulk_deactivate_title")
           }
           itemName={
             deactivateConfirmFonts.length === 1
               ? (deactivateConfirmFonts[0].full_name || deactivateConfirmFonts[0].family_name)
               : t("confirm.bulk_deactivate_item", {
                   count: deactivateConfirmFonts.length,
-                  defaultValue: `${deactivateConfirmFonts.length}개 선택된 글꼴`,
                 })
           }
           description={
             <div className="space-y-3">
               <p>
                 {deactivateConfirmFonts.length === 1
-                  ? t("confirm.deactivate_font_desc", "이 글꼴의 임시활성화를 해제하시겠습니까?")
+                  ? t("confirm.deactivate_font_desc")
                   : t("confirm.bulk_deactivate_desc", {
                       count: deactivateConfirmFonts.length,
-                      defaultValue: `선택한 ${deactivateConfirmFonts.length}개 글꼴의 임시활성화를 해제하시겠습니까?`,
                     })}
               </p>
               <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
                 <span className="text-sm shrink-0">⚠️</span>
                 <span>
                   {t(
-                    "confirm.deactivate_warning",
-                    "임시활성화를 해제하면 현재 실행 중인 그래픽/문서 편집 프로그램에서 글꼴이 즉시 제외됩니다."
+                    "confirm.deactivate_warning"
                   )}
                 </span>
               </div>
             </div>
           }
-          confirmText={t("confirm.deactivate_btn", "임시활성화 해제")}
-          cancelText={t("common.cancel", "취소")}
+          confirmText={t("confirm.deactivate_btn")}
+          cancelText={t("common.cancel")}
           isDanger={true}
         />
       )}
@@ -978,12 +965,11 @@ export default function App() {
 
             {/* 제목 및 설명 */}
             <h3 className="text-base font-semibold text-theme-text tracking-tight mb-1.5">
-              {t("empty.scanning", "활자 메타데이터를 스캔하는 중입니다...")}
+              {t("empty.scanning")}
             </h3>
             <p className="text-xs text-theme-text-muted leading-relaxed mb-6 max-w-xs">
               {t(
-                "empty.scanning_desc",
-                "운영체제 시스템 글꼴을 색인하여 최적화하고 있습니다. 최초 1회 완료 후에는 캐시를 통해 즉시 로드됩니다."
+                "empty.scanning_desc"
               )}
             </p>
 
@@ -995,8 +981,8 @@ export default function App() {
               showLabel
               label={
                 library.scanProgress && library.scanProgress.total > 0
-                  ? `${library.scanProgress.current.toLocaleString()} / ${library.scanProgress.total.toLocaleString()}${t("common.count_unit", "개")}`
-                  : t("common.loading", "분석 중...")
+                  ? `${library.scanProgress.current.toLocaleString()} / ${library.scanProgress.total.toLocaleString()}${t("common.count_unit")}`
+                  : t("common.loading")
               }
               className="w-full"
             />

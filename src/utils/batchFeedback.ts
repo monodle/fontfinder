@@ -7,7 +7,7 @@ type TranslateFn = (key: string, options?: any) => string;
  */
 function summarizeBatchErrors(errors: string[], t: TranslateFn): string {
   if (!errors || errors.length === 0) {
-    return t("toast.error_reason_processing", { defaultValue: "처리 중 오류 발생" });
+    return t("toast.error_reason_processing");
   }
 
   let hasInUse = false;
@@ -52,25 +52,25 @@ function summarizeBatchErrors(errors: string[], t: TranslateFn): string {
 
   const detectedReasons: string[] = [];
   if (hasInUse) {
-    detectedReasons.push(t("toast.error_reason_in_use", { defaultValue: "다른 프로그램에서 사용 중" }));
+    detectedReasons.push(t("toast.error_reason_in_use"));
   }
   if (hasPermission) {
-    detectedReasons.push(t("toast.error_reason_permission", { defaultValue: "쓰기 권한 부족" }));
+    detectedReasons.push(t("toast.error_reason_permission"));
   }
   if (hasCorrupted) {
-    detectedReasons.push(t("toast.error_reason_corrupted", { defaultValue: "지원하지 않거나 손상된 서체" }));
+    detectedReasons.push(t("toast.error_reason_corrupted"));
   }
   if (hasNotFound) {
-    detectedReasons.push(t("toast.error_reason_not_found", { defaultValue: "파일을 찾을 수 없음" }));
+    detectedReasons.push(t("toast.error_reason_not_found"));
   }
 
   if (detectedReasons.length === 1 && otherCount === 0) {
     return detectedReasons[0];
   } else if (detectedReasons.length > 1) {
-    return t("toast.error_reason_multiple", { defaultValue: "복합 원인" });
+    return t("toast.error_reason_multiple");
   }
 
-  return t("toast.error_reason_processing", { defaultValue: "처리 중 오류 발생" });
+  return t("toast.error_reason_processing");
 }
 
 /**
@@ -89,7 +89,6 @@ export function formatBatchInstallFeedback(result: BatchInstallResult, t: Transl
     success: successCount,
     failed: failedCount,
     reason,
-    defaultValue: `${successCount}개 설치 완료 / ${failedCount}개 실패 (${reason})`,
   });
 }
 
@@ -109,7 +108,6 @@ export function formatBatchUninstallFeedback(result: BatchUninstallResult, t: Tr
     success: successCount,
     failed: failedCount,
     reason,
-    defaultValue: `${successCount}개 제거 완료 / ${failedCount}개 실패 (${reason})`,
   });
 }
 
@@ -118,7 +116,7 @@ export function formatBatchUninstallFeedback(result: BatchUninstallResult, t: Tr
  */
 export function formatErrorMessage(err: unknown, t: TranslateFn): string {
   if (!err) {
-    return t("toast.error_reason_processing", { defaultValue: "처리 중 오류 발생" });
+    return t("toast.error_reason_processing");
   }
 
   const message = err instanceof Error ? err.message : String(err);
@@ -129,9 +127,7 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("웹 전용") ||
     lower.includes("web-only")
   ) {
-    return t("toast.woff_activate_unsupported", {
-      defaultValue: "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화를 지원하지 않습니다.",
-    });
+    return t("toast.woff_activate_unsupported");
   }
 
   if (
@@ -141,7 +137,7 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("잠겨") ||
     lower.includes("locked")
   ) {
-    return t("toast.error_reason_in_use", { defaultValue: "다른 프로그램에서 사용 중" });
+    return t("toast.error_reason_in_use");
   }
 
   if (
@@ -149,7 +145,7 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("access_denied") ||
     lower.includes("permission")
   ) {
-    return t("toast.error_reason_permission", { defaultValue: "쓰기 권한 부족" });
+    return t("toast.error_reason_permission");
   }
 
   if (
@@ -158,7 +154,7 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("corrupt") ||
     lower.includes("format")
   ) {
-    return t("toast.error_reason_corrupted", { defaultValue: "지원하지 않거나 손상된 서체" });
+    return t("toast.error_reason_corrupted");
   }
 
   if (
@@ -166,7 +162,7 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("찾을 수 없") ||
     lower.includes("존재하지 않")
   ) {
-    return t("toast.error_reason_not_found", { defaultValue: "파일을 찾을 수 없음" });
+    return t("toast.error_reason_not_found");
   }
 
   return message.replace(/^Error:\s*/i, "");

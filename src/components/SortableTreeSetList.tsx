@@ -325,7 +325,7 @@ export function SortableTreeSetList({
             {/* 맥 파인더 스타일: 폴더 안으로 넣기 뱃지 */}
             {isInsideTarget && (
               <div className="absolute right-2 top-1/2 -translate-y-1/2 z-30 pointer-events-none flex items-center gap-1 bg-theme-accent text-theme-accent-text text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-md animate-bounce">
-                <span>{t("sidebar.move_into_set", { name: item.set.name, defaultValue: `↳ ${item.set.name} 안으로 이동` })}</span>
+                <span>{t("sidebar.move_into_set", { name: item.set.name })}</span>
               </div>
             )}
 
@@ -342,11 +342,10 @@ export function SortableTreeSetList({
                     <span>
                       {t("sidebar.insert_child", {
                         parent: dropIndicator.targetParentName ? `(${dropIndicator.targetParentName})` : "",
-                        defaultValue: `↳ 2depth ${dropIndicator.targetParentName ? `(${dropIndicator.targetParentName})` : ""}`,
                       })}
                     </span>
                   ) : (
-                    <span>{t("sidebar.insert_root", "1depth 최상위로 끼워넣기")}</span>
+                    <span>{t("sidebar.insert_root")}</span>
                   )}
                 </span>
               </div>
@@ -367,11 +366,10 @@ export function SortableTreeSetList({
                     <span>
                       {t("sidebar.insert_child", {
                         parent: dropIndicator.targetParentName ? `(${dropIndicator.targetParentName})` : "",
-                        defaultValue: `↳ 2depth ${dropIndicator.targetParentName ? `(${dropIndicator.targetParentName})` : ""}`,
                       })}
                     </span>
                   ) : (
-                    <span>{t("sidebar.insert_root", "1depth 최상위로 끼워넣기")}</span>
+                    <span>{t("sidebar.insert_root")}</span>
                   )}
                 </span>
               </div>

@@ -32,8 +32,8 @@ export const ListRefreshButton: React.FC<ListRefreshButtonProps> = ({
   const [internalLoading, setInternalLoading] = useState(false);
 
   const effectiveLoading = isLoading || internalLoading;
-  const buttonTitle = title ?? t("toolbar.refresh", "새로고침");
-  const buttonLabel = label ?? t("toolbar.refresh", "새로고침");
+  const buttonTitle = title ?? t("toolbar.refresh");
+  const buttonLabel = label ?? t("toolbar.refresh");
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

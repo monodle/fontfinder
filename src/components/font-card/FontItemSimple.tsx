@@ -84,14 +84,14 @@ export function FontItemSimple({
           <div>
             <span className="opacity-60">{effectiveText}</span>
             <span className="block text-[10px] text-rose-500/90 font-system italic mt-1">
-              ({t("font_item.deleted_desc", "출처 폴더 제거됨 (서재 보존)")})
+              ({t("font_item.deleted_desc")})
             </span>
           </div>
         ) : isUnplugged ? (
           <div>
             <span className="opacity-60">{effectiveText}</span>
             <span className="block text-[10px] text-amber-500/90 font-system italic mt-1">
-              ({t("font_item.unplugged_desc", "원본 파일 연결 끊김")})
+              ({t("font_item.unplugged_desc")})
             </span>
           </div>
         ) : isLoaded ? (

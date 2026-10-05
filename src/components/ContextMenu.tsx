@@ -147,15 +147,14 @@ export function ContextMenu({
 
   // 폰트 비교 라벨
   const diffLabel = useMemo(() => {
-    if (fonts.length === 0) return t("context_menu.diff_compare", "폰트비교");
-    if (fonts.length === 1) return t("context_menu.diff_compare_1", "폰트비교 (1)");
+    if (fonts.length === 0) return t("context_menu.diff_compare");
+    if (fonts.length === 1) return t("context_menu.diff_compare_1");
     if (fonts.length <= 5) {
       return t("context_menu.diff_compare_n", {
         count: fonts.length,
-        defaultValue: `폰트비교 (${fonts.length})`,
       });
     }
-    return t("context_menu.diff_compare_top5", "폰트비교 (상위 5개)");
+    return t("context_menu.diff_compare_top5");
   }, [fonts.length, t]);
 
   const handleDiffClick = useCallback(() => {
@@ -163,7 +162,7 @@ export function ContextMenu({
     onClose();
     if (fonts.length > 5) {
       onActionFeedback?.(
-        t("diff.top5_sliced_notice", "최대 5개 폰트만 비교 슬롯에 등록되었습니다.")
+        t("diff.top5_sliced_notice")
       );
       onOpenDiff?.(fonts.slice(0, 5));
     } else {
@@ -497,7 +496,7 @@ export function ContextMenu({
   const handleSetAction = (setId: number) => {
     const state = getSetMembershipState(setId);
     if (state === "all") {
-      onActionFeedback?.(t("context_menu.already_in_set", "이미 해당 서재에 등록되어 있습니다."));
+      onActionFeedback?.(t("context_menu.already_in_set"));
       onClose();
       return;
     }
@@ -632,7 +631,7 @@ export function ContextMenu({
     navigator.clipboard.writeText(names);
     onActionFeedback?.(
       isMulti
-        ? t("context_menu.copy_names", { count: fonts.length, defaultValue: `글꼴 이름 복사 (${fonts.length}개)` })
+        ? t("context_menu.copy_names", { count: fonts.length })
         : t("toast.copy_name")
     );
     onClose();
@@ -643,7 +642,7 @@ export function ContextMenu({
     navigator.clipboard.writeText(paths);
     onActionFeedback?.(
       isMulti
-        ? t("context_menu.copy_paths", { count: fonts.length, defaultValue: `파일 경로 복사 (${fonts.length}개)` })
+        ? t("context_menu.copy_paths", { count: fonts.length })
         : t("toast.copy_path")
     );
     onClose();
@@ -653,13 +652,13 @@ export function ContextMenu({
   const handleShowInFolder = () => {
     if (primaryFont) {
       if (!isFontUsable(primaryFont)) {
-        onActionFeedback?.(t("toast.folder_open_failed", "파일이 연결되어 있지 않거나 삭제되었습니다."));
+        onActionFeedback?.(t("toast.folder_open_failed"));
         onClose();
         return;
       }
       fontService.showInFolder(primaryFont.file_path).catch((err) => {
         console.error("탐색기 열기 실패:", err);
-        onActionFeedback?.(t("toast.folder_open_failed", "폴더를 열지 못했습니다."));
+        onActionFeedback?.(t("toast.folder_open_failed"));
       });
     }
     onClose();
@@ -727,10 +726,9 @@ export function ContextMenu({
             <Heart className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
             <span>
               {!isMulti || favoritedFonts.length === 0
-                ? t("context_menu.favorite_add", "즐겨찾기 등록")
+                ? t("context_menu.favorite_add")
                 : t("context_menu.bulk_favorite_add", {
                     count: unfavoritedFonts.length,
-                    defaultValue: `즐겨찾기 등록 (${unfavoritedFonts.length}개)`,
                   })}
             </span>
           </button>
@@ -747,10 +745,9 @@ export function ContextMenu({
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />
             <span>
               {!isMulti || unfavoritedFonts.length === 0
-                ? t("context_menu.favorite_remove", "즐겨찾기 제거")
+                ? t("context_menu.favorite_remove")
                 : t("context_menu.bulk_favorite_remove", {
                     count: favoritedFonts.length,
-                    defaultValue: `즐겨찾기 제거 (${favoritedFonts.length}개)`,
                   })}
             </span>
           </button>
@@ -806,9 +803,8 @@ export function ContextMenu({
               {isMulti
                 ? t("context_menu.bulk_remove_from_set", {
                     count: fonts.length,
-                    defaultValue: `서재에서 제거 (${fonts.length}개)`,
                   })
-                : t("context_menu.remove_from_set", "서재에서 제거")}
+                : t("context_menu.remove_from_set")}
             </span>
           </button>
         )}
@@ -833,10 +829,9 @@ export function ContextMenu({
             <Zap className="w-3.5 h-3.5 text-theme-accent shrink-0" />
             <span>
               {!isMulti || activeActivatableFonts.length === 0
-                ? t("context_menu.activate", "임시활성화 등록")
+                ? t("context_menu.activate")
                 : t("context_menu.bulk_activate", {
                     count: inactiveActivatableFonts.length,
-                    defaultValue: `임시활성화 등록 (${inactiveActivatableFonts.length}개)`,
                   })}
             </span>
           </button>
@@ -853,10 +848,9 @@ export function ContextMenu({
             <ZapOff className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <span>
               {!isMulti || inactiveActivatableFonts.length === 0
-                ? t("context_menu.deactivate", "임시활성화 해제")
+                ? t("context_menu.deactivate")
                 : t("context_menu.bulk_deactivate", {
                     count: activeActivatableFonts.length,
-                    defaultValue: `임시활성화 해제 (${activeActivatableFonts.length}개)`,
                   })}
             </span>
           </button>
@@ -875,9 +869,8 @@ export function ContextMenu({
               {isMulti
                 ? t("context_menu.bulk_install", {
                     count: installableFonts.length,
-                    defaultValue: `시스템 설치 (${installableFonts.length}개)`,
                   })
-                : t("context_menu.install", "시스템 설치")}
+                : t("context_menu.install")}
             </span>
           </button>
         )}
@@ -895,9 +888,8 @@ export function ContextMenu({
               {isMulti
                 ? t("context_menu.bulk_uninstall", {
                     count: uninstallableFonts.length,
-                    defaultValue: `시스템 제거 (${uninstallableFonts.length}개)`,
                   })
-                : t("context_menu.uninstall", "시스템 제거")}
+                : t("context_menu.uninstall")}
             </span>
           </button>
         )}
@@ -914,9 +906,8 @@ export function ContextMenu({
               {isMulti
                 ? t("context_menu.system_protected_count", {
                     count: systemFonts.length,
-                    defaultValue: `시스템 보호 안내 (${systemFonts.length}개)`,
                   })
-                : t("context_menu.system_protected_label", "시스템 보호 안내")}
+                : t("context_menu.system_protected_label")}
             </span>
           </div>
         )}
@@ -973,7 +964,7 @@ export function ContextMenu({
           >
             <div className="flex items-center gap-2 truncate min-w-0">
               <Copy className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
-              <span className="truncate">{t("context_menu.copy", "복사")}</span>
+              <span className="truncate">{t("context_menu.copy")}</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
           </button>
@@ -990,8 +981,8 @@ export function ContextMenu({
             <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
             <span>
               {isMac
-                ? t("context_menu.show_in_folder_mac", "Finder에서 보기")
-                : t("context_menu.show_in_folder", "파일 탐색기에서 보기")}
+                ? t("context_menu.show_in_folder_mac")
+                : t("context_menu.show_in_folder")}
             </span>
           </button>
         )}
@@ -1016,9 +1007,8 @@ export function ContextMenu({
                 {isMulti
                   ? t("context_menu.view_font_info_n", {
                       count: fonts.length,
-                      defaultValue: `폰트 정보 (${fonts.length}개)`,
                     })
-                  : t("context_menu.view_font_info", "폰트 정보")}
+                  : t("context_menu.view_font_info")}
               </span>
             </button>
           </>
@@ -1050,7 +1040,7 @@ export function ContextMenu({
                   type="text"
                   value={setSearchQuery}
                   onChange={(e) => setSetSearchQuery(e.target.value)}
-                  placeholder={t("context_menu.search_sets", "서재 세트 검색...")}
+                  placeholder={t("context_menu.search_sets")}
                   className="w-full pl-7 pr-2 py-1 text-[11px] bg-theme-hover/60 border border-theme-border-subtle rounded-md text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:border-theme-accent"
                   autoFocus
                 />
@@ -1061,11 +1051,11 @@ export function ContextMenu({
             <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar px-0.5">
               {sets.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
-                  {t("context_menu.no_sets", "등록된 서재 세트 없음")}
+                  {t("context_menu.no_sets")}
                 </div>
               ) : structuredSetGroups.length === 0 ? (
                 <div className="px-3 py-3 text-center text-theme-text-muted text-[11px]">
-                  {t("context_menu.no_matching_sets", "일치하는 서재 세트 없음")}
+                  {t("context_menu.no_matching_sets")}
                 </div>
               ) : (
                 structuredSetGroups.map((group) => {
@@ -1085,8 +1075,8 @@ export function ContextMenu({
                           className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer group hover:bg-theme-hover text-theme-text font-medium"
                           title={
                             parentState === "all"
-                              ? t("context_menu.already_in_set", "이미 등록되어 있습니다")
-                              : t("context_menu.add_to_set", "서재 세트 등록")
+                              ? t("context_menu.already_in_set")
+                              : t("context_menu.add_to_set")
                           }
                         >
                           <div className="flex items-center gap-1.5 truncate min-w-0">
@@ -1131,8 +1121,8 @@ export function ContextMenu({
                                 className="w-full flex items-center justify-between gap-1.5 px-2 py-1 rounded-md text-left transition-colors cursor-pointer group hover:bg-theme-hover text-theme-text/90 hover:text-theme-text"
                                 title={
                                   childState === "all"
-                                    ? t("context_menu.already_in_set", "이미 등록되어 있습니다")
-                                    : t("context_menu.add_to_set", "서재 세트 등록")
+                                    ? t("context_menu.already_in_set")
+                                    : t("context_menu.add_to_set")
                                 }
                               >
                                 <div className="flex items-center gap-1.5 truncate min-w-0">
@@ -1202,9 +1192,8 @@ export function ContextMenu({
                 {isMulti
                   ? t("context_menu.copy_names", {
                       count: fonts.length,
-                      defaultValue: `글꼴 이름 복사 (${fonts.length}개)`,
                     })
-                  : t("context_menu.copy_name", "글꼴 이름 복사")}
+                  : t("context_menu.copy_name")}
               </span>
             </button>
 
@@ -1219,9 +1208,8 @@ export function ContextMenu({
                 {isMulti
                   ? t("context_menu.copy_paths", {
                       count: fonts.length,
-                      defaultValue: `파일 경로 복사 (${fonts.length}개)`,
                     })
-                  : t("context_menu.copy_path", "파일 경로 복사")}
+                  : t("context_menu.copy_path")}
               </span>
             </button>
           </div>,

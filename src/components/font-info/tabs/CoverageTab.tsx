@@ -36,7 +36,7 @@ export function CoverageTab({ details }: CoverageTabProps) {
               {coverage.total_glyph_count.toLocaleString()}
             </span>
             <span className="text-[10px] text-theme-text-muted">
-              {t("font_info.coverage.glyphs_unit", "glyphs")}
+              {t("font_info.coverage.glyphs_unit")}
             </span>
           </div>
         </div>
@@ -48,7 +48,7 @@ export function CoverageTab({ details }: CoverageTabProps) {
               {coverage.encoded_char_count.toLocaleString()}
             </span>
             <span className="text-[10px] text-theme-text-muted">
-              {t("font_info.coverage.chars_unit", "chars")}
+              {t("font_info.coverage.chars_unit")}
             </span>
           </div>
         </div>

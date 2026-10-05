@@ -21,7 +21,8 @@
     "reset_to_default": "恢復預設",
     "clear": "清除",
     "copy": "複製",
-    "close_esc": "關閉 (Esc)"
+    "close_esc": "關閉 (Esc)",
+    "copy_success": "已複製到剪貼簿。"
   },
   "confirm": {
     "uninstall_font_title": "從系統移除字型",

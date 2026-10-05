@@ -62,10 +62,10 @@ export function FontInstallStatusBadge({
           variant="default"
           className={cn("text-[9px] bg-theme-badge text-theme-text-muted shrink-0", className)}
         >
-          <span title={t("badge.system_tooltip", "OS 시스템 보호 폰트")}>
+          <span title={t("badge.system_tooltip")}>
             {compact
-              ? t("badge.system", "시스템")
-              : t("badge.system_full", "시스템 설치")}
+              ? t("badge.system")
+              : t("badge.system_full")}
           </span>
         </Badge>
       );
@@ -76,10 +76,10 @@ export function FontInstallStatusBadge({
           variant="success"
           className={cn("text-[9px] shrink-0", className)}
         >
-          <span title={t("badge.user_tooltip", "사용자 OS 설치 폰트")}>
+          <span title={t("badge.user_tooltip")}>
             {compact
-              ? t("badge.user", "설치됨")
-              : t("badge.user_full", "사용자 설치")}
+              ? t("badge.user")
+              : t("badge.user_full")}
           </span>
         </Badge>
       );
@@ -90,10 +90,10 @@ export function FontInstallStatusBadge({
           variant="accent"
           className={cn("text-[9px] shrink-0", className)}
         >
-          <span title={t("badge.activated_tooltip", "현재 세션에 임시 활성화된 폰트")}>
+          <span title={t("badge.activated_tooltip")}>
             {compact
-              ? t("badge.activated", "활성")
-              : t("badge.activated_full", "임시활성화")}
+              ? t("badge.activated")
+              : t("badge.activated_full")}
           </span>
         </Badge>
       );
@@ -107,13 +107,12 @@ export function FontInstallStatusBadge({
         >
           <span
             title={t(
-              "badge.unplugged_tooltip",
-              "원본 파일 연결 끊김 (외장 하드 미연결 또는 파일 부재)"
+              "badge.unplugged_tooltip"
             )}
           >
             {compact
-              ? t("badge.unplugged", "끊김")
-              : t("badge.unplugged_full", "연결 끊김")}
+              ? t("badge.unplugged")
+              : t("badge.unplugged_full")}
           </span>
         </Badge>
       );
@@ -127,13 +126,12 @@ export function FontInstallStatusBadge({
         >
           <span
             title={t(
-              "badge.deleted_tooltip",
-              "출처 폴더가 앱에서 제거된 폰트 (서재 보존)"
+              "badge.deleted_tooltip"
             )}
           >
             {compact
-              ? t("badge.deleted", "제거됨")
-              : t("badge.deleted_full", "폴더 제거됨")}
+              ? t("badge.deleted")
+              : t("badge.deleted_full")}
           </span>
         </Badge>
       );
@@ -145,8 +143,8 @@ export function FontInstallStatusBadge({
           variant="muted"
           className={cn("text-[9px] shrink-0", className)}
         >
-          <span title={t("badge.uninstalled_tooltip", "디스크/서재 보관 (미설치)")}>
-            {t("badge.uninstalled", "미설치")}
+          <span title={t("badge.uninstalled_tooltip")}>
+            {t("badge.uninstalled")}
           </span>
         </Badge>
       );
@@ -179,13 +177,12 @@ export function FontVersionBadge({
       >
         <span
           title={t(
-            "badge.newer_version_tooltip",
-            "시스템에 설치된 폰트보다 최신 버전입니다"
+            "badge.newer_version_tooltip"
           )}
         >
           {compact
-            ? t("badge.newer_version", "신버전")
-            : t("badge.newer_version_full", "업데이트 가능")}
+            ? t("badge.newer_version")
+            : t("badge.newer_version_full")}
         </span>
       </Badge>
     );
@@ -200,11 +197,10 @@ export function FontVersionBadge({
       >
         <span
           title={t(
-            "badge.older_version_tooltip",
-            "시스템에 더 최신 버전이 이미 설치되어 있습니다"
+            "badge.older_version_tooltip"
           )}
         >
-          {t("badge.older_version", "구버전")}
+          {t("badge.older_version")}
         </span>
       </Badge>
     );
@@ -239,12 +235,11 @@ export function FontDuplicateBadge({
       <span
         title={t("badge.duplicate_tooltip", {
           count,
-          defaultValue: `동일한 폰트 파일이 ${count}개 존재합니다`,
         })}
       >
         {compact
           ? `×${count}`
-          : t("badge.duplicate", { count, defaultValue: `중복 ${count}` })}
+          : t("badge.duplicate", { count })}
       </span>
     </Badge>
   );

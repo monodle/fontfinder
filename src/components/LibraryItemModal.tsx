@@ -135,12 +135,12 @@ export function LibraryItemModal({
   }, [activeTab]);
 
   const categoryTabs: { id: PaletteCategory; label: string }[] = [
-    { id: "all", label: t("library_modal.tab_all_colors", "전체 50종") },
-    { id: "warm", label: t("library_modal.tab_warm", "웜톤 (Warm)") },
-    { id: "nature", label: t("library_modal.tab_nature", "네이처 (Green)") },
-    { id: "cool", label: t("library_modal.tab_cool", "오션 (Blue)") },
-    { id: "purple", label: t("library_modal.tab_purple", "바이올렛 (Purple)") },
-    { id: "neutral", label: t("library_modal.tab_neutral", "차분함 (Muted)") },
+    { id: "all", label: t("library_modal.tab_all_colors") },
+    { id: "warm", label: t("library_modal.tab_warm") },
+    { id: "nature", label: t("library_modal.tab_nature") },
+    { id: "cool", label: t("library_modal.tab_cool") },
+    { id: "purple", label: t("library_modal.tab_purple") },
+    { id: "neutral", label: t("library_modal.tab_neutral") },
   ];
 
   // 현재 색상 명칭
@@ -149,41 +149,41 @@ export function LibraryItemModal({
   );
   const colorDisplayName = currentPreset
     ? currentPreset.label
-    : t("library_modal.custom_color_name", "커스텀 색상");
+    : t("library_modal.custom_color_name");
 
   const isLight = isLightColor(selectedColor);
   const displayName =
     name.trim() ||
     (mode === "edit_folder"
-      ? initialName || t("library_modal.default_folder_name", "폴더")
+      ? initialName || t("library_modal.default_folder_name")
       : mode === "create_set"
-      ? t("library_modal.default_new_set_name", "새 서재 세트")
-      : t("library_modal.default_set_name", "서재 세트"));
+      ? t("library_modal.default_new_set_name")
+      : t("library_modal.default_set_name"));
   const shortName = displayName.slice(0, 2);
 
   // 모드별 텍스트 및 아이콘 매핑
   const modalConfig = {
     create_set: {
-      title: t("sidebar.create_set_title", "새 서재 세트 만들기"),
-      subtitle: t("sidebar.create_set_desc", "자주 사용하는 폰트를 묶어 세트로 구성하고 한눈에 관리해보세요."),
+      title: t("sidebar.create_set_title"),
+      subtitle: t("sidebar.create_set_desc"),
       icon: <BookmarkPlus className="w-4 h-4 text-theme-accent" />,
-      submitLabel: t("common.create", "만들기"),
+      submitLabel: t("common.create"),
       submitIcon: <Plus className="w-3.5 h-3.5" />,
       isSubmitDisabled: !name.trim(),
     },
     edit_set: {
-      title: t("sidebar.edit_set_title", "서재 세트 수정"),
-      subtitle: t("sidebar.edit_set_desc", "세트의 이름과 고유 라벨 색상을 변경합니다."),
+      title: t("sidebar.edit_set_title"),
+      subtitle: t("sidebar.edit_set_desc"),
       icon: <Tag className="w-4 h-4 text-theme-accent" />,
-      submitLabel: t("common.save", "저장"),
+      submitLabel: t("common.save"),
       submitIcon: <Check className="w-3.5 h-3.5" />,
       isSubmitDisabled: !name.trim(),
     },
     edit_folder: {
-      title: t("sidebar.folder_color_title", "폴더 라벨 색상 변경"),
-      subtitle: t("sidebar.folder_color_desc", "서재와 폰트 카드에 표기될 폴더 고유 색상을 선택하세요."),
+      title: t("sidebar.folder_color_title"),
+      subtitle: t("sidebar.folder_color_desc"),
       icon: <Folder className="w-4 h-4 text-theme-accent" />,
-      submitLabel: t("common.apply", "적용"),
+      submitLabel: t("common.apply"),
       submitIcon: <Check className="w-3.5 h-3.5" />,
       isSubmitDisabled: false,
     },
@@ -252,8 +252,8 @@ export function LibraryItemModal({
             <div className="min-w-0">
               <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider block">
                 {mode === "edit_folder"
-                  ? t("library_modal.folder_label", "감시 폴더")
-                  : t("library_modal.set_label", "서재 세트")}
+                  ? t("library_modal.folder_label")
+                  : t("library_modal.set_label")}
               </span>
               <span className="text-sm font-bold text-theme-text truncate block">
                 {displayName}
@@ -298,7 +298,7 @@ export function LibraryItemModal({
             <div>
               <Input
                 ref={nameInputRef}
-                label={t("sidebar.set_name_label", "세트 이름")}
+                label={t("sidebar.set_name_label")}
                 prefixIcon={<Tag className="w-4 h-4 text-theme-text-muted" />}
                 type="text"
                 value={name}
@@ -313,12 +313,12 @@ export function LibraryItemModal({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-theme-text">
-                  {t("sidebar.set_location_label", "위치 (상위 서재 세트)")}
+                  {t("sidebar.set_location_label")}
                 </label>
                 <span className="text-[10px] text-theme-text-muted font-mono">
                   {parentId
-                    ? t("sidebar.depth_2", "2depth (하위 세트)")
-                    : t("sidebar.depth_1", "1depth (최상위 카테고리)")}
+                    ? t("sidebar.depth_2")
+                    : t("sidebar.depth_1")}
                 </span>
               </div>
 
@@ -326,7 +326,7 @@ export function LibraryItemModal({
                 <div className="px-3 py-2 rounded-xl bg-theme-input/40 border border-theme-border/60 text-xs text-theme-text-muted flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-[11px]">
                     <Folder className="w-3.5 h-3.5 text-theme-accent shrink-0" />
-                    <span>{t("sidebar.parent_has_children_locked", "최상위 (하위 세트를 포함하고 있어 1depth로 고정됨)")}</span>
+                    <span>{t("sidebar.parent_has_children_locked")}</span>
                   </span>
                 </div>
               ) : (
@@ -337,7 +337,7 @@ export function LibraryItemModal({
                     onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)}
                     className="w-full bg-theme-input/60 hover:bg-theme-input border border-theme-border focus:border-theme-accent focus:ring-2 focus:ring-theme-accent/20 rounded-xl pl-9 pr-8 py-2 text-xs text-theme-text transition-all outline-none cursor-pointer appearance-none"
                   >
-                    <option value="">{t("sidebar.set_parent_root", "📁 최상위 (1depth 카테고리)")}</option>
+                    <option value="">{t("sidebar.set_parent_root")}</option>
                     {availableParents
                       .filter((p) => p.parent_id == null && p.id !== currentSetId)
                       .map((p) => (
@@ -363,10 +363,10 @@ export function LibraryItemModal({
           <div className="flex items-center justify-between">
             <div>
               <span className="block text-xs font-semibold text-theme-text">
-                {t("sidebar.label_color", "라벨 색상")}
+                {t("sidebar.label_color")}
               </span>
               <span className="text-[11px] text-theme-text-muted">
-                {t("sidebar.label_color_desc", "서재와 폰트 카드에 표기될 고유 색상입니다.")}
+                {t("sidebar.label_color_desc")}
               </span>
             </div>
 
@@ -374,10 +374,10 @@ export function LibraryItemModal({
               type="button"
               onClick={handleRandomizeColor}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-theme-border bg-theme-hover/40 hover:bg-theme-hover text-[11px] font-medium text-theme-text-muted hover:text-theme-text transition-all cursor-pointer shadow-2xs"
-              title={t("sidebar.random_color", "랜덤 색상")}
+              title={t("sidebar.random_color")}
             >
               <Shuffle className="w-3 h-3 text-theme-accent" />
-              <span>{t("sidebar.random_color", "랜덤 배정")}</span>
+              <span>{t("sidebar.random_color")}</span>
             </button>
           </div>
 
@@ -439,7 +439,7 @@ export function LibraryItemModal({
             <div className="flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-theme-accent" />
               <span className="text-xs font-medium text-theme-text-muted">
-                {t("sidebar.custom_color", "직접 색상 입력 (HEX)")}
+                {t("sidebar.custom_color")}
               </span>
             </div>
             <div className="flex items-center gap-2">

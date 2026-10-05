@@ -189,10 +189,8 @@ export function SettingsModal({
       setIsImportModalOpen(true);
     } catch (err) {
       console.error("Backup file read error:", err);
-      const msg =
-        err instanceof Error
-          ? err.message
-          : t("settings.import_failed", "파일을 읽을 수 없습니다.");
+      const errorMsg = err instanceof Error ? err.message : "";
+      const msg = t("settings.import_failed", { error: errorMsg });
       if (onNotify) {
         onNotify(msg);
       } else {
@@ -227,23 +225,15 @@ export function SettingsModal({
       await fontService.resetAppData();
       localStorage.clear();
       if (onNotify) {
-        onNotify(
-          t(
-            "settings.reset_success_alert",
-            "앱 데이터 및 캐시가 성공적으로 초기화되었습니다."
-          )
-        );
+        onNotify(t("settings.reset_all_data_success"));
       }
       setTimeout(() => {
         window.location.reload();
       }, 500);
     } catch (err) {
       console.error("Reset app data failed:", err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : t("settings.reset_failed_alert", "초기화에 실패했습니다.")
-      );
+      const errorMsg = err instanceof Error ? `: ${err.message}` : "";
+      alert(`${t("settings.reset_failed_alert")}${errorMsg}`);
       setIsResetting(false);
     }
   };
@@ -254,8 +244,8 @@ export function SettingsModal({
     { id: "library", label: t("settings.tab_library"), icon: <Type className="w-4 h-4 shrink-0" /> },
     { id: "layout", label: t("settings.tab_layout"), icon: <LayoutGrid className="w-4 h-4 shrink-0" /> },
     { id: "advanced", label: t("settings.tab_advanced"), icon: <HardDrive className="w-4 h-4 shrink-0" /> },
-    { id: "sponsor", label: t("settings.tab_sponsor", "커피 한 잔 보내기"), icon: <Coffee className="w-4 h-4 shrink-0" /> },
-    { id: "about", label: t("settings.tab_about", "정보"), icon: <Info className="w-4 h-4 shrink-0" /> },
+    { id: "sponsor", label: t("settings.tab_sponsor"), icon: <Coffee className="w-4 h-4 shrink-0" /> },
+    { id: "about", label: t("settings.tab_about"), icon: <Info className="w-4 h-4 shrink-0" /> },
   ];
 
   return (
@@ -384,7 +374,7 @@ export function SettingsModal({
                   <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
                     <ArrowDownAZ className="w-4 h-4 text-theme-accent" />
                     <h3 className="font-semibold text-xs text-theme-text">
-                      {t("settings.font_sort_title", "폰트 목록 정렬")}
+                      {t("settings.font_sort_title")}
                     </h3>
                   </div>
 
@@ -399,7 +389,7 @@ export function SettingsModal({
                 <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle pt-2">
                   <LayoutGrid className="w-4 h-4 text-theme-accent" />
                   <h3 className="font-semibold text-xs text-theme-text">
-                    {t("settings.default_view_mode")} & {t("settings.grid_columns")}
+                    {t("settings.layout_grid_title")}
                   </h3>
                 </div>
 
@@ -408,10 +398,10 @@ export function SettingsModal({
                   <div className="p-3 bg-theme-card rounded-xl border border-theme-border space-y-2">
                     <div className="flex flex-col">
                       <span className="text-[11px] font-medium text-theme-text-secondary">
-                        {t("settings.font_detail_mode", "폰트 카드 표시 방식")}
+                        {t("settings.font_detail_mode")}
                       </span>
                       <span className="text-[10px] text-theme-text-muted mt-0.5">
-                        {t("settings.font_detail_mode_desc", "폰트 목록에 표시할 정보의 상세 수준을 설정합니다.")}
+                        {t("settings.font_detail_mode_desc")}
                       </span>
                     </div>
                     <DetailModeControl
@@ -536,7 +526,7 @@ export function SettingsModal({
                 <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
                   <Coffee className="w-4 h-4 text-amber-500" />
                   <h3 className="font-semibold text-xs text-theme-text">
-                    {t("settings.tab_sponsor", "커피 한 잔 보내기")}
+                    {t("settings.tab_sponsor")}
                   </h3>
                 </div>
                 <SponsorSection />
@@ -549,7 +539,7 @@ export function SettingsModal({
                 <div className="flex items-center gap-2 pb-1.5 border-b border-theme-border-subtle">
                   <Info className="w-4 h-4 text-theme-accent" />
                   <h3 className="font-semibold text-xs text-theme-text">
-                    {t("settings.tab_about", "정보")}
+                    {t("settings.tab_about")}
                   </h3>
                 </div>
                 <AboutSection />

@@ -83,7 +83,7 @@ export function ConfirmModal({
             fullWidth
             onClick={onClose}
           >
-            {cancelText || t("common.cancel", "취소")}
+            {cancelText || t("common.cancel")}
           </Button>
           <Button
             variant={isDanger ? "danger" : "primary"}
@@ -92,7 +92,7 @@ export function ConfirmModal({
             autoFocus
             onClick={handleConfirm}
           >
-            {confirmText || (isDanger ? t("common.delete", "삭제") : t("common.confirm", "확인"))}
+            {confirmText || (isDanger ? t("common.delete") : t("common.confirm"))}
           </Button>
         </div>
       </div>

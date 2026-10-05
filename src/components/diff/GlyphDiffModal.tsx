@@ -312,7 +312,7 @@ export function GlyphDiffModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t("diff.modal_aria", "글리프 Diff 비교 모달")}
+      aria-label={t("diff.modal_aria")}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

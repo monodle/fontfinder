@@ -21,7 +21,8 @@
     "reset_to_default": "デフォルトに戻す",
     "clear": "クリア",
     "copy": "コピー",
-    "close_esc": "閉じる (Esc)"
+    "close_esc": "閉じる (Esc)",
+    "copy_success": "クリップボードにコピーしました。"
   },
   "confirm": {
     "uninstall_font_title": "システムからフォントを削除",

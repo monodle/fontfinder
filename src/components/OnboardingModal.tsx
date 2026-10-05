@@ -96,7 +96,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-theme-hover/60 border border-theme-border/60 animate-in fade-in">
                 <RefreshCw className="w-3 h-3 animate-spin text-theme-accent shrink-0" />
                 <span className="font-medium text-theme-text-secondary">
-                  {t("onboarding.scanning_status", "글꼴 색인 중...")}
+                  {t("onboarding.scanning_status")}
                 </span>
                 <span className="font-mono text-theme-accent text-[10px]">
                   {Math.min(100, Math.round((scanProgress.current / scanProgress.total) * 100))}%

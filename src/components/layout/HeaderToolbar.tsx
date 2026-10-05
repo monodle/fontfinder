@@ -99,7 +99,7 @@ export function HeaderToolbar({
             variant="ghost"
             active={previewSettings.isBold}
             onClick={() => onBoldChange?.(!previewSettings.isBold)}
-            tooltip={t("toolbar.bold", "굵게 (Bold)")}
+            tooltip={t("toolbar.bold")}
             tooltipPosition="bottom"
             icon={<Bold className="w-3.5 h-3.5" />}
           />
@@ -108,7 +108,7 @@ export function HeaderToolbar({
             variant="ghost"
             active={previewSettings.isItalic}
             onClick={() => onItalicChange?.(!previewSettings.isItalic)}
-            tooltip={t("toolbar.italic", "기울임 (Italic)")}
+            tooltip={t("toolbar.italic")}
             tooltipPosition="bottom"
             icon={<Italic className="w-3.5 h-3.5" />}
           />
@@ -117,7 +117,7 @@ export function HeaderToolbar({
             variant="ghost"
             active={previewSettings.isUnderline}
             onClick={() => onUnderlineChange?.(!previewSettings.isUnderline)}
-            tooltip={t("toolbar.underline", "밑줄 (Underline)")}
+            tooltip={t("toolbar.underline")}
             tooltipPosition="bottom"
             icon={<Underline className="w-3.5 h-3.5" />}
           />

@@ -131,7 +131,7 @@ export function FontInfoSidebar({
       {/* 3. 하단 개수 표시 */}
       <div className="px-3 py-2 border-t border-theme-border text-[11px] text-theme-text-muted flex justify-between">
         <span>{selectedIndex + 1} / {fonts.length}</span>
-        <span>{t("font_info.selected_count", { count: fonts.length, defaultValue: `${fonts.length}개 선택됨` })}</span>
+        <span>{t("font_info.selected_count", { count: fonts.length })}</span>
       </div>
     </div>
   );

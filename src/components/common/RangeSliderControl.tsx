@@ -109,7 +109,7 @@ export function RangeSliderControl({
                 type="button"
                 onClick={handleResetClick}
                 className="p-1 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover transition-colors cursor-pointer"
-                title={t("common.reset_to_default", "기본값으로 재설정")}
+                title={t("common.reset_to_default")}
               >
                 <RotateCcw className="w-3 h-3" />
               </button>

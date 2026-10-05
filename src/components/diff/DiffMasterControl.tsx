@@ -64,9 +64,9 @@ export function DiffMasterControl({
             value={settings.text}
             onChange={handleTextChange}
             maxLength={4}
-            placeholder={t("diff.text_placeholder", "글자 입력 (최대 4자)")}
+            placeholder={t("diff.text_placeholder")}
             className="w-40 sm:w-48 px-3 py-1.5 bg-theme-input border border-theme-border rounded-lg text-sm font-medium text-theme-text placeholder-theme-text-muted focus:outline-none focus:border-theme-accent focus:ring-1 focus:ring-theme-accent/30 transition-all text-center tracking-widest font-mono"
-            title={t("diff.text_input_tooltip", "비교할 글자 (공백 제외 최대 4글자)")}
+            title={t("diff.text_input_tooltip")}
           />
           <span className="absolute right-2.5 text-[10px] text-theme-text-muted pointer-events-none font-mono">
             {Array.from(settings.text).length}/4
@@ -93,7 +93,7 @@ export function DiffMasterControl({
               onSettingsChange((prev) => ({ ...prev, fontSize: val }));
             }}
             className="w-20 md:w-28 accent-theme-accent cursor-pointer"
-            title={t("diff.font_size_slider", "글리프 크기 (240px ~ 400px)")}
+            title={t("diff.font_size_slider")}
           />
         </div>
 
@@ -107,7 +107,7 @@ export function DiffMasterControl({
                 ? "bg-theme-accent text-theme-accent-text font-bold"
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
             }`}
-            title={t("diff.master_bold_tooltip", "마스터 굵게 (Bold)")}
+            title={t("diff.master_bold_tooltip")}
           >
             <Bold className="w-3.5 h-3.5" />
           </button>
@@ -119,7 +119,7 @@ export function DiffMasterControl({
                 ? "bg-theme-accent text-theme-accent-text italic font-bold"
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
             }`}
-            title={t("diff.master_italic_tooltip", "마스터 기울임 (Italic)")}
+            title={t("diff.master_italic_tooltip")}
           >
             <Italic className="w-3.5 h-3.5" />
           </button>
@@ -135,9 +135,9 @@ export function DiffMasterControl({
                 ? "bg-theme-accent text-theme-accent-text font-semibold shadow-2xs"
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
             }`}
-            title={t("diff.fill_mode_tooltip", "전체 채우기 모드")}
+            title={t("diff.fill_mode_tooltip")}
           >
-            {t("diff.fill_mode_all", "전체 Fill")}
+            {t("diff.fill_mode_all")}
           </button>
           <button
             type="button"
@@ -147,9 +147,9 @@ export function DiffMasterControl({
                 ? "bg-theme-accent text-theme-accent-text font-semibold shadow-2xs"
                 : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
             }`}
-            title={t("diff.stroke_mode_tooltip", "전체 외곽선 모드")}
+            title={t("diff.stroke_mode_tooltip")}
           >
-            {t("diff.stroke_mode_all", "전체 Stroke")}
+            {t("diff.stroke_mode_all")}
           </button>
         </div>
 
@@ -162,10 +162,10 @@ export function DiffMasterControl({
               ? "bg-theme-hover text-theme-text font-semibold border-theme-accent/40"
               : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover/60"
           }`}
-          title={t("diff.grid_toggle_tooltip", "모눈 격자 On/Off")}
+          title={t("diff.grid_toggle_tooltip")}
         >
           <Grid className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">{t("diff.grid_label", "격자")}</span>
+          <span className="hidden md:inline">{t("diff.grid_label")}</span>
         </button>
 
         {/* 전체 위치 초기화 [ ⟲ ] 버튼 */}
@@ -174,13 +174,12 @@ export function DiffMasterControl({
           onClick={onResetAllPositions}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-card hover:bg-theme-hover text-theme-text-secondary hover:text-theme-text transition-all shadow-2xs text-xs font-medium cursor-pointer"
           title={t(
-            "diff.reset_all_positions_tooltip",
-            "모든 등록 서체의 위치 오프셋을 (0, 0)으로 일괄 리셋"
+            "diff.reset_all_positions_tooltip"
           )}
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">
-            {t("diff.reset_all_positions", "전체 위치 초기화")}
+            {t("diff.reset_all_positions")}
           </span>
         </button>
       </div>
@@ -190,8 +189,8 @@ export function DiffMasterControl({
         type="button"
         onClick={onClose}
         className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text hover:bg-theme-hover border border-transparent hover:border-theme-border transition-all cursor-pointer"
-        title={t("diff.close_modal_tooltip", "모달 닫기 (Esc)")}
-        aria-label={t("diff.close_modal_tooltip", "모달 닫기 (Esc)")}
+        title={t("diff.close_modal_tooltip")}
+        aria-label={t("diff.close_modal_tooltip")}
       >
         <X className="w-5 h-5" />
       </button>

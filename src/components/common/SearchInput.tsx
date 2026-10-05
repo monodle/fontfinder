@@ -56,7 +56,7 @@ export const SearchInput = forwardRef<SearchInputRef, SearchInputProps>(
     ref
   ) {
     const { t } = useTranslation();
-    const resolvedClearButtonTitle = clearButtonTitle ?? t("common.clear", "지우기");
+    const resolvedClearButtonTitle = clearButtonTitle ?? t("common.clear");
     const internalInputRef = useRef<HTMLInputElement>(null);
 
     const setMergedRef = (el: HTMLInputElement | null) => {

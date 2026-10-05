@@ -295,7 +295,7 @@ export function PreviewTypographyForm({
           {/* Style Toggles: Bold, Italic, Underline */}
           <div className="space-y-1">
             <span className="block text-[11px] text-theme-text-secondary">
-              {t("style_modal.styles_and_align_title", "스타일")}
+              {t("style_modal.styles_and_align_title")}
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -306,10 +306,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title={t("toolbar.bold", "굵게")}
+                title={t("toolbar.bold")}
               >
                 <Bold className="w-3.5 h-3.5" />
-                <span>{t("toolbar.bold", "굵게")}</span>
+                <span>{t("toolbar.bold")}</span>
               </button>
 
               <button
@@ -320,10 +320,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title={t("toolbar.italic", "기울임")}
+                title={t("toolbar.italic")}
               >
                 <Italic className="w-3.5 h-3.5" />
-                <span>{t("toolbar.italic", "기울임")}</span>
+                <span>{t("toolbar.italic")}</span>
               </button>
 
               <button
@@ -334,10 +334,10 @@ export function PreviewTypographyForm({
                     ? "bg-theme-accent text-theme-accent-text border-theme-accent"
                     : "bg-theme-card text-theme-text-secondary border-theme-border hover:bg-theme-hover hover:text-theme-text"
                 }`}
-                title={t("toolbar.underline", "밑줄")}
+                title={t("toolbar.underline")}
               >
                 <Underline className="w-3.5 h-3.5" />
-                <span>{t("toolbar.underline", "밑줄")}</span>
+                <span>{t("toolbar.underline")}</span>
               </button>
             </div>
           </div>

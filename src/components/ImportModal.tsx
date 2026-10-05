@@ -70,24 +70,24 @@ export function ImportModal({
     try {
       const result = await backupService.importBackupData(backupData, selection);
       const details: string[] = [];
-      if (result.settings) details.push(t("settings.import_done_settings", "시스템 설정"));
+      if (result.settings) details.push(t("settings.import_done_settings"));
       if (result.foldersAdded > 0)
-        details.push(t("settings.import_done_folders", "{{count}}개 폴더", { count: result.foldersAdded }));
+        details.push(t("settings.import_done_folders", { count: result.foldersAdded }));
       if (result.setsAdded > 0)
-        details.push(t("settings.import_done_sets", "{{count}}개 서재", { count: result.setsAdded }));
+        details.push(t("settings.import_done_sets", { count: result.setsAdded }));
 
       const feedback = details.length > 0
-        ? t("settings.import_success_with_details", "성공적으로 복원되었습니다 ({{details}}).", {
+        ? t("settings.import_success_with_details", {
             details: details.join(", "),
           })
-        : t("settings.import_success", "데이터를 성공적으로 불러왔습니다.");
+        : t("settings.import_success");
 
       onSuccess(feedback);
       onClose();
       onComplete();
     } catch (err) {
       console.error("Import error:", err);
-      setErrorMsg(err instanceof Error ? err.message : t("settings.import_failed", "가져오기에 실패했습니다."));
+      setErrorMsg(err instanceof Error ? err.message : t("settings.import_failed"));
     } finally {
       setIsImporting(false);
     }
@@ -99,12 +99,12 @@ export function ImportModal({
       onClose={onClose}
       maxWidth="md"
       icon={<Upload className="w-4 h-4 text-theme-accent" />}
-      title={t("settings.import_modal_title", "데이터 및 설정 가져오기")}
-      subtitle={t("settings.import_modal_subtitle", "가져올 백업 항목을 선택하세요.")}
+      title={t("settings.import_modal_title")}
+      subtitle={t("settings.import_modal_subtitle")}
       footer={
         <div className="flex items-center justify-end w-full gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>
-            {t("common.cancel", "취소")}
+            {t("common.cancel")}
           </Button>
           <Button
             variant="primary"
@@ -112,10 +112,10 @@ export function ImportModal({
             onClick={handleImport}
             disabled={isNoneSelected}
             isLoading={isImporting}
-            loadingText={t("common.loading", "처리 중...")}
+            loadingText={t("common.loading")}
             leftIcon={<Upload className="w-3.5 h-3.5" />}
           >
-            {t("settings.import_btn_confirm", "선택 항목 가져오기")}
+            {t("settings.import_btn_confirm")}
           </Button>
         </div>
       }
@@ -130,12 +130,12 @@ export function ImportModal({
             onChange={() => toggleCategory("settings")}
             disabled={!summary.hasSettings}
             icon={<Sliders className="w-3.5 h-3.5 text-theme-accent" />}
-            title={t("settings.import_item_settings", "시스템 기본 설정")}
-            description={t("settings.import_item_settings_desc", "파일에 저장된 테마, 언어, 폰트 크기 및 미리보기 기본값 적용")}
+            title={t("settings.import_item_settings")}
+            description={t("settings.import_item_settings_desc")}
             badge={
               !summary.hasSettings ? (
                 <span className="text-[10px] text-theme-text-muted">
-                  ({t("common.not_included", "파일에 없음")})
+                  ({t("common.not_included")})
                 </span>
               ) : undefined
             }
@@ -147,8 +147,8 @@ export function ImportModal({
             onChange={() => toggleCategory("folders")}
             disabled={summary.foldersCount === 0}
             icon={<Folder className="w-3.5 h-3.5 text-sky-500" />}
-            title={t("settings.import_item_folders", "추가된 폴더")}
-            description={t("settings.import_item_folders_desc", "등록된 감시 폴더 경로를 추가하고 파일 변경 감시 활성화")}
+            title={t("settings.import_item_folders")}
+            description={t("settings.import_item_folders_desc")}
             badge={
               <div className="flex items-center gap-1.5">
                 <span className="px-1.5 py-0.2 rounded bg-theme-hover text-theme-text-secondary text-[10px] font-mono">
@@ -156,7 +156,7 @@ export function ImportModal({
                 </span>
                 {summary.foldersCount === 0 && (
                   <span className="text-[10px] text-theme-text-muted">
-                    ({t("common.not_included", "파일에 없음")})
+                    ({t("common.not_included")})
                   </span>
                 )}
               </div>
@@ -169,8 +169,8 @@ export function ImportModal({
             onChange={() => toggleCategory("sets")}
             disabled={summary.setsCount === 0}
             icon={<BookOpen className="w-3.5 h-3.5 text-indigo-500" />}
-            title={t("settings.import_item_sets", "서재 세트")}
-            description={t("settings.import_item_sets_desc", "서재 세트를 생성하고 해당 세트에 속한 글꼴 연결 복원")}
+            title={t("settings.import_item_sets")}
+            description={t("settings.import_item_sets_desc")}
             badge={
               <div className="flex items-center gap-1.5">
                 <span className="px-1.5 py-0.2 rounded bg-theme-hover text-theme-text-secondary text-[10px] font-mono">
@@ -178,7 +178,7 @@ export function ImportModal({
                 </span>
                 {summary.setsCount === 0 && (
                   <span className="text-[10px] text-theme-text-muted">
-                    ({t("common.not_included", "파일에 없음")})
+                    ({t("common.not_included")})
                   </span>
                 )}
               </div>

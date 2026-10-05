@@ -112,16 +112,16 @@ export function useFontActions({
         return;
       }
       if (font.install_status === "deleted") {
-        showToast(t("toast.deleted_activate_error", "출처 폴더가 제거된 폰트는 활성화할 수 없습니다."));
+        showToast(t("toast.deleted_activate_error"));
         return;
       }
       if (font.isMissing || font.install_status === "unplugged") {
-        showToast(t("toast.unplugged_activate_error", "폰트 원본 파일이 연결되어 있지 않습니다."));
+        showToast(t("toast.unplugged_activate_error"));
         return;
       }
       const isCurrentlyActive = activatedFontIds.has(font.id);
       if (!isCurrentlyActive && (font.format === "Woff" || font.format === "Woff2")) {
-        showToast(t("toast.woff_activate_unsupported", "WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화를 지원하지 않습니다."));
+        showToast(t("toast.woff_activate_unsupported"));
         return;
       }
       try {
@@ -343,7 +343,6 @@ export function useFontActions({
         showToast(
           t("toast.added_to_set", {
             name: targetFont?.full_name || t("font_item.badge_external"),
-            defaultValue: `'${targetFont?.full_name || ""}' 글꼴이 서재에 등록되었습니다.`,
           })
         );
       } catch (err) {
@@ -369,7 +368,6 @@ export function useFontActions({
         showToast(
           t("toast.bulk_added_to_set", {
             count: fontIds.length,
-            defaultValue: `${fontIds.length}개 글꼴이 서재에 등록되었습니다.`,
           })
         );
       } catch (err) {
@@ -394,7 +392,6 @@ export function useFontActions({
         showToast(
           t("toast.removed_from_set", {
             name: targetFont?.full_name || t("font_item.badge_external"),
-            defaultValue: "서재에서 제거되었습니다.",
           })
         );
       } catch (err) {
@@ -403,7 +400,6 @@ export function useFontActions({
         showToast(
           t("toast.remove_from_set_failed", {
             error: localizedErr,
-            defaultValue: `서재에서 제거 실패: ${localizedErr}`,
           })
         );
       }
@@ -427,7 +423,6 @@ export function useFontActions({
         showToast(
           t("toast.bulk_removed_from_set", {
             count: fontIds.length,
-            defaultValue: `${fontIds.length}개 글꼴이 서재에서 제거되었습니다.`,
           })
         );
       } catch (err) {
@@ -436,7 +431,6 @@ export function useFontActions({
         showToast(
           t("toast.remove_from_set_failed", {
             error: localizedErr,
-            defaultValue: `서재에서 제거 실패: ${localizedErr}`,
           })
         );
       }
@@ -455,11 +449,7 @@ export function useFontActions({
         const dirInfos = pathInfos.filter((info) => info.exists && info.is_dir);
 
         if (dirInfos.length === 0) {
-          showToast(
-            t("toast.drop_folder_only", {
-              defaultValue: "폴더를 끌어다 놓아주세요. (단일 파일 제외)",
-            })
-          );
+          showToast(t("toast.drop_folder_only"));
           return;
         }
 
@@ -474,7 +464,6 @@ export function useFontActions({
           showToast(
             t("toast.folder_already_exists", {
               name: firstExisting.name,
-              defaultValue: `'${firstExisting.name}' 폴더는 이미 서재에 등록되어 있습니다.`,
             })
           );
           return;
@@ -568,7 +557,6 @@ export function useFontActions({
             t("toast.folders_added", {
               count: newFoldersToAdd.length,
               fontCount: allNewFonts.length,
-              defaultValue: `${newFoldersToAdd.length}개의 폴더에서 총 ${allNewFonts.length}개의 폰트를 서재에 등록했습니다.`,
             })
           );
         }

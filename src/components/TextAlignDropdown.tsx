@@ -59,17 +59,17 @@ export function TextAlignDropdown({
   }[] = [
     {
       id: "left",
-      label: t("settings.align_left", "왼쪽"),
+      label: t("settings.align_left"),
       icon: AlignLeft,
     },
     {
       id: "center",
-      label: t("settings.align_center", "가운데"),
+      label: t("settings.align_center"),
       icon: AlignCenter,
     },
     {
       id: "right",
-      label: t("settings.align_right", "오른쪽"),
+      label: t("settings.align_right"),
       icon: AlignRight,
     },
   ];
@@ -98,8 +98,8 @@ export function TextAlignDropdown({
           isOpen && "border-theme-accent ring-1 ring-theme-accent/50",
           disabled && "opacity-50 cursor-not-allowed"
         )}
-        title={`${t("settings.default_text_align", "텍스트 정렬")}: ${currentOption.label}`}
-        aria-label={t("settings.default_text_align", "텍스트 정렬")}
+        title={`${t("settings.default_text_align")}: ${currentOption.label}`}
+        aria-label={t("settings.default_text_align")}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >

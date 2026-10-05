@@ -29,17 +29,15 @@ export function SortModeControl({
   const nameOrderTitle =
     sortSettings.mode === "name"
       ? sortSettings.nameOrder === "desc"
-        ? t("sort.mode_name_desc", { defaultValue: "이름순 (Z-A)" })
-        : t("sort.mode_name_asc", { defaultValue: "이름순 (A-Z)" })
-      : t("sort.mode_name", { defaultValue: "이름순 정렬" });
+        ? t("sort.mode_name_desc")
+        : t("sort.mode_name_asc")
+      : t("sort.mode_name");
 
   const options: SegmentOption<FontSortMode>[] = [
     {
       value: "smart",
       icon: <Sparkles className="w-3.5 h-3.5" />,
-      title: t("sort.mode_smart_desc", {
-        defaultValue: "스마트 정렬 (즐겨찾기 > 활성화 > 비활성화 > 접근불가)",
-      }),
+      title: t("sort.mode_smart_desc"),
     },
     {
       value: "name",
@@ -54,9 +52,7 @@ export function SortModeControl({
     {
       value: "custom",
       icon: <SlidersHorizontal className="w-3.5 h-3.5" />,
-      title: t("sort.mode_custom_desc", {
-        defaultValue: "사용자 정의 블록 정렬",
-      }),
+      title: t("sort.mode_custom_desc"),
     },
   ];
 
@@ -69,7 +65,7 @@ export function SortModeControl({
       size="sm"
       className={className}
       disabled={disabled}
-      aria-label={t("sort.title", { defaultValue: "폰트 목록 정렬" })}
+      aria-label={t("sort.title")}
     />
   );
 }

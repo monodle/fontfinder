@@ -45,29 +45,29 @@ export function FontSortSettingsSection({
   const blockMetaMap: Record<FontSortBlock, BlockMeta> = {
     favorites: {
       id: "favorites",
-      title: t("sort.block_favorites", "즐겨찾기 폰트"),
-      subtitle: t("sort.block_favorites_desc", "관심 등록한 즐겨찾기 글꼴"),
+      title: t("sort.block_favorites"),
+      subtitle: t("sort.block_favorites_desc"),
       icon: <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />,
       colorClass: "border-rose-500/30 bg-rose-500/5",
     },
     activated: {
       id: "activated",
-      title: t("sort.block_activated", "활성화 폰트"),
-      subtitle: t("sort.block_activated_desc", "시스템 등록 또는 임시 활성화 상태"),
+      title: t("sort.block_activated"),
+      subtitle: t("sort.block_activated_desc"),
       icon: <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />,
       colorClass: "border-amber-500/30 bg-amber-500/5",
     },
     deactivated: {
       id: "deactivated",
-      title: t("sort.block_deactivated", "비활성화 폰트"),
-      subtitle: t("sort.block_deactivated_desc", "외부 폴더 보관 대기 상태"),
+      title: t("sort.block_deactivated"),
+      subtitle: t("sort.block_deactivated_desc"),
       icon: <CircleDashed className="w-3.5 h-3.5 text-theme-text-muted" />,
       colorClass: "border-theme-border bg-theme-surface/50",
     },
     unplugged: {
       id: "unplugged",
-      title: t("sort.block_unplugged", "접근 불가 폰트"),
-      subtitle: t("sort.block_unplugged_desc", "외장 드라이브 언플러그드 또는 경로 유실"),
+      title: t("sort.block_unplugged"),
+      subtitle: t("sort.block_unplugged_desc"),
       icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />,
       colorClass: "border-amber-500/30 bg-amber-500/5",
     },
@@ -144,14 +144,14 @@ export function FontSortSettingsSection({
           <div className="flex items-center gap-1.5 w-full justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-xs text-theme-text">
               <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>{t("sort.mode_smart", "스마트 정렬")}</span>
+              <span>{t("sort.mode_smart")}</span>
             </div>
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              {t("sort_settings.recommended_badge", "추천")}
+              {t("sort_settings.recommended_badge")}
             </span>
           </div>
           <span className="text-[10px] text-theme-text-muted mt-1 leading-snug">
-            {t("sort.mode_smart_card_desc", "즐겨찾기·활성화 폰트 우선 배치 및 미연결 폰트 자동 하단 배치")}
+            {t("sort.mode_smart_card_desc")}
           </span>
         </button>
 
@@ -168,10 +168,10 @@ export function FontSortSettingsSection({
         >
           <div className="flex items-center gap-1.5 font-semibold text-xs text-theme-text">
             <ArrowDownAZ className="w-3.5 h-3.5 text-theme-accent shrink-0" />
-            <span>{t("sort.mode_name", "이름순 정렬")}</span>
+            <span>{t("sort.mode_name")}</span>
           </div>
           <span className="text-[10px] text-theme-text-muted mt-1 leading-snug">
-            {t("sort.mode_name_card_desc", "상태와 관계없이 가나다/알파벳 순서로 완전 고정")}
+            {t("sort.mode_name_card_desc")}
           </span>
         </button>
 
@@ -188,10 +188,10 @@ export function FontSortSettingsSection({
         >
           <div className="flex items-center gap-1.5 font-semibold text-xs text-theme-text">
             <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span>{t("sort.mode_custom", "사용자 정의")}</span>
+            <span>{t("sort.mode_custom")}</span>
           </div>
           <span className="text-[10px] text-theme-text-muted mt-1 leading-snug">
-            {t("sort.mode_custom_card_desc", "각 상태 블록의 우선순위를 직접 원하는 순서로 배치")}
+            {t("sort.mode_custom_card_desc")}
           </span>
         </button>
       </div>
@@ -204,12 +204,11 @@ export function FontSortSettingsSection({
             <Info className="w-4 h-4 text-theme-accent shrink-0 mt-0.5" />
             <div className="space-y-1">
               <div className="font-semibold text-theme-text">
-                {t("sort.smart_guide_title", "스마트 정렬 안내")}
+                {t("sort.smart_guide_title")}
               </div>
               <p className="text-[11px] text-theme-text-muted leading-relaxed">
                 {t(
-                  "sort_settings.smart_mode_detail_desc",
-                  "현재 켜진 폰트와 바로 쓸 수 있는 폰트를 상단에 우선 노출하고, 외장 드라이브 미연결 등 접근 불가 폰트는 방해되지 않도록 맨 아래로 보냅니다."
+                  "sort_settings.smart_mode_detail_desc"
                 )}
               </p>
             </div>
@@ -223,7 +222,7 @@ export function FontSortSettingsSection({
               <div className="flex items-center gap-1.5 min-w-0">
                 <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500 shrink-0" />
                 <span className="text-xs font-medium text-theme-text truncate">
-                  {t("sort.block_favorites", "즐겨찾기 폰트")}
+                  {t("sort.block_favorites")}
                 </span>
               </div>
             </div>
@@ -235,7 +234,7 @@ export function FontSortSettingsSection({
               <div className="flex items-center gap-1.5 min-w-0">
                 <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
                 <span className="text-xs font-medium text-theme-text truncate">
-                  {t("sort.block_activated", "활성화 폰트")}
+                  {t("sort.block_activated")}
                 </span>
               </div>
             </div>
@@ -247,7 +246,7 @@ export function FontSortSettingsSection({
               <div className="flex items-center gap-1.5 min-w-0">
                 <CircleDashed className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
                 <span className="text-xs font-medium text-theme-text truncate">
-                  {t("sort.block_deactivated", "비활성화 폰트")}
+                  {t("sort.block_deactivated")}
                 </span>
               </div>
             </div>
@@ -259,16 +258,16 @@ export function FontSortSettingsSection({
               <div className="flex items-center gap-1.5 min-w-0">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className="text-xs font-medium text-theme-text truncate">
-                  {t("sort.block_unplugged", "접근 불가 폰트")}
+                  {t("sort.block_unplugged")}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="text-[10px] text-theme-text-muted bg-theme-surface/40 px-2.5 py-1.5 rounded-lg border border-theme-border-subtle flex items-center justify-between">
-            <span>{t("sort_settings.block_internal_sort_label", "블록 내부 정렬 기준:")}</span>
+            <span>{t("sort_settings.block_internal_sort_label")}</span>
             <span className="font-semibold text-theme-text">
-              {t("sort_settings.block_name_fixed", "폰트 이름 오름차순 (A → Z) 고정")}
+              {t("sort_settings.block_name_fixed")}
             </span>
           </div>
         </div>
@@ -281,8 +280,7 @@ export function FontSortSettingsSection({
             <Info className="w-4 h-4 text-theme-accent shrink-0 mt-0.5" />
             <p className="text-[11px] text-theme-text-muted leading-relaxed">
               {t(
-                "sort_settings.block_name_fixed_desc",
-                "스위치를 켜거나 꺼도 목록의 순서가 절대 바뀌지 않도록 이름 순서로 고정합니다."
+                "sort_settings.block_name_fixed_desc"
               )}
             </p>
           </div>
@@ -291,7 +289,7 @@ export function FontSortSettingsSection({
             {/* 정렬 기준 선택 */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-medium text-theme-text-secondary">
-                {t("sort_settings.field_label", "정렬 기준 (Field)")}
+                {t("sort_settings.field_label")}
               </span>
               <div className="grid grid-cols-2 gap-1.5 bg-theme-surface p-1 rounded-xl border border-theme-border">
                 <button
@@ -310,7 +308,7 @@ export function FontSortSettingsSection({
                       settings.nameField !== "fontName" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.field_font_name", "폰트 이름 (Font)")}</span>
+                  <span>{t("sort_settings.field_font_name")}</span>
                 </button>
 
                 <button
@@ -329,7 +327,7 @@ export function FontSortSettingsSection({
                       settings.nameField !== "fileName" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.field_file_name", "파일 이름 (File)")}</span>
+                  <span>{t("sort_settings.field_file_name")}</span>
                 </button>
               </div>
             </div>
@@ -337,7 +335,7 @@ export function FontSortSettingsSection({
             {/* 정렬 방향 선택 */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-medium text-theme-text-secondary">
-                {t("sort_settings.direction_label", "정렬 방향 (Order)")}
+                {t("sort_settings.direction_label")}
               </span>
               <div className="grid grid-cols-2 gap-1.5 bg-theme-surface p-1 rounded-xl border border-theme-border">
                 <button
@@ -356,7 +354,7 @@ export function FontSortSettingsSection({
                       settings.nameOrder !== "asc" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.order_asc", "오름차순 (A → Z)")}</span>
+                  <span>{t("sort_settings.order_asc")}</span>
                 </button>
 
                 <button
@@ -375,7 +373,7 @@ export function FontSortSettingsSection({
                       settings.nameOrder !== "desc" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.order_desc", "내림차순 (Z → A)")}</span>
+                  <span>{t("sort_settings.order_desc")}</span>
                 </button>
               </div>
             </div>
@@ -388,12 +386,11 @@ export function FontSortSettingsSection({
         <div className="p-3.5 bg-theme-card rounded-xl border border-theme-border space-y-4">
           <div className="flex flex-col space-y-1">
             <span className="text-xs font-semibold text-theme-text">
-              {t("sort_settings.custom_dnd_title", "우선순위 블록 배치 (드래그 앤 드롭)")}
+              {t("sort_settings.custom_dnd_title")}
             </span>
             <p className="text-[11px] text-theme-text-muted leading-relaxed">
               {t(
-                "sort_settings.custom_dnd_desc",
-                "각 블록의 핸들(≡)을 마우스로 끌어서 원하는 우선순위로 배치하세요. 위쪽에 위치한 블록의 폰트들이 리스트 상단에 먼저 노출됩니다."
+                "sort_settings.custom_dnd_desc"
               )}
             </p>
           </div>
@@ -448,7 +445,7 @@ export function FontSortSettingsSection({
                     </div>
 
                     <span className="text-[10px] text-theme-text-muted font-medium pr-2">
-                      {t("sort_settings.priority_rank", "{{rank}}순위", { rank: index + 1 })}
+                      {t("sort_settings.priority_rank", { rank: index + 1 })}
                     </span>
                   </div>
                 );
@@ -459,7 +456,7 @@ export function FontSortSettingsSection({
           {/* 블록 내부 공통 정렬 기준 */}
           <div className="pt-2 border-t border-theme-border-subtle space-y-2">
             <span className="text-[11px] font-medium text-theme-text-secondary">
-              {t("sort_settings.block_common_sort_title", "블록 내부 공통 정렬 기준")}
+              {t("sort_settings.block_common_sort_title")}
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -481,7 +478,7 @@ export function FontSortSettingsSection({
                       settings.customField !== "fontName" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.font_name_short", "폰트 이름")}</span>
+                  <span>{t("sort_settings.font_name_short")}</span>
                 </button>
                 <button
                   type="button"
@@ -499,7 +496,7 @@ export function FontSortSettingsSection({
                       settings.customField !== "fileName" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.file_name_short", "파일 이름")}</span>
+                  <span>{t("sort_settings.file_name_short")}</span>
                 </button>
               </div>
 
@@ -521,7 +518,7 @@ export function FontSortSettingsSection({
                       settings.customOrder !== "asc" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.order_asc_short", "오름차순 (A→Z)")}</span>
+                  <span>{t("sort_settings.order_asc_short")}</span>
                 </button>
                 <button
                   type="button"
@@ -539,7 +536,7 @@ export function FontSortSettingsSection({
                       settings.customOrder !== "desc" && "opacity-0"
                     )}
                   />
-                  <span>{t("sort_settings.order_desc_short", "내림차순 (Z→A)")}</span>
+                  <span>{t("sort_settings.order_desc_short")}</span>
                 </button>
               </div>
             </div>

@@ -82,7 +82,7 @@ export function Alert({
           type="button"
           onClick={onClose}
           className="shrink-0 p-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
-          aria-label={t("common.close", "닫기")}
+          aria-label={t("common.close")}
         >
           <X className="w-3.5 h-3.5" />
         </button>

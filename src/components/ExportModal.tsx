@@ -51,12 +51,12 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
       const payload = await backupService.createExportPayload(selection);
       const saved = await backupService.saveBackupToFile(payload);
       if (saved) {
-        onSuccess(t("settings.export_success", "데이터를 성공적으로 내보냈습니다."));
+        onSuccess(t("settings.export_success"));
         onClose();
       }
     } catch (err) {
       console.error("Export error:", err);
-      setErrorMsg(err instanceof Error ? err.message : t("settings.export_failed", "내보내기에 실패했습니다."));
+      setErrorMsg(err instanceof Error ? err.message : t("settings.export_failed"));
     } finally {
       setIsExporting(false);
     }
@@ -68,8 +68,8 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
       onClose={onClose}
       maxWidth="md"
       icon={<Download className="w-4 h-4 text-theme-accent" />}
-      title={t("settings.export_modal_title", "데이터 및 설정 내보내기")}
-      subtitle={t("settings.export_modal_subtitle", "백업할 데이터 항목을 선택하세요.")}
+      title={t("settings.export_modal_title")}
+      subtitle={t("settings.export_modal_subtitle")}
       footer={
         <div className="flex items-center justify-between w-full">
           <button
@@ -85,12 +85,12 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
             className="text-xs text-theme-text-muted hover:text-theme-accent transition-colors cursor-pointer"
           >
             {selection.settings && selection.folders && selection.sets
-              ? t("common.deselect_all", "전체 해제")
-              : t("common.select_all", "전체 선택")}
+              ? t("common.deselect_all")
+              : t("common.select_all")}
           </button>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>
-              {t("common.cancel", "취소")}
+              {t("common.cancel")}
             </Button>
             <Button
               variant="primary"
@@ -98,10 +98,10 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
               onClick={handleExport}
               disabled={isNoneSelected}
               isLoading={isExporting}
-              loadingText={t("common.loading", "처리 중...")}
+              loadingText={t("common.loading")}
               leftIcon={<Download className="w-3.5 h-3.5" />}
             >
-              {t("settings.export_btn_confirm", "JSON 파일로 내보내기")}
+              {t("settings.export_btn_confirm")}
             </Button>
           </div>
         </div>
@@ -116,8 +116,8 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
             checked={selection.settings}
             onChange={() => toggleCategory("settings")}
             icon={<Sliders className="w-3.5 h-3.5" />}
-            title={t("settings.export_item_settings", "시스템 기본 설정")}
-            description={t("settings.export_item_settings_desc", "테마, 언어, 기본 글꼴 크기, 그리드 열 수, 텍스트 미리보기 등")}
+            title={t("settings.export_item_settings")}
+            description={t("settings.export_item_settings_desc")}
           />
 
           {/* 2. 추가된 폴더 */}
@@ -125,8 +125,8 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
             checked={selection.folders}
             onChange={() => toggleCategory("folders")}
             icon={<Folder className="w-3.5 h-3.5 text-sky-500" />}
-            title={t("settings.export_item_folders", "추가된 폴더")}
-            description={t("settings.export_item_folders_desc", "등록된 감시 폴더 경로, 이름 및 색상 태그")}
+            title={t("settings.export_item_folders")}
+            description={t("settings.export_item_folders_desc")}
             badge={
               <span className="px-1.5 py-0.2 rounded bg-theme-hover text-theme-text-secondary text-[10px] font-mono">
                 {summary.foldersCount}
@@ -139,8 +139,8 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
             checked={selection.sets}
             onChange={() => toggleCategory("sets")}
             icon={<BookOpen className="w-3.5 h-3.5 text-indigo-500" />}
-            title={t("settings.export_item_sets", "서재 세트")}
-            description={t("settings.export_item_sets_desc", "생성한 서재 세트 및 세트에 분류된 폰트 연결 정보")}
+            title={t("settings.export_item_sets")}
+            description={t("settings.export_item_sets_desc")}
             badge={
               <span className="px-1.5 py-0.2 rounded bg-theme-hover text-theme-text-secondary text-[10px] font-mono">
                 {summary.setsCount}

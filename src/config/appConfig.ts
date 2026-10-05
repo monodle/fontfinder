@@ -41,18 +41,10 @@ export function getDefaultPreviewText(lang = "ko"): string {
   return LOCALE_DEFAULT_PREVIEW_TEXTS[lang] || LOCALE_DEFAULT_PREVIEW_TEXTS.ko;
 }
 
-const LEGACY_DEFAULT_PREVIEW_TEXTS = [
-  "다람쥐 헌 쳇바퀴에 타고파\nThe quick brown fox jumps over the lazy dog\n1234567890",
-  "다람쥐 헌 쳇바퀴에 타고파. The quick brown fox jumps over the lazy dog. 1234567890 !@#$%^&*",
-];
-
 export function isDefaultPreviewText(text: string): boolean {
   if (!text || text.trim() === "") return true;
   const trimmed = text.trim();
-  if (Object.values(LOCALE_DEFAULT_PREVIEW_TEXTS).some((t) => t.trim() === trimmed)) {
-    return true;
-  }
-  return LEGACY_DEFAULT_PREVIEW_TEXTS.some((t) => t.trim() === trimmed);
+  return Object.values(LOCALE_DEFAULT_PREVIEW_TEXTS).some((t) => t.trim() === trimmed);
 }
 
 export type AppTheme =

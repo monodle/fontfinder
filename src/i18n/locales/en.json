@@ -21,7 +21,8 @@
     "reset_to_default": "Reset to default",
     "clear": "Clear",
     "copy": "Copy",
-    "close_esc": "Close (Esc)"
+    "close_esc": "Close (Esc)",
+    "copy_success": "Copied to clipboard."
   },
   "dialog": {
     "cancel": "Cancel",

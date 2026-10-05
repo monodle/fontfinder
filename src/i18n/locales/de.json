@@ -21,7 +21,8 @@
     "reset_to_default": "Auf Standard zurücksetzen",
     "clear": "Löschen",
     "copy": "Kopieren",
-    "close_esc": "Schließen (Esc)"
+    "close_esc": "Schließen (Esc)",
+    "copy_success": "In die Zwischenablage kopiert."
   },
   "confirm": {
     "uninstall_font_title": "Schriftart aus System deinstallieren",

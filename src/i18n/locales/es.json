@@ -21,7 +21,8 @@
     "reset_to_default": "Restablecer a predeterminado",
     "clear": "Borrar",
     "copy": "Copiar",
-    "close_esc": "Cerrar (Esc)"
+    "close_esc": "Cerrar (Esc)",
+    "copy_success": "Copiado al portapapeles."
   },
   "confirm": {
     "uninstall_font_title": "Desinstalar fuente del sistema",

@@ -113,8 +113,8 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
 
     const sizeConfig = SIZE_CLASSES[size];
     const tooltipText = isCopied
-      ? t("common.copy_success", "복사되었습니다.")
-      : t("common.copy", "복사");
+      ? t("common.copy_success")
+      : t("common.copy");
 
     const buttonElement = (
       <button
@@ -139,7 +139,7 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         )}
         {children && (
           <span className="font-medium">
-            {isCopied ? t("font_info.overview.copied", "복사됨") : children}
+            {isCopied ? t("font_info.overview.copied") : children}
           </span>
         )}
       </button>

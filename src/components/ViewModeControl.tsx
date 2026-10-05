@@ -43,7 +43,7 @@ export function ViewModeControl({
       size="md"
       className={className}
       disabled={disabled}
-      aria-label={t("toolbar.view_mode", { defaultValue: "보기 모드" })}
+      aria-label={t("toolbar.view_mode")}
     />
   );
 }

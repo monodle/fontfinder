@@ -66,9 +66,7 @@ function getBackupFileName(): string {
  */
 function safeJsonParse(content: string): unknown {
   if (content.length > MAX_JSON_STRING_LENGTH) {
-    throw new Error(
-      i18n.t("backup.size_limit", "백업 파일의 크기가 제한(10MB)을 초과했습니다.")
-    );
+    throw new Error(i18n.t("backup.size_limit"));
   }
 
   return JSON.parse(content, (key, value) => {
@@ -224,7 +222,7 @@ function sanitizeSets(raw: unknown): BackupSet[] {
  */
 function validateAndNormalizeBackupData(raw: unknown): AppBackupData {
   if (!raw || typeof raw !== "object") {
-    throw new Error(i18n.t("backup.invalid_data", "유효하지 않은 백업 데이터입니다."));
+    throw new Error(i18n.t("backup.invalid_data"));
   }
 
   const root = raw as Record<string, unknown>;
@@ -237,12 +235,7 @@ function validateAndNormalizeBackupData(raw: unknown): AppBackupData {
 
   const hasAnyData = Boolean(settings || folders.length > 0 || sets.length > 0);
   if (!hasAnyData) {
-    throw new Error(
-      i18n.t(
-        "backup.empty_data",
-        "백업 파일에 유효한 설정, 폴더, 또는 서재 데이터가 없습니다."
-      )
-    );
+    throw new Error(i18n.t("backup.empty_data"));
   }
 
   return {
@@ -386,7 +379,7 @@ export const backupService = {
         throw new Error(
           err instanceof Error
             ? err.message
-            : i18n.t("backup.save_failed", "파일 저장에 실패했습니다.")
+            : i18n.t("backup.save_failed")
         );
       }
     }
@@ -427,20 +420,13 @@ export const backupService = {
             return;
           }
           if (file.size > MAX_JSON_STRING_LENGTH) {
-            reject(
-              new Error(
-                i18n.t(
-                  "backup.size_limit",
-                  "파일 크기가 10MB를 초과하여 불러올 수 없습니다."
-                )
-              )
-            );
+            reject(new Error(i18n.t("backup.size_limit")));
             return;
           }
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = () =>
-            reject(new Error(i18n.t("backup.read_failed", "파일을 읽을 수 없습니다.")));
+            reject(new Error(i18n.t("backup.read_failed")));
           reader.readAsText(file);
         };
         input.click();
@@ -456,12 +442,7 @@ export const backupService = {
       if (e instanceof Error) {
         throw e;
       }
-      throw new Error(
-        i18n.t(
-          "backup.json_parse_failed",
-          "JSON 파싱에 실패했습니다. 올바른 백업 파일인지 확인해주세요."
-        )
-      );
+      throw new Error(i18n.t("backup.json_parse_failed"));
     }
   },
 

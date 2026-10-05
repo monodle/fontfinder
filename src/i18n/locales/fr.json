@@ -21,7 +21,8 @@
     "reset_to_default": "Rétablir par défaut",
     "clear": "Effacer",
     "copy": "Copier",
-    "close_esc": "Fermer (Esc)"
+    "close_esc": "Fermer (Esc)",
+    "copy_success": "Copié dans le presse-papiers."
   },
   "confirm": {
     "uninstall_font_title": "Désinstaller la police du système",

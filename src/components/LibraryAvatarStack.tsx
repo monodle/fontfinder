@@ -45,10 +45,10 @@ export function LibraryAvatarStack({
 
   const headerText =
     sets.length > 0 && folders.length > 0
-      ? t("library_stack.header", { count: orderedLibraries.length, defaultValue: `소속 서재 및 폴더 (${orderedLibraries.length})` })
+      ? t("library_stack.header", { count: orderedLibraries.length })
       : sets.length > 0
-      ? t("library_stack.header_sets_only", { count: sets.length, defaultValue: `소속 서재 (${sets.length})` })
-      : t("library_stack.header_folders_only", { count: folders.length, defaultValue: `소속 폴더 (${folders.length})` });
+      ? t("library_stack.header_sets_only", { count: sets.length })
+      : t("library_stack.header_folders_only", { count: folders.length });
 
   return (
     <div
@@ -64,8 +64,8 @@ export function LibraryAvatarStack({
           const shortName = lib.name.trim().slice(0, 2);
           const typeLabel =
             lib.type === "set"
-              ? t("library_stack.set_label", "세트")
-              : t("library_stack.folder_label", "폴더");
+              ? t("library_stack.set_label")
+              : t("library_stack.folder_label");
 
           return (
             <div
@@ -112,7 +112,7 @@ export function LibraryAvatarStack({
                 {folders.length > 0 && (
                   <div className="text-[9px] font-semibold text-theme-accent/90 uppercase tracking-wider px-1 pt-0.5 flex items-center gap-1">
                     <Bookmark className="w-2.5 h-2.5" />
-                    <span>{t("library_stack.sets_title", "서재 세트")} ({sets.length})</span>
+                    <span>{t("library_stack.sets_title")} ({sets.length})</span>
                   </div>
                 )}
                 {sets.map((lib, idx) => (
@@ -144,7 +144,7 @@ export function LibraryAvatarStack({
                 {sets.length > 0 && (
                   <div className="text-[9px] font-semibold text-sky-500/90 uppercase tracking-wider px-1 pt-0.5 flex items-center gap-1">
                     <Folder className="w-2.5 h-2.5" />
-                    <span>{t("library_stack.folders_title", "소속 폴더")} ({folders.length})</span>
+                    <span>{t("library_stack.folders_title")} ({folders.length})</span>
                   </div>
                 )}
                 {folders.map((lib, idx) => (

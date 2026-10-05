@@ -36,14 +36,13 @@ export const FolderDropOverlay: React.FC<FolderDropOverlayProps> = ({ isVisible 
 
         {/* 텍스트 가이드 */}
         <h2 className="text-xl md:text-2xl font-bold text-theme-text tracking-tight mb-2 flex items-center gap-2">
-          <span>{t("dropzone.title", "폴더를 놓아 서재에 추가")}</span>
+          <span>{t("dropzone.title")}</span>
           <Sparkles className="w-5 h-5 text-theme-accent inline-block animate-bounce" />
         </h2>
 
         <p className="text-sm text-theme-text-secondary max-w-md leading-relaxed mb-6">
           {t(
-            "dropzone.desc",
-            "탐색기나 파인더에서 드래그한 폴더를 여기에 놓으면, 포함된 폰트를 자동으로 색인하고 실시간 감시합니다."
+            "dropzone.desc"
           )}
         </p>
 

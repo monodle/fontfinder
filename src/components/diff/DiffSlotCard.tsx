@@ -140,10 +140,10 @@ export function DiffSlotCard({
               setIsSearchOpen((prev) => !prev);
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-card hover:bg-theme-hover text-xs font-semibold text-theme-text shadow-2xs transition-all cursor-pointer"
-            title={t("diff.add_font_tooltip", "서체 추가")}
+            title={t("diff.add_font_tooltip")}
           >
             <Plus className="w-3.5 h-3.5 text-theme-accent" />
-            <span>{t("diff.add_font_btn", "+ 폰트 추가")}</span>
+            <span>{t("diff.add_font_btn")}</span>
           </button>
         </div>
 
@@ -169,7 +169,7 @@ export function DiffSlotCard({
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: config.color }}
                   />
-                  <span>{t("diff.search_and_add_title", "서체 검색 및 추가")}</span>
+                  <span>{t("diff.search_and_add_title")}</span>
                 </span>
                 <button
                   type="button"
@@ -187,7 +187,7 @@ export function DiffSlotCard({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t("diff.search_font_placeholder", "폰트 이름 검색...")}
+                  placeholder={t("diff.search_font_placeholder")}
                   className="w-full pl-7 pr-2 py-1.5 text-xs bg-theme-input border border-theme-border rounded-lg text-theme-text focus:outline-none focus:border-theme-accent shadow-2xs"
                 />
               </div>
@@ -197,7 +197,7 @@ export function DiffSlotCard({
                 <div className="max-h-48 overflow-y-auto flex flex-col gap-1 pr-1 border-t border-theme-border/60 pt-1.5 animate-in fade-in duration-100">
                   {filteredFonts.length === 0 ? (
                     <div className="text-center py-4 text-xs text-theme-text-muted">
-                      {t("diff.no_matching_fonts", "일치하는 폰트가 없습니다")}
+                      {t("diff.no_matching_fonts")}
                     </div>
                   ) : (
                     filteredFonts.map((font) => (
@@ -259,8 +259,8 @@ export function DiffSlotCard({
             onRemoveFont();
           }}
           className="p-1 rounded-lg text-theme-text-muted hover:text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all cursor-pointer shrink-0"
-          title={t("diff.remove_from_diff", "비교에서 폰트 해제")}
-          aria-label={t("diff.remove_from_diff", "비교에서 폰트 해제")}
+          title={t("diff.remove_from_diff")}
+          aria-label={t("diff.remove_from_diff")}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -282,7 +282,7 @@ export function DiffSlotCard({
                   ? "bg-theme-accent text-theme-accent-text font-bold"
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
-              title={t("diff.bold_tooltip", "굵게")}
+              title={t("diff.bold_tooltip")}
             >
               <Bold className="w-3 h-3" />
             </button>
@@ -297,7 +297,7 @@ export function DiffSlotCard({
                   ? "bg-theme-accent text-theme-accent-text italic font-bold"
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
-              title={t("diff.italic_tooltip", "기울임")}
+              title={t("diff.italic_tooltip")}
             >
               <Italic className="w-3 h-3" />
             </button>
@@ -316,7 +316,7 @@ export function DiffSlotCard({
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
             >
-              {t("diff.fill", "Fill")}
+              {t("diff.fill")}
             </button>
             <button
               type="button"
@@ -330,7 +330,7 @@ export function DiffSlotCard({
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
               }`}
             >
-              {t("diff.stroke", "Stroke")}
+              {t("diff.stroke")}
             </button>
           </div>
         </div>
@@ -340,7 +340,7 @@ export function DiffSlotCard({
           {/* 1. 개별 폰트 크기 슬라이더 */}
           <div className="flex items-center gap-1.5 text-[10px] text-theme-text-secondary">
             <span className="font-mono text-[9px] text-theme-text-muted w-5 shrink-0">
-              {t("diff.size_label", "크기")}
+              {t("diff.size_label")}
             </span>
             <input
               type="range"
@@ -354,7 +354,7 @@ export function DiffSlotCard({
               }}
               onClick={(e) => e.stopPropagation()}
               className="flex-1 accent-theme-accent cursor-pointer h-1"
-              title={t("diff.size_slider_tooltip", "개별 폰트 크기 (240px ~ 400px)")}
+              title={t("diff.size_slider_tooltip")}
             />
             <span className="font-mono text-[10px] w-9 text-right font-medium text-theme-text">
               {slot.fontSize}px
@@ -364,7 +364,7 @@ export function DiffSlotCard({
           {/* 2. 개별 투명도(Opacity) 슬라이더 */}
           <div className="flex items-center gap-1.5 text-[10px] text-theme-text-secondary">
             <span className="font-mono text-[9px] text-theme-text-muted w-5 shrink-0">
-              {t("diff.opacity_label", "투명")}
+              {t("diff.opacity_label")}
             </span>
             <input
               type="range"
@@ -378,7 +378,7 @@ export function DiffSlotCard({
               }}
               onClick={(e) => e.stopPropagation()}
               className="flex-1 accent-theme-accent cursor-pointer h-1"
-              title={t("diff.opacity_slider_tooltip", "불투명도 조절 (10% ~ 100%)")}
+              title={t("diff.opacity_slider_tooltip")}
             />
             <span className="font-mono text-[10px] w-9 text-right font-medium text-theme-text">
               {slot.opacity}%
@@ -410,8 +410,8 @@ export function DiffSlotCard({
                   ? "text-theme-accent hover:bg-theme-accent/15"
                   : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
               }`}
-              title={t("diff.reset_slot_position_tooltip", "위치 초기화 (0, 0) (단축키: 0)")}
-              aria-label={t("diff.reset_slot_position_aria", "위치 초기화")}
+              title={t("diff.reset_slot_position_tooltip")}
+              aria-label={t("diff.reset_slot_position_aria")}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -426,13 +426,13 @@ export function DiffSlotCard({
               className="p-1 rounded text-theme-text-muted hover:text-theme-text hover:bg-theme-hover transition-colors cursor-pointer"
               title={
                 slot.visible
-                  ? t("diff.hide_layer", "레이어 숨기기")
-                  : t("diff.show_layer", "레이어 보이기")
+                  ? t("diff.hide_layer")
+                  : t("diff.show_layer")
               }
               aria-label={
                 slot.visible
-                  ? t("diff.hide_layer", "레이어 숨기기")
-                  : t("diff.show_layer", "레이어 보이기")
+                  ? t("diff.hide_layer")
+                  : t("diff.show_layer")
               }
             >
               {slot.visible ? (

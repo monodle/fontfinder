@@ -112,23 +112,23 @@ export function formatFsType(
   fallbackLabel?: string
 ): string {
   if (fsType === undefined || fsType === null || fsType === 0) {
-    return t("font_info.fs_type.installable", "설치 가능 (제한 없음)");
+    return t("font_info.fs_type.installable");
   }
   const parts: string[] = [];
   if ((fsType & 0x0002) !== 0) {
-    parts.push(t("font_info.fs_type.restricted", "임베딩 제한 (Restricted)"));
+    parts.push(t("font_info.fs_type.restricted"));
   }
   if ((fsType & 0x0004) !== 0) {
-    parts.push(t("font_info.fs_type.preview_print", "미리보기/인쇄 허용 (Preview & Print)"));
+    parts.push(t("font_info.fs_type.preview_print"));
   }
   if ((fsType & 0x0008) !== 0) {
-    parts.push(t("font_info.fs_type.editable", "편집 허용 (Editable)"));
+    parts.push(t("font_info.fs_type.editable"));
   }
   if ((fsType & 0x0100) !== 0) {
-    parts.push(t("font_info.fs_type.no_subsetting", "서브셋팅 금지 (No Subsetting)"));
+    parts.push(t("font_info.fs_type.no_subsetting"));
   }
   if ((fsType & 0x0200) !== 0) {
-    parts.push(t("font_info.fs_type.bitmap_only", "비트맵 전용 (Bitmap Only)"));
+    parts.push(t("font_info.fs_type.bitmap_only"));
   }
   if (parts.length > 0) {
     return parts.join(", ");
@@ -146,31 +146,31 @@ export function formatFamilyClass(
   fallbackLabel?: string
 ): string {
   if (sFamilyClass === undefined || sFamilyClass === null) {
-    return fallbackLabel || t("font_info.family_class.none", "No Classification (미분류)");
+    return fallbackLabel || t("font_info.family_class.none");
   }
   const classId = (sFamilyClass >> 8) & 0xff;
   switch (classId) {
     case 1:
-      return t("font_info.family_class.oldstyle_serifs", "Oldstyle Serifs (옛날 명조/세리프)");
+      return t("font_info.family_class.oldstyle_serifs");
     case 2:
-      return t("font_info.family_class.transitional_serifs", "Transitional Serifs (과도기 세리프)");
+      return t("font_info.family_class.transitional_serifs");
     case 3:
-      return t("font_info.family_class.modern_serifs", "Modern Serifs (모던 세리프)");
+      return t("font_info.family_class.modern_serifs");
     case 4:
-      return t("font_info.family_class.clarendon_serifs", "Clarendon Serifs (클라렌던 세리프)");
+      return t("font_info.family_class.clarendon_serifs");
     case 5:
-      return t("font_info.family_class.slab_serifs", "Slab Serifs (슬랩 세리프)");
+      return t("font_info.family_class.slab_serifs");
     case 7:
-      return t("font_info.family_class.freeform_serifs", "Freeform Serifs (자유형 세리프)");
+      return t("font_info.family_class.freeform_serifs");
     case 8:
-      return t("font_info.family_class.sans_serif", "Sans-serif (고딕/산세리프)");
+      return t("font_info.family_class.sans_serif");
     case 9:
-      return t("font_info.family_class.scripts", "Scripts (필기체/손글씨)");
+      return t("font_info.family_class.scripts");
     case 10:
-      return t("font_info.family_class.decorative", "Decorative / Display (장식/디스플레이)");
+      return t("font_info.family_class.decorative");
     case 12:
-      return t("font_info.family_class.symbolic", "Symbolic (기호/심볼)");
+      return t("font_info.family_class.symbolic");
     default:
-      return t("font_info.family_class.none", "No Classification (미분류)");
+      return t("font_info.family_class.none");
   }
 }

@@ -501,7 +501,7 @@ export function Sidebar({
               {customFolders.map((folder) => {
                 const isActive = activeCategory === `folder:${folder.path}`;
                 const tooltipText = folder.isScanning
-                  ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total}` : t("sidebar.scanning_folder", "스캔 중...")})\n${folder.path}`
+                  ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total}` : t("sidebar.scanning_folder")})\n${folder.path}`
                   : `${folder.name} (${folder.count})\n${folder.path}`;
 
                 return (
@@ -562,7 +562,7 @@ export function Sidebar({
                     const isDuplicateName = (folderNameCounts.get(folder.name) || 0) > 1;
                     const parentDir = isDuplicateName ? getParentDirHint(folder.path) : null;
                     const tooltipText = folder.isScanning
-                      ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total} · ${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%` : t("sidebar.scanning_folder", "스캔 중...")})\n${folder.path}`
+                      ? `${folder.name} (${folder.scanProgress && folder.scanProgress.total > 0 ? `${folder.scanProgress.current}/${folder.scanProgress.total} · ${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%` : t("sidebar.scanning_folder")})\n${folder.path}`
                       : `${folder.name} (${folder.count})\n${folder.path}`;
 
                     return (
@@ -595,7 +595,7 @@ export function Sidebar({
                             <span className="text-[10px] text-theme-accent font-normal shrink-0">
                               {folder.scanProgress && folder.scanProgress.total > 0
                                 ? `${Math.round((folder.scanProgress.current / folder.scanProgress.total) * 100)}%`
-                                : t("sidebar.scanning_short", "스캔 중...")}
+                                : t("sidebar.scanning_short")}
                             </span>
                           )}
                           {parentDir && !folder.isScanning && (
@@ -617,7 +617,7 @@ export function Sidebar({
                                 });
                               }}
                               className="opacity-0 group-hover:opacity-100 hover:text-theme-accent p-0.5 rounded transition-opacity cursor-pointer text-theme-text-muted"
-                              title={t("sidebar.folder_color_title", "폴더 라벨 색상 변경")}
+                              title={t("sidebar.folder_color_title")}
                             >
                               <Palette className="w-3 h-3" />
                             </button>
@@ -696,7 +696,7 @@ export function Sidebar({
                       <button
                         type="button"
                         onClick={() => onSelectSet(parent.id)}
-                        title={`${parent.name} (${parent.count})${hasChild ? ` · ${t("sidebar.children_count", { count: children.length, defaultValue: `하위 ${children.length}개` })}` : ""}`}
+                        title={`${parent.name} (${parent.count})${hasChild ? ` · ${t("sidebar.children_count", { count: children.length })}` : ""}`}
                         className={`w-9 h-9 mx-auto flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
                           isParentActive
                             ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
@@ -712,7 +712,7 @@ export function Sidebar({
                           <span
                             onClick={(e) => toggleCollapseSet(parent.id, e)}
                             className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-theme-surface border border-theme-border flex items-center justify-center text-theme-text-muted hover:text-theme-accent hover:border-theme-accent transition-colors shadow-2xs"
-                            title={isCollapsedSet ? t("sidebar.expand", "하위 세트 펼치기") : t("sidebar.collapse", "하위 세트 접기")}
+                            title={isCollapsedSet ? t("sidebar.expand") : t("sidebar.collapse")}
                           >
                             {isCollapsedSet ? (
                               <ChevronRight className="w-2.5 h-2.5" />
@@ -772,7 +772,7 @@ export function Sidebar({
                     className={`hover:text-theme-accent p-0.5 transition-colors cursor-pointer rounded ${
                       isSetSearchOpen || setSearchQuery ? "text-theme-accent" : "text-theme-text-secondary"
                     }`}
-                    title={t("sidebar.search_sets", "서재 세트 검색")}
+                    title={t("sidebar.search_sets")}
                   >
                     <Search className="w-3.5 h-3.5" />
                   </button>
@@ -795,7 +795,7 @@ export function Sidebar({
                     type="text"
                     value={setSearchQuery}
                     onChange={(e) => setSetSearchQuery(e.target.value)}
-                    placeholder={t("sidebar.search_sets", "서재 세트 검색...")}
+                    placeholder={t("sidebar.search_sets")}
                     className="w-full pl-7 pr-6 py-1 text-[11px] bg-theme-hover/70 border border-theme-border rounded-md text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:border-theme-accent"
                     autoFocus
                   />
@@ -820,7 +820,7 @@ export function Sidebar({
                 </div>
               ) : displayFlatSetList.length === 0 && setSearchQuery ? (
                 <div className="px-2 py-3 text-center text-theme-text-muted text-[11px]">
-                  <p>{t("sidebar.no_matching_sets", "일치하는 세트가 없습니다.")}</p>
+                  <p>{t("sidebar.no_matching_sets")}</p>
                 </div>
               ) : (
                 /* 1depth / 2depth 통합 트리 드래그 정렬 (X/Y 좌표 감지 + 명확한 깊이 인디케이터 + 데이터 무손실) */
@@ -867,7 +867,7 @@ export function Sidebar({
                                 });
                               }}
                               className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
-                              title={t("sidebar.add_subset", "하위 세트 추가")}
+                              title={t("sidebar.add_subset")}
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -885,7 +885,7 @@ export function Sidebar({
                                 });
                               }}
                               className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
-                              title={t("sidebar.edit_set_title", "서재 세트 수정")}
+                              title={t("sidebar.edit_set_title")}
                             >
                               <Palette className="w-3 h-3" />
                             </button>
@@ -951,7 +951,7 @@ export function Sidebar({
                               });
                             }}
                             className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
-                            title={t("sidebar.edit_set_title", "서재 세트 수정")}
+                            title={t("sidebar.edit_set_title")}
                           >
                             <Palette className="w-3 h-3" />
                           </button>
@@ -963,7 +963,7 @@ export function Sidebar({
                                 onUpdateSetParent(itemSet.id, null);
                               }}
                               className="opacity-0 group-hover:opacity-100 p-0.5 text-theme-text-muted hover:text-theme-accent transition-opacity cursor-pointer"
-                              title={t("sidebar.promote_to_root", "최상위(1depth)로 꺼내기")}
+                              title={t("sidebar.promote_to_root")}
                             >
                               <ArrowUpToLine className="w-3 h-3" />
                             </button>
@@ -1004,7 +1004,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={() => onOpenSettings("sponsor")}
-              title={t("sponsor.title", "커피 한 잔 보내기")}
+              title={t("sponsor.title")}
               className="w-9 h-9 flex items-center justify-center rounded-lg text-theme-text-muted hover:text-amber-500 hover:bg-theme-hover transition-colors cursor-pointer"
             >
               <Coffee className="w-4 h-4 text-amber-500" />
@@ -1036,10 +1036,10 @@ export function Sidebar({
                   type="button"
                   onClick={() => onOpenSettings("sponsor")}
                   className="flex items-center gap-1.5 text-[11px] font-medium text-theme-text-muted hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer min-w-0"
-                  title={t("sponsor.title", "커피 한 잔 보내기")}
+                  title={t("sponsor.title")}
                 >
                   <Coffee className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span className="truncate">{t("sponsor.title", "커피 한 잔 보내기")}</span>
+                  <span className="truncate">{t("sponsor.title")}</span>
                 </button>
                 <button
                   type="button"
@@ -1109,30 +1109,27 @@ export function Sidebar({
           }}
           title={
             deleteTarget.type === "folder"
-              ? t("sidebar.remove_folder", { defaultValue: "폴더 제거" })
-              : t("sidebar.delete_set", { defaultValue: "세트 삭제" })
+              ? t("sidebar.remove_folder")
+              : t("sidebar.delete_set")
           }
           itemName={deleteTarget.name}
           description={
             deleteTarget.type === "folder"
               ? t("sidebar.remove_folder_confirm", {
                 name: deleteTarget.name,
-                defaultValue: `'${deleteTarget.name}' 폴더를 서재에서 제거하시겠습니까?`,
               })
               : deleteTarget.childNames && deleteTarget.childNames.length > 0
                 ? t("sidebar.delete_set_with_children_confirm", {
                     name: deleteTarget.name,
                     count: deleteTarget.childNames.length,
                     children: deleteTarget.childNames.join(", "),
-                    defaultValue: `'${deleteTarget.name}' 서재 세트를 삭제하시겠습니까?\n포함된 하위 세트 ${deleteTarget.childNames.length}개(${deleteTarget.childNames.join(", ")})도 함께 삭제됩니다.\n(폰트 원본 파일은 삭제되지 않습니다)`,
                   })
                 : t("sidebar.delete_set_confirm", {
                     name: deleteTarget.name,
-                    defaultValue: `'${deleteTarget.name}' 서재 세트를 삭제하시겠습니까?\n(폰트 원본 파일은 삭제되지 않습니다)`,
                   })
           }
-          confirmText={t("common.delete", { defaultValue: "삭제" })}
-          cancelText={t("common.cancel", { defaultValue: "취소" })}
+          confirmText={t("common.delete")}
+          cancelText={t("common.cancel")}
           isDanger={true}
         />
       )}

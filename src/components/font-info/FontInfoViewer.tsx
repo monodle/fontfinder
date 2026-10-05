@@ -240,7 +240,7 @@ export function FontInfoViewer({ font, initialPreviewText }: FontInfoViewerProps
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
         {loading ? (
           <div className="h-48 flex items-center justify-center">
-            <Spinner size="lg" label={t("font_info.analyzing", "메타데이터 분석 중...")} />
+            <Spinner size="lg" label={t("font_info.analyzing")} />
           </div>
         ) : error ? (
           <div className="h-48 flex flex-col items-center justify-center gap-2 text-rose-500">
