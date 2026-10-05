@@ -28,6 +28,7 @@ interface UseFontActionsProps {
   loadSystemFonts: (foldersToScan?: CustomFolder[]) => Promise<FontMetadata[]>;
   loadDbState: () => Promise<void>;
   refreshSets?: () => Promise<any>;
+  refreshSetCount?: (targetSetId?: number) => Promise<void>;
   refreshList?: () => Promise<void>;
   handleClearSelection: () => void;
   showToast: (message: string) => void;
