@@ -85,6 +85,15 @@ fn test_legacy_sets_migration() {
   assert_eq!(name, "Legacy Set");
   assert_eq!(color, "#123456");
   assert_eq!(parent_id, None);
+
+  // 마이그레이션 후 중복된 이름('Legacy Set') 삽입이 정상 허용되는지 확인
+  conn
+    .execute("INSERT INTO sets (name, color, parent_id) VALUES ('Legacy Set', '#abcdef', 1)", [])
+    .expect("Duplicate set name should be allowed after migration");
+  let count: i64 = conn
+    .query_row("SELECT count(*) FROM sets WHERE name = 'Legacy Set'", [], |r| r.get(0))
+    .unwrap();
+  assert_eq!(count, 2);
 }
 
 #[test]
@@ -210,8 +219,15 @@ fn test_sets_crud_and_fonts() {
   db.add_font_to_set(set.id, id_b).unwrap();
   db.add_font_to_set(child_set.id, id_c).unwrap();
 
+  // 동일한 이름의 세트 중복 생성 허용 테스트
+  let dup_set = db.create_set("Design Fonts", Some("#778899"), None).unwrap();
+  assert_eq!(dup_set.name, "Design Fonts");
+  assert_ne!(dup_set.id, set.id);
+
   let sets = db.get_sets().unwrap();
-  assert_eq!(sets.len(), 2);
+  assert_eq!(sets.len(), 3);
+  let same_name_sets: Vec<_> = sets.iter().filter(|s| s.name == "Design Fonts").collect();
+  assert_eq!(same_name_sets.len(), 2);
 
   let font_ids = db.get_set_font_ids(set.id).unwrap();
   assert_eq!(font_ids.len(), 2);
@@ -239,6 +255,9 @@ fn test_sets_crud_and_fonts() {
   let updated_parent = sets_after_update.iter().find(|s| s.id == set.id).unwrap();
   assert_eq!(updated_parent.name, "Renamed Set");
   assert_eq!(updated_parent.color, "#654321");
+
+  // 중복 세트 삭제
+  db.delete_set(dup_set.id).unwrap();
 
   // 부모 세트 삭제 시 자식 세트도 CASCADE 삭제되는지 확인
   db.delete_set(set.id).unwrap();

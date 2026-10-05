@@ -12,8 +12,11 @@ export interface BackupFontHashRef {
 }
 
 export interface BackupSet {
+  id?: number;
   name: string;
   color?: string;
+  parentId?: number | null;
+  parentName?: string | null;
   fontHashes?: BackupFontHashRef[];
   fontIds?: number[];
 }

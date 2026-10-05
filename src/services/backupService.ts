@@ -1,5 +1,6 @@
 import i18n from "../i18n";
 import { fontService } from "./fontService";
+import { normalizePath } from "../utils/pathUtils";
 import {
   settingsService,
   defaultSettings,
@@ -7,6 +8,7 @@ import {
   type CustomAppSettings,
 } from "./settingsService";
 import { appConfig, VALID_THEMES, type AppTheme, type LibraryCategory } from "../config/appConfig";
+import type { FontSet } from "../types/font";
 import type {
   AppBackupData,
   BackupCategorySelection,
@@ -206,9 +208,24 @@ function sanitizeSets(raw: unknown): BackupSet[] {
       }
     }
 
+    const parentNameRaw = (item as { parentName?: unknown }).parentName;
+    const parentName = parentNameRaw ? sanitizeString(parentNameRaw, 100) : null;
+
+    const idRaw = (item as { id?: unknown }).id;
+    const id = typeof idRaw === "number" && Number.isInteger(idRaw) && idRaw > 0 ? idRaw : undefined;
+
+    const parentIdRaw = (item as { parentId?: unknown }).parentId;
+    const parentId =
+      typeof parentIdRaw === "number" && Number.isInteger(parentIdRaw) && parentIdRaw > 0
+        ? parentIdRaw
+        : null;
+
     validSets.push({
+      id,
       name,
       color: sanitizeColor(item.color, "#6366f1"),
+      parentId,
+      parentName: parentName || null,
       fontHashes,
       fontIds,
     });
@@ -316,6 +333,8 @@ export const backupService = {
         }
       }
 
+      const setById = new Map(sets.map((s) => [s.id, s]));
+
       payload.sets = sets.map((s) => {
         const ids = allSetFonts[s.id] ?? [];
         const hashes: BackupFontHashRef[] = [];
@@ -326,9 +345,14 @@ export const backupService = {
           }
         }
 
+        const parentSet = s.parent_id != null ? setById.get(s.parent_id) : null;
+
         return {
+          id: s.id,
           name: s.name,
           color: s.color,
+          parentId: s.parent_id ?? null,
+          parentName: parentSet ? parentSet.name : null,
           fontHashes: hashes,
           fontIds: ids,
         };
@@ -463,31 +487,45 @@ export const backupService = {
       settingsApplied = true;
     }
 
-    // 2. 폴더 복원
+    // 2. 폴더 복원 (기존 등록 폴더는 패스, 신규 폴더는 추가 + 스캔 + 감시 활성화)
     if (selection.folders && backup.folders && backup.folders.length > 0) {
       const currentFolders = await fontService.getFolders().catch(() => []);
-      const existingPaths = new Set(currentFolders.map((f) => f.path));
+      const existingNormalizedPaths = new Set(
+        currentFolders.map((f) => normalizePath(f.path).toLowerCase())
+      );
 
       for (const folder of backup.folders) {
-        if (!folder.path || existingPaths.has(folder.path)) continue;
+        if (!folder.path) continue;
+        const normPath = normalizePath(folder.path).toLowerCase();
+        // 이미 등록된 폴더는 패스
+        if (existingNormalizedPaths.has(normPath)) continue;
+
         try {
+          // 1) DB 폴더 등록
           await fontService.addFolder(folder.path, folder.name, folder.color);
-          await fontService.watchFolder(folder.path).catch(() => {});
-          existingPaths.add(folder.path);
+          existingNormalizedPaths.add(normPath);
           foldersAdded++;
+
+          // 2) 신규 폴더 추가와 동일하게 즉시 폰트 스캔 & DB 캐시 적재 (세트 복원을 위한 필수 선행 작업)
+          await fontService.scanDirectory(folder.path).catch((err) => {
+            console.warn(`폴더 스캔 실패 (${folder.path}):`, err);
+          });
+
+          // 3) 파일 시스템 감시 등록
+          await fontService.watchFolder(folder.path).catch(() => {});
         } catch (e) {
           console.warn(`폴더 추가 실패 (${folder.path}):`, e);
         }
       }
     }
 
-    // 3. 서재 세트 복원 (사전 일괄 조회 및 폰트 해시 매핑으로 1+N 쿼리/기기 간 PK 불일치 방어)
+    // 3. 서재 세트 복원 (사전 일괄 조회, 2-Pass 부모/자식 계층 복원 및 덮어쓰기)
     if (selection.sets && backup.sets && backup.sets.length > 0) {
       const [currentSets, allSetFonts] = await Promise.all([
-        fontService.getSets().catch(() => []),
+        fontService.getSets().catch(() => [] as FontSet[]),
         fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>)),
       ]);
-      const setMap = new Map(currentSets.map((s) => [s.name, s]));
+      const setNameToIdMap = new Map<string, number>(currentSets.map((s) => [s.name, s.id]));
       const existingSetFontsMap = new Map<number, Set<number>>(
         Object.entries(allSetFonts).map(([k, v]) => [Number(k), new Set(v)])
       );
@@ -503,7 +541,7 @@ export const backupService = {
         }
       }
 
-      // 현재 PC의 로컬 폰트 캐시에서 해시 매칭 (fast_hash, deep_hash, file_hash 기반)
+      // 현재 PC의 로컬 폰트 캐시에서 해시 매칭 (방금 스캔된 신규 폴더의 폰트 포함)
       const matchedFonts = allHashesToLookup.size > 0
         ? await fontService.getCachedFontsByHashes(Array.from(allHashesToLookup)).catch(() => [])
         : [];
@@ -522,21 +560,64 @@ export const backupService = {
         }
       }
 
-      for (const setItem of backup.sets) {
+      // 백업 파일의 원본 세트 ID -> 복원된 신규 세트 ID 매핑 테이블 (정확한 부모-자식 트리 복원)
+      const backupIdToNewIdMap = new Map<number, number>();
+
+      // 기존 세트 중 동일 부모 아래 동일 이름을 가진 세트 매칭
+      const findExistingSet = (name: string, parentId: number | null): FontSet | undefined => {
+        return currentSets.find(
+          (s) => s.name === name && (s.parent_id ?? null) === (parentId ?? null)
+        );
+      };
+
+      // 2뎁스 계층 보존을 위해 1단계: 부모 세트(!parentName && !parentId) 우선, 2단계: 자식 세트 순으로 정렬
+      const parentSets = backup.sets.filter((s) => !s.parentName && !s.parentId);
+      const childSets = backup.sets.filter((s) => Boolean(s.parentName || s.parentId));
+      const orderedSets = [...parentSets, ...childSets];
+
+      for (const setItem of orderedSets) {
         if (!setItem.name) continue;
         try {
           let targetSetId: number;
-          const existingSet = setMap.get(setItem.name);
+
+          // 부모 세트 ID 확인:
+          // 1순위: backupIdToNewIdMap (setItem.parentId가 있는 경우)
+          // 2순위: setNameToIdMap (setItem.parentName이 있는 경우)
+          let targetParentId: number | null = null;
+          if (setItem.parentId != null && backupIdToNewIdMap.has(setItem.parentId)) {
+            targetParentId = backupIdToNewIdMap.get(setItem.parentId) ?? null;
+          } else if (setItem.parentName) {
+            targetParentId = setNameToIdMap.get(setItem.parentName) ?? null;
+          }
+
+          const existingSet = findExistingSet(setItem.name, targetParentId);
 
           if (existingSet) {
+            // [덮어쓰기 정책] 기존 동일 이름 & 동일 부모 세트: 속성(색상, 부모) 갱신 및 기존 폰트 목록 덮어쓰기
             targetSetId = existingSet.id;
+            await fontService
+              .updateSet(targetSetId, setItem.name, setItem.color || existingSet.color, targetParentId)
+              .catch(() => {});
+
+            // 기존에 담겨있던 폰트 관계 제거
+            const oldFontIds = existingSetFontsMap.get(targetSetId);
+            if (oldFontIds && oldFontIds.size > 0) {
+              await fontService.removeFontsFromSetBulk(targetSetId, Array.from(oldFontIds)).catch(() => {});
+            }
+            existingSetFontsMap.set(targetSetId, new Set());
           } else {
-            const created = await fontService.createSet(setItem.name, setItem.color);
+            // 신규 세트 생성
+            const created = await fontService.createSet(setItem.name, setItem.color, targetParentId);
             targetSetId = created.id;
-            setMap.set(setItem.name, created);
+            currentSets.push(created);
             existingSetFontsMap.set(targetSetId, new Set());
             setsAdded++;
           }
+
+          if (setItem.id != null) {
+            backupIdToNewIdMap.set(setItem.id, targetSetId);
+          }
+          setNameToIdMap.set(setItem.name, targetSetId);
 
           const existingFontIds = existingSetFontsMap.get(targetSetId) ?? new Set<number>();
           const candidateFontIds: number[] = [];

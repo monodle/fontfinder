@@ -54,7 +54,7 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
     -- 1. 테이블 정의
     CREATE TABLE IF NOT EXISTS sets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
       color TEXT NOT NULL DEFAULT '#6366f1',
       parent_id INTEGER REFERENCES sets(id) ON DELETE CASCADE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -142,7 +142,7 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
     ",
   )?;
 
-  // parent_id 컬럼 확보 후 인덱스 생성
+  // 1. parent_id 컬럼 확보 후 인덱스 생성
   let mut stmt = conn.prepare("PRAGMA table_info(sets)")?;
   let mut has_parent_id = false;
   let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
@@ -161,6 +161,36 @@ pub fn initialize_schema(conn: &Connection) -> AppResult<()> {
     );
   }
 
+  // 2. sets 테이블의 name UNIQUE 제약 해제 마이그레이션 (서재 이름 중복 허용)
+  let sets_sql: String = conn
+    .query_row(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='sets'",
+      [],
+      |row| row.get(0),
+    )
+    .unwrap_or_default();
+
+  if sets_sql.to_uppercase().contains("UNIQUE") {
+    conn.execute_batch(
+      "
+      PRAGMA foreign_keys = OFF;
+      CREATE TABLE sets_migration_backup (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#6366f1',
+        parent_id INTEGER REFERENCES sets(id) ON DELETE CASCADE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO sets_migration_backup (id, name, color, parent_id, created_at)
+        SELECT id, name, color, parent_id, created_at FROM sets;
+      DROP TABLE sets;
+      ALTER TABLE sets_migration_backup RENAME TO sets;
+      PRAGMA foreign_keys = ON;
+      ",
+    )?;
+  }
+
+  // 3. 인덱스 확보
   let _ = conn.execute(
     "CREATE INDEX IF NOT EXISTS idx_sets_parent_id ON sets(parent_id)",
     [],

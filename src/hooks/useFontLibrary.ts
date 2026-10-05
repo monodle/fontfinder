@@ -704,12 +704,12 @@ export function useFontLibrary({
     };
   }, [processedFonts, activatedFontIds, favoriteIds, duplicateGroupCount]);
 
-  // 1. 등록 폴더별 실시간 폰트 수 동적 계산 (모든 파일 기준)
+  // 1. 등록 폴더별 실시간 폰트 수 동적 계산 (고유 폰트 패밀리 기준)
   const folderCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const folder of customFolders) {
       const folderFonts = processedFonts.filter((f) => isPathInFolder(f.file_path, folder.path));
-      map.set(folder.path, folderFonts.length);
+      map.set(folder.path, deduplicateFonts(folderFonts).length);
     }
     return map;
   }, [customFolders, processedFonts]);
