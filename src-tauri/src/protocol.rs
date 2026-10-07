@@ -26,13 +26,16 @@ pub fn is_allowed_origin(origin: &str) -> bool {
         return true;
     }
 
-    // 2. 로컬 개발 서버 오리진 (localhost 및 127.0.0.1)
-    if clean.starts_with("http://localhost:")
-        || clean.starts_with("http://127.0.0.1:")
-        || clean.starts_with("https://localhost:")
-        || clean.starts_with("https://127.0.0.1:")
+    // 2. 로컬 개발 서버 오리진 (localhost 및 127.0.0.1) - 개발 및 테스트 환경에서만 한정 허용 (프로덕션 SOP 우회 방어)
+    #[cfg(any(debug_assertions, test))]
     {
-        return true;
+        if clean.starts_with("http://localhost:")
+            || clean.starts_with("http://127.0.0.1:")
+            || clean.starts_with("https://localhost:")
+            || clean.starts_with("https://127.0.0.1:")
+        {
+            return true;
+        }
     }
 
     false
@@ -60,6 +63,15 @@ fn resolve_allowed_origin(request: &tauri::http::Request<Vec<u8>>) -> Option<Str
     let default_origin = "tauri://localhost";
 
     Some(default_origin.to_string())
+}
+
+/// Windows 위험 네임스페이스 또는 UNC 원격 네트워크 경로 탐지 (NetNTLMv2 유출 방어)
+pub fn is_dangerous_windows_namespace_or_unc(trimmed: &str) -> bool {
+    let lower = trimmed.to_lowercase();
+    lower.starts_with(r"\\")
+        || lower.starts_with("//")
+        || lower.starts_with(r"\??\")
+        || lower.starts_with(r"\\?\")
 }
 
 /// Windows UNC Verbatim 접두사 (\\?\ 및 \\?\UNC\) 제거 헬퍼
@@ -105,12 +117,18 @@ pub fn to_posix_normalized_path(path: &Path) -> PathBuf {
     }
 
     // Windows 드라이브 문자(예: "c:/...", "c:\...") 시작 시 드라이브 문자 대문자화 ("C:/...")
+    // 및 콜론 뒤 슬래시 누락(드라이브 상대 경로 e.g. "C:test.ttf")을 절대 루트("C:/test.ttf")로 보정
     if normalized.len() >= 2 {
         let first = normalized.chars().next().unwrap();
         let second = normalized.chars().nth(1).unwrap();
-        if first.is_ascii_alphabetic() && second == ':' && first.is_ascii_lowercase() {
+        if first.is_ascii_alphabetic() && second == ':' {
             let upper = first.to_ascii_uppercase();
             normalized.replace_range(0..1, &upper.to_string());
+            if normalized.len() == 2 {
+                normalized.push('/');
+            } else if !normalized.chars().nth(2).map_or(false, |c| c == '/') {
+                normalized.insert(2, '/');
+            }
         }
     }
 
@@ -141,6 +159,13 @@ pub fn to_windows_native_path(path: &Path) -> PathBuf {
 
 /// 경로 일치 또는 하위 경로 검증 (Windows 대소문자 비구분 및 macOS 자소 분리 NFC 정규화 포함)
 pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
+    // 1. Path Traversal(`..`) 컴포넌트 유입 원천 차단 (CWE-22 방어)
+    for c in parent.components().chain(child.components()) {
+        if matches!(c, std::path::Component::ParentDir) {
+            return false;
+        }
+    }
+
     let clean_parent = strip_unc_prefix(parent);
     let clean_child = strip_unc_prefix(child);
 
@@ -189,8 +214,13 @@ pub fn is_same_or_subpath(parent: &Path, child: &Path) -> bool {
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
+struct WatchedFolderPair {
+    original: PathBuf,
+    canonical: Option<PathBuf>,
+}
+
 struct SafePathCache {
-    watched_folders: Option<(Instant, Vec<PathBuf>)>,
+    watched_folders: Option<(Instant, Vec<WatchedFolderPair>)>,
     verified_paths: std::collections::HashMap<PathBuf, Instant>,
 }
 
@@ -201,30 +231,80 @@ static PATH_CACHE: LazyLock<Mutex<SafePathCache>> = LazyLock::new(|| {
     })
 });
 
+static SYSTEM_FONT_DIRS: LazyLock<Vec<(PathBuf, Option<PathBuf>)>> = LazyLock::new(|| {
+    crate::platform::Platform::get_system_font_directories()
+        .into_iter()
+        .map(|d| {
+            let canon = d.canonicalize().ok();
+            (d, canon)
+        })
+        .collect()
+});
+
 fn remember_verified_path(path: &Path) {
     if let Ok(mut cache) = PATH_CACHE.lock() {
-        if cache.verified_paths.len() > 2000 {
-            cache.verified_paths.clear();
+        let now = Instant::now();
+        if cache.verified_paths.len() > 3000 {
+            cache.verified_paths.retain(|_, time| now.duration_since(*time) < Duration::from_secs(30));
+            if cache.verified_paths.len() > 3000 {
+                // LRU Eviction: 오래된 항목 순으로 정렬하여 초과분만 제거 (전체 clear 스래싱 방어)
+                let mut entries: Vec<(PathBuf, Instant)> = cache.verified_paths.drain().collect();
+                entries.sort_unstable_by_key(|&(_, time)| time);
+                let keep_from = entries.len().saturating_sub(1500);
+                cache.verified_paths.extend(entries.into_iter().skip(keep_from));
+            }
         }
-        cache.verified_paths.insert(path.to_path_buf(), Instant::now());
+        cache.verified_paths.insert(path.to_path_buf(), now);
     }
 }
 
-fn get_cached_watched_folders(db: &crate::db::Database) -> Vec<PathBuf> {
+/// DB 조회 시 PATH_CACHE 락을 점유하지 않도록 Lock 분리 적용 (데드락 및 프로토콜 프리징 방어)
+/// 감시 폴더의 물리 경로(canonicalize)를 사전 연산하여 캐싱 (반복 디스크 I/O 병목 제거)
+fn get_cached_watched_folders(db: &crate::db::Database) -> Vec<WatchedFolderPair> {
     let now = Instant::now();
-    if let Ok(mut cache) = PATH_CACHE.lock() {
+    // 1단계: 캐시 조회 (락을 짧게만 점유)
+    if let Ok(cache) = PATH_CACHE.lock() {
         if let Some((fetched_at, ref folders)) = cache.watched_folders {
             if now.duration_since(fetched_at) < Duration::from_secs(5) {
-                return folders.clone();
+                return folders.iter().map(|f| WatchedFolderPair {
+                    original: f.original.clone(),
+                    canonical: f.canonical.clone(),
+                }).collect();
             }
         }
-        if let Ok(db_folders) = db.get_folders() {
-            let paths: Vec<PathBuf> = db_folders.into_iter().map(|f| PathBuf::from(f.path)).collect();
-            cache.watched_folders = Some((now, paths.clone()));
-            return paths;
-        }
     }
-    Vec::new()
+
+    // 2단계: 캐시 만료 시 락 해제 상태에서 DB I/O 및 경로 사전 정규화 수행 (Lock Inversion 데드락 차단)
+    let fetched: Vec<WatchedFolderPair> = if let Ok(db_folders) = db.get_folders() {
+        db_folders.into_iter().map(|f| {
+            let orig = PathBuf::from(f.path);
+            let canon = orig.canonicalize().ok();
+            WatchedFolderPair {
+                original: orig,
+                canonical: canon,
+            }
+        }).collect()
+    } else {
+        Vec::new()
+    };
+
+    // 3단계: 캐시 갱신
+    if let Ok(mut cache) = PATH_CACHE.lock() {
+        cache.watched_folders = Some((now, fetched.iter().map(|f| WatchedFolderPair {
+            original: f.original.clone(),
+            canonical: f.canonical.clone(),
+        }).collect()));
+    }
+
+    fetched
+}
+
+/// 폴더 추가/삭제, 폰트 제거 등 인가 영역 변경 시 인메모리 경로 캐시를 즉시 무효화 (TOCTOU / Stale Authorization 방어)
+pub fn invalidate_safe_path_cache() {
+    if let Ok(mut cache) = PATH_CACHE.lock() {
+        cache.watched_folders = None;
+        cache.verified_paths.clear();
+    }
 }
 
 /// 요청된 정규화 파일 경로가 안전한 폰트 디렉토리 또는 DB 카탈로그에 속하는지 검증합니다.
@@ -232,29 +312,31 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
     path: &Path,
     app_handle: Option<&tauri::AppHandle<R>>,
 ) -> bool {
+    // 심볼릭 링크 악용(Symlink Swap TOCTOU) 방어: 실제 물리 대상을 기준으로 캐시 키 및 인가 검증
+    let canonical_target = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let now = Instant::now();
 
-    // 0. 최근 검증 성공한 경로 인메모리 빠른 반환 (TTL 30초, DB 조회 0회)
+    // 0. 최근 검증 성공한 물리 경로 인메모리 빠른 반환 (TTL 30초, DB 조회 0회)
     if let Ok(mut cache) = PATH_CACHE.lock() {
-        if let Some(&cached_time) = cache.verified_paths.get(path) {
+        if let Some(&cached_time) = cache.verified_paths.get(&canonical_target) {
             if now.duration_since(cached_time) < Duration::from_secs(30) {
                 return true;
             } else {
-                cache.verified_paths.remove(path);
+                cache.verified_paths.remove(&canonical_target);
             }
         }
     }
 
-    // 1. OS 시스템 폰트 디렉토리 검증
-    for sys_dir in crate::platform::Platform::get_system_font_directories() {
-        if let Ok(canonical_sys) = sys_dir.canonicalize() {
-            if is_same_or_subpath(&canonical_sys, path) {
-                remember_verified_path(path);
+    // 1. OS 시스템 폰트 디렉토리 사전 정규화 캐시 대조 (0-I/O 즉시 판별)
+    for (sys_dir, canonical_sys) in SYSTEM_FONT_DIRS.iter() {
+        if let Some(canon) = canonical_sys {
+            if is_same_or_subpath(canon, &canonical_target) {
+                remember_verified_path(&canonical_target);
                 return true;
             }
         }
-        if is_same_or_subpath(&sys_dir, path) {
-            remember_verified_path(path);
+        if is_same_or_subpath(sys_dir, &canonical_target) {
+            remember_verified_path(&canonical_target);
             return true;
         }
     }
@@ -264,47 +346,47 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
         // 앱 데이터 디렉토리 허용
         if let Ok(app_data) = app.path().app_data_dir() {
             if let Ok(canonical_app_data) = app_data.canonicalize() {
-                if is_same_or_subpath(&canonical_app_data, path) {
-                    remember_verified_path(path);
+                if is_same_or_subpath(&canonical_app_data, &canonical_target) {
+                    remember_verified_path(&canonical_target);
                     return true;
                 }
             }
-            if is_same_or_subpath(&app_data, path) {
-                remember_verified_path(path);
+            if is_same_or_subpath(&app_data, &canonical_target) {
+                remember_verified_path(&canonical_target);
                 return true;
             }
         }
 
         if let Some(state) = app.try_state::<crate::commands::AppState>() {
-            // 2-1. 사용자가 등록한 감시 폴더(watched folders) 하위 경로인지 검증 (5초 TTL 인메모리 캐싱)
-            let folders = get_cached_watched_folders(&state.db);
-            for folder_path in folders {
-                if let Ok(canonical_folder) = folder_path.canonicalize() {
-                    if is_same_or_subpath(&canonical_folder, path) {
-                        remember_verified_path(path);
+            // 2-1. 사용자가 등록한 감시 폴더(watched folders) 하위 경로인지 검증 (사전 계산된 canonical 캐싱으로 0-I/O 판별)
+            let folder_pairs = get_cached_watched_folders(&state.db);
+            for pair in &folder_pairs {
+                if let Some(ref canon) = pair.canonical {
+                    if is_same_or_subpath(canon, &canonical_target) {
+                        remember_verified_path(&canonical_target);
                         return true;
                     }
                 }
-                if is_same_or_subpath(&folder_path, path) {
-                    remember_verified_path(path);
+                if is_same_or_subpath(&pair.original, &canonical_target) {
+                    remember_verified_path(&canonical_target);
                     return true;
                 }
             }
 
             // 2-2. 폰트 캐시 DB에 등록된 유효한 폰트 경로인지 검증
             // (POSIX 표준 경로 최우선 대조로 SQLite COLLATE NOCASE 일치 보장, 이후 레거시 경로 폴백)
-            let posix_path = to_posix_normalized_path(path);
+            let posix_path = to_posix_normalized_path(&canonical_target);
             let posix_path_str = posix_path.to_string_lossy();
             if let Ok(true) = state.db.is_font_path_cached(&posix_path_str) {
-                remember_verified_path(path);
+                remember_verified_path(&canonical_target);
                 return true;
             }
 
-            let clean_path = strip_unc_prefix(path);
+            let clean_path = strip_unc_prefix(&canonical_target);
             let clean_path_str = clean_path.to_string_lossy();
             if clean_path_str != posix_path_str {
                 if let Ok(true) = state.db.is_font_path_cached(&clean_path_str) {
-                    remember_verified_path(path);
+                    remember_verified_path(&canonical_target);
                     return true;
                 }
             }
@@ -312,15 +394,15 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
             let nfc_path_str: String = clean_path_str.nfc().collect();
             if nfc_path_str != clean_path_str {
                 if let Ok(true) = state.db.is_font_path_cached(&nfc_path_str) {
-                    remember_verified_path(path);
+                    remember_verified_path(&canonical_target);
                     return true;
                 }
             }
 
-            let raw_path_str = path.to_string_lossy();
+            let raw_path_str = canonical_target.to_string_lossy();
             if raw_path_str != clean_path_str {
                 if let Ok(true) = state.db.is_font_path_cached(&raw_path_str) {
-                    remember_verified_path(path);
+                    remember_verified_path(&canonical_target);
                     return true;
                 }
             }
@@ -402,7 +484,26 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
         percent_decode_str(uri_path).decode_utf8_lossy().to_string()
     };
 
-    let file_path = PathBuf::from(path_str);
+    let trimmed_path = path_str.trim();
+    if trimmed_path.is_empty() || trimmed_path.chars().any(|c| c.is_control() || c == '\0') {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+            .body(b"Bad Request: Invalid path format".to_vec())
+            .unwrap_or_default();
+    }
+
+    // Windows NetNTLMv2 자격 증명 유출 및 원격 SMB/장치 네임스페이스 접근 원천 차단
+    if is_dangerous_windows_namespace_or_unc(trimmed_path) {
+        eprintln!("[font protocol] Blocked UNC/device namespace path: {}", trimmed_path);
+        return Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+            .body(b"Forbidden: UNC or device namespace paths are not allowed".to_vec())
+            .unwrap_or_default();
+    }
+
+    let file_path = PathBuf::from(trimmed_path);
 
     // 4. 확장자 화이트리스트 검사 (Early Return)
     let mime_type = match get_allowed_font_mime_type(&file_path) {
@@ -431,24 +532,19 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
             path
         }
         Err(err) => {
-            if file_path.is_file() {
-                file_path.clone()
-            } else {
-                eprintln!("[font protocol] Font file not found or invalid path {:?}: {}", file_path, err);
-                return Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
-                    .body(b"Font file not found".to_vec())
-                    .unwrap_or_default();
-            }
+            eprintln!("[font protocol] Font file not found or invalid path {:?}: {}", file_path, err);
+            return Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
+                .body(b"Font file not found or inaccessible".to_vec())
+                .unwrap_or_default();
         }
     };
 
-    // 6. 허용된 경로(시스템 폰트, 감시 폴더, 캐시된 폰트 라이브러리) 검증
-    // 심볼릭 링크 지원: 정규화된 대상 경로(canonical_path) 또는 요청된 심볼릭 링크 경로(file_path) 중
-    // 어느 하나라도 인가된 폴더 또는 DB 카탈로그에 속해 있다면 안전하게 허용합니다.
-    let is_allowed = is_font_path_allowed(&canonical_path, Some(ctx.app_handle()))
-        || is_font_path_allowed(&file_path, Some(ctx.app_handle()));
+    // 6. 허용된 경로(시스템 폰트, 감시 폴더, 캐시된 폰트 라이브러리) 엄격 검증
+    // [보안 하드닝]: 실제 물리 대상(canonical_path)이 인가된 영역에 포함되어 있는지 필수로 검증
+    // 요청 링크(file_path)만 허용 폴더에 있고 실제 대상이 외부 시스템 파일인 심볼릭 링크 탈출(CWE-59) 원천 차단
+    let is_allowed = is_font_path_allowed(&canonical_path, Some(ctx.app_handle()));
 
     if !is_allowed {
         eprintln!("[font protocol] Access denied: unauthorized path {:?}", canonical_path);
@@ -594,9 +690,11 @@ pub fn sanitize_font_buffer(buffer: &mut [u8]) {
             return;
         }
         let num_fonts = u32::from_be_bytes([buffer[8], buffer[9], buffer[10], buffer[11]]) as usize;
-        let mut offset = 12;
-        for _ in 0..num_fonts {
-            if offset + 4 > buffer.len() {
+        // 악의적인 DoS 루프 방어를 위해 최대 1024개 서체로 제한
+        let safe_limit = num_fonts.min(1024);
+        let mut offset = 12usize;
+        for _ in 0..safe_limit {
+            if offset.checked_add(4).map_or(true, |end| end > buffer.len()) {
                 break;
             }
             let font_offset = u32::from_be_bytes([
@@ -616,7 +714,7 @@ pub fn sanitize_font_buffer(buffer: &mut [u8]) {
 }
 
 fn sanitize_single_face_tables(buffer: &mut [u8], base_offset: usize) {
-    if base_offset + 12 > buffer.len() {
+    if base_offset.checked_add(12).map_or(true, |end| end > buffer.len()) {
         return;
     }
 
@@ -625,9 +723,15 @@ fn sanitize_single_face_tables(buffer: &mut [u8], base_offset: usize) {
         buffer[base_offset + 5],
     ]) as usize;
 
-    let table_dir_len = num_tables * 16;
-    let table_dir_start = base_offset + 12;
-    let table_dir_end = table_dir_start + table_dir_len;
+    let Some(table_dir_len) = num_tables.checked_mul(16) else {
+        return;
+    };
+    let Some(table_dir_start) = base_offset.checked_add(12) else {
+        return;
+    };
+    let Some(table_dir_end) = table_dir_start.checked_add(table_dir_len) else {
+        return;
+    };
 
     if table_dir_end > buffer.len() {
         return;
@@ -812,5 +916,34 @@ mod tests {
             to_windows_native_path(Path::new(r"\\?\c:\users\fonts\")),
             PathBuf::from(r"C:\users\fonts")
         );
+    }
+
+    #[test]
+    fn test_is_dangerous_windows_namespace_or_unc() {
+        assert!(is_dangerous_windows_namespace_or_unc(r"\\attacker\share\font.ttf"));
+        assert!(is_dangerous_windows_namespace_or_unc("//attacker/share/font.ttf"));
+        assert!(is_dangerous_windows_namespace_or_unc(r"\\?\UNC\attacker\share\font.ttf"));
+        assert!(is_dangerous_windows_namespace_or_unc(r"\??\UNC\attacker\share\font.ttf"));
+        assert!(is_dangerous_windows_namespace_or_unc(r"\\?\C:\Windows\Fonts\malgun.ttf"));
+        assert!(!is_dangerous_windows_namespace_or_unc("/Library/Fonts/Arial.ttf"));
+        assert!(!is_dangerous_windows_namespace_or_unc(r"C:\Windows\Fonts\malgun.ttf"));
+        assert!(!is_dangerous_windows_namespace_or_unc("D:/Fonts/test.otf"));
+    }
+
+    #[test]
+    fn test_remember_verified_path_lru_eviction() {
+        invalidate_safe_path_cache();
+
+        // 3200개 경로 삽입 시 3000개 임계치 초과로 LRU Eviction 동작 검증
+        for i in 0..3200 {
+            let p = PathBuf::from(format!("/Library/Fonts/font_{}.ttf", i));
+            remember_verified_path(&p);
+        }
+
+        if let Ok(cache) = PATH_CACHE.lock() {
+            // 캐시가 전체 clear되지 않고 유효 크기 범위(1500~3200)로 보존되는지 검증
+            assert!(cache.verified_paths.len() <= 3200);
+            assert!(cache.verified_paths.len() >= 1500, "Cache should preserve recent items without complete thrashing clear");
+        }
     }
 }

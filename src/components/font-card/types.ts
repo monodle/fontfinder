@@ -1,7 +1,7 @@
 import React from "react";
-import { FontMetadata, FontLibraryTag } from "../../types/font";
+import { FontMetadata, FontLibraryTag, FontDetailMode } from "../../types/font";
 
-export type FontDetailMode = "detailed" | "simple";
+export type { FontDetailMode };
 
 
 export interface FontCardRenderProps {

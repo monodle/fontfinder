@@ -361,7 +361,7 @@ impl Database {
           .map(|i| format!("?{}", i))
           .collect::<Vec<_>>()
           .join(",");
-        let sql = format!("DELETE FROM font_cache WHERE file_path IN ({})", placeholders);
+        let sql = format!("DELETE FROM font_cache WHERE file_path COLLATE NOCASE IN ({})", placeholders);
         let mut stmt = tx.prepare(&sql)?;
         let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
         stmt.execute(params.as_slice())?;

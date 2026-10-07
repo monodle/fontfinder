@@ -14,28 +14,25 @@ import {
 import { ColorPresetPicker } from "../color/ColorPresetPicker";
 import { RangeSliderControl } from "../common/RangeSliderControl";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { THEME_COLOR_PRESETS } from "../../config/colorPresets";
+import { appConfig, SETTINGS_BOUNDS } from "../../config/appConfig";
+import type { PreviewSettings, TextTransformOption } from "../../types/font";
 
-export interface TypographyStyleValues {
-  text: string;
-  fontSize: number;
-  fontWeight: number; // 0: 폰트 자체 weight 사용, 100~900: 사용자 지정
-  isBold?: boolean;
-  isItalic?: boolean;
-  isUnderline?: boolean;
-  letterSpacing: number; // px 단위, -2 ~ 12
-  lineHeight: number; // 1.0 ~ 2.5
-  textAlign: "left" | "center" | "right";
-  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
-  textColor: string; // 빈 문자열("")이면 기본 테마 색상 사용
-  backgroundColor: string; // 빈 문자열("")이면 기본 테마 색상 사용
-}
+const TEXT_TRANSFORM_ITEMS: ReadonlyArray<{ label: string; value: TextTransformOption }> = [
+  { label: "Default", value: "none" },
+  { label: "UPPER", value: "uppercase" },
+  { label: "lower", value: "lowercase" },
+  { label: "Title", value: "capitalize" },
+];
+
+export type TypographyStyleValues = PreviewSettings;
 
 export interface PreviewTypographyFormProps {
   mode: "session" | "defaults";
-  values: TypographyStyleValues;
-  onChange: <K extends keyof TypographyStyleValues>(
+  values: PreviewSettings;
+  onChange: <K extends keyof PreviewSettings>(
     field: K,
-    value: TypographyStyleValues[K]
+    value: PreviewSettings[K]
   ) => void;
   minFontSize?: number;
   maxFontSize?: number;
@@ -44,43 +41,12 @@ export interface PreviewTypographyFormProps {
   onSubmitShortcut?: () => void;
 }
 
-const THEME_COLOR_PRESETS = [
-  {
-    id: "default",
-    nameKey: "style_modal.preset_default",
-    textColor: "",
-    backgroundColor: "",
-    previewBadge: "bg-theme-card text-theme-text border-theme-border",
-  },
-  {
-    id: "dark",
-    nameKey: "style_modal.preset_dark",
-    textColor: "#f3efe6",
-    backgroundColor: "#1c1917",
-    previewBadge: "bg-[#1c1917] text-[#f3efe6] border-[#38332e]",
-  },
-  {
-    id: "white",
-    nameKey: "style_modal.preset_white",
-    textColor: "#111111",
-    backgroundColor: "#ffffff",
-    previewBadge: "bg-[#ffffff] text-[#111111] border-[#e5e5e5]",
-  },
-  {
-    id: "midnight",
-    nameKey: "style_modal.preset_midnight",
-    textColor: "#e0e7ff",
-    backgroundColor: "#0f172a",
-    previewBadge: "bg-[#0f172a] text-[#e0e7ff] border-[#1e293b]",
-  },
-];
-
 export function PreviewTypographyForm({
   mode,
   values,
   onChange,
-  minFontSize = 14,
-  maxFontSize = 72,
+  minFontSize = appConfig.preview.minFontSize,
+  maxFontSize = appConfig.preview.maxFontSize,
   onMinFontSizeChange,
   onMaxFontSizeChange,
   onSubmitShortcut,
@@ -91,7 +57,7 @@ export function PreviewTypographyForm({
 
   // 실시간 라이브 미니 프리뷰 인라인 스타일
   const livePreviewStyle: CSSProperties = {
-    fontSize: `${Math.min(Math.max(values.fontSize, 14), 38)}px`,
+    fontSize: `${Math.min(Math.max(values.fontSize, SETTINGS_BOUNDS.fontSize.defaultMin), 38)}px`,
     fontWeight:
       values.fontWeight > 0
         ? values.fontWeight
@@ -209,11 +175,11 @@ export function PreviewTypographyForm({
                   </span>
                   <input
                     type="number"
-                    min={8}
-                    max={36}
+                    min={SETTINGS_BOUNDS.fontSize.min}
+                    max={SETTINGS_BOUNDS.fontSize.minInputLimit}
                     value={minFontSize}
                     onChange={(e) => {
-                      const val = Math.max(8, Number(e.target.value));
+                      const val = Math.max(SETTINGS_BOUNDS.fontSize.min, Number(e.target.value));
                       onMinFontSizeChange(val);
                       if (values.fontSize < val) {
                         onChange("fontSize", val);
@@ -230,8 +196,8 @@ export function PreviewTypographyForm({
                   </span>
                   <input
                     type="number"
-                    min={40}
-                    max={144}
+                    min={SETTINGS_BOUNDS.fontSize.minInputLimit + 4}
+                    max={SETTINGS_BOUNDS.fontSize.maxInputLimit}
                     value={maxFontSize}
                     onChange={(e) => {
                       const val = Math.max(minFontSize + 4, Number(e.target.value));
@@ -383,9 +349,9 @@ export function PreviewTypographyForm({
             }
             value={values.letterSpacing}
             onChange={(val) => onChange("letterSpacing", val)}
-            min={-2}
-            max={12}
-            step={0.5}
+            min={SETTINGS_BOUNDS.letterSpacing.sliderMin}
+            max={SETTINGS_BOUNDS.letterSpacing.sliderMax}
+            step={SETTINGS_BOUNDS.letterSpacing.step}
             unit="px"
             showNumberInput={false}
           />
@@ -399,9 +365,9 @@ export function PreviewTypographyForm({
             }
             value={values.lineHeight}
             onChange={(val) => onChange("lineHeight", val)}
-            min={1.0}
-            max={2.5}
-            step={0.05}
+            min={SETTINGS_BOUNDS.lineHeight.sliderMin}
+            max={SETTINGS_BOUNDS.lineHeight.sliderMax}
+            step={SETTINGS_BOUNDS.lineHeight.step}
             unit="x"
             formatValue={(val) => val.toFixed(2)}
             showNumberInput={false}
@@ -414,21 +380,11 @@ export function PreviewTypographyForm({
                 {t("common.edit")}
               </span>
               <div className="grid grid-cols-4 gap-1 text-[10px]">
-                {[
-                  { label: "Default", value: "none" },
-                  { label: "UPPER", value: "uppercase" },
-                  { label: "lower", value: "lowercase" },
-                  { label: "Title", value: "capitalize" },
-                ].map((item) => (
+                {TEXT_TRANSFORM_ITEMS.map((item) => (
                   <button
                     key={item.value}
                     type="button"
-                    onClick={() =>
-                      onChange(
-                        "textTransform",
-                        item.value as TypographyStyleValues["textTransform"]
-                      )
-                    }
+                    onClick={() => onChange("textTransform", item.value)}
                     className={`py-1 rounded border font-mono transition-colors text-center cursor-pointer ${
                       values.textTransform === item.value
                         ? "bg-theme-accent text-theme-accent-text border-theme-accent font-semibold"

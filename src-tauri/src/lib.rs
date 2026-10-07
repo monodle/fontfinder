@@ -55,6 +55,7 @@ pub fn run() {
             commands::update_set_color,
             commands::update_set,
             commands::update_set_parent,
+            commands::update_set_position,
             commands::get_sets,
             commands::delete_set,
             commands::add_font_to_set,
@@ -71,6 +72,7 @@ pub fn run() {
             commands::get_folders,
             commands::add_folder,
             commands::update_folder_color,
+            commands::update_folder_position,
             commands::remove_folder,
             commands::check_folders_status,
             commands::relink_folder,
@@ -112,10 +114,8 @@ pub fn run() {
                         tauri::async_runtime::spawn(async move {
                             let _guard = FocusCheckGuard;
                             let _ = tokio::task::spawn_blocking(move || {
-                                if let Ok(mut w) = watcher_clone.lock() {
-                                    let _ = w.check_missing_folders();
-                                    let _ = w.check_and_recover_missing();
-                                }
+                                watcher::FontFolderWatcher::run_missing_check_cycle(&watcher_clone);
+                                watcher::FontFolderWatcher::run_recover_cycle(&watcher_clone);
                             }).await;
                         });
                     }
@@ -168,11 +168,14 @@ pub fn run() {
                             // 마우스/키보드/블루투스 등 HID 장치 무관 이벤트 차단: 볼륨(드라이브) 이벤트만 선별
                             const DBT_DEVTYP_VOLUME: u32 = 0x00000002;
                             let is_volume_event = if lparam != 0 {
-                                // DEV_BROADCAST_HDR: offset 0(dbch_size: u32), offset 4(dbch_devicetype: u32)
-                                // dbch_size가 최소 8바이트 이상인지 검증하여 비정상 버퍼 역참조 차단
-                                unsafe {
-                                    let dbch_size = *(lparam as *const u32);
-                                    dbch_size >= 8 && *((lparam as *const u8).add(4) as *const u32) == DBT_DEVTYP_VOLUME
+                                // 64KB 이하 가짜 포인터 및 4바이트 비정렬 주소 역참조 방어 (Access Violation 0xC0000005 차단)
+                                if (lparam as usize) >= 0x10000 && (lparam as usize % 4 == 0) {
+                                    unsafe {
+                                        let dbch_size = *(lparam as *const u32);
+                                        dbch_size >= 8 && *((lparam as *const u8).add(4) as *const u32) == DBT_DEVTYP_VOLUME
+                                    }
+                                } else {
+                                    false
                                 }
                             } else {
                                 true
@@ -190,15 +193,11 @@ pub fn run() {
                                             // USB/외장 볼륨 마운트 직후 OS 파일시스템 마운트 I/O 안정화 대기 (150ms)
                                             tokio::time::sleep(std::time::Duration::from_millis(150)).await;
                                             let _ = tokio::task::spawn_blocking(move || {
-                                                if let Ok(mut w) = watcher_arc.lock() {
-                                                    let _ = w.check_and_recover_missing();
-                                                }
+                                                watcher::FontFolderWatcher::run_recover_cycle(&watcher_arc);
                                             }).await;
                                         } else {
                                             let _ = tokio::task::spawn_blocking(move || {
-                                                if let Ok(mut w) = watcher_arc.lock() {
-                                                    let _ = w.check_missing_folders();
-                                                }
+                                                watcher::FontFolderWatcher::run_missing_check_cycle(&watcher_arc);
                                             }).await;
                                         }
                                     });
@@ -248,7 +247,7 @@ pub fn run() {
             {
                 let window = app.get_webview_window("main");
                 if let Some(w) = window {
-                    let _ = w.open_devtools();
+                    w.open_devtools();
                 }
             }
             Ok(())

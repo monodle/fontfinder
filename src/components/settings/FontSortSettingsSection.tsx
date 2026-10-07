@@ -4,7 +4,7 @@ import {
   ArrowDownAZ,
   SlidersHorizontal,
   GripVertical,
-  Star,
+  Heart,
   Zap,
   CircleDashed,
   AlertTriangle,
@@ -47,7 +47,7 @@ export function FontSortSettingsSection({
       id: "favorites",
       title: t("sort.block_favorites"),
       subtitle: t("sort.block_favorites_desc"),
-      icon: <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />,
+      icon: <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />,
       colorClass: "border-rose-500/30 bg-rose-500/5",
     },
     activated: {
@@ -220,7 +220,7 @@ export function FontSortSettingsSection({
                 1
               </span>
               <div className="flex items-center gap-1.5 min-w-0">
-                <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500 shrink-0" />
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500 shrink-0" />
                 <span className="text-xs font-medium text-theme-text truncate">
                   {t("sort.block_favorites")}
                 </span>
@@ -403,7 +403,7 @@ export function FontSortSettingsSection({
               onReorder={handleReorderBlocks}
               onItemClick={() => {}}
               className="space-y-1.5"
-              renderItem={(blockId, { isDragging, isOver, dropPosition }) => {
+              renderItem={(blockId, { isDragging }) => {
                 const meta = blockMetaMap[blockId];
                 if (!meta) return null;
                 const index = activePriorityList.indexOf(blockId);
@@ -413,10 +413,7 @@ export function FontSortSettingsSection({
                     className={cn(
                       "relative flex items-center justify-between p-2.5 rounded-xl border bg-theme-surface transition-all cursor-grab active:cursor-grabbing select-none",
                       meta.colorClass,
-                      isDragging && "opacity-30 scale-[0.98] border-theme-accent shadow-sm",
-                      isOver && "ring-2 ring-theme-accent/80 shadow-md",
-                      dropPosition === "before" && "border-t-2 border-t-theme-accent",
-                      dropPosition === "after" && "border-b-2 border-b-theme-accent"
+                      isDragging && "opacity-30 scale-[0.98] border-theme-accent shadow-sm"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">

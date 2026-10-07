@@ -24,7 +24,7 @@ impl FontParser {
         // OpenType 헤더 검사 (최소 12바이트)
         let is_sfnt = if header_data.len() >= 12 {
             let num_tables = u16::from_be_bytes([header_data[4], header_data[5]]) as usize;
-            let directory_size = 12 + num_tables * 16;
+            let directory_size = num_tables.checked_mul(16).and_then(|l| l.checked_add(12)).unwrap_or(usize::MAX);
             if num_tables > 0 && num_tables <= 100 && header_data.len() >= directory_size {
                 // Table Directory (각 16바이트: tag 4B, checksum 4B, offset 4B, length 4B)
                 // 글리프 내용을 일일이 읽지 않아도 헤더의 32비트 체크섬과 길이 정보로 고유성 보장
@@ -74,8 +74,8 @@ impl FontParser {
             // ① 시작 헤더 (32KB, 파일 오픈 직후이므로 Seek 0회 순차 읽기)
             let head_block = 32_768; // 32KB
             let mut head_chunk = vec![0u8; head_block];
-            file.read_exact(&mut head_chunk)?;
-            hasher.update(&head_chunk);
+            let n0 = file.read(&mut head_chunk)?;
+            hasher.update(&head_chunk[..n0]);
 
             // ② 중간 1지점 (파일의 약 1/3 지점, 64KB, Seek 1회)
             let mid_block = 65_536; // 64KB
@@ -124,6 +124,12 @@ impl FontParser {
 
         let metadata = std::fs::metadata(path_ref)?;
         let file_size = metadata.len();
+        if file_size == 0 {
+            return Err(AppError::FontParse(format!(
+                "Font file is empty (0 bytes): {}",
+                path_ref.display()
+            )));
+        }
         let file_name = path_ref
             .file_name()
             .and_then(|n| n.to_str())
@@ -161,7 +167,9 @@ impl FontParser {
         // fontTools 방식 핀포인트 검사: name 테이블 위치 확인
         let name_bounds = Self::find_table_bounds(&prefix_buf, b"name");
         let raw_name_table = if let Some((offset, length)) = name_bounds {
-            if offset + length > prefix_limit && length > 0 && length < 10_000_000 && (offset as u64 + length as u64) <= file_size {
+            let exceeds_prefix = offset.checked_add(length).map_or(false, |end| end > prefix_limit);
+            let within_file = (offset as u64).checked_add(length as u64).map_or(false, |end| end <= file_size);
+            if exceeds_prefix && length > 0 && length < 10_000_000 && within_file {
                 // 128KB 범위를 초과하는 대형 CJK 폰트: 전체를 읽지 않고 오직 name 테이블(수 KB)만 핀포인트 seek & read
                 if file.seek(SeekFrom::Start(offset as u64)).is_ok() {
                     let mut name_buf = vec![0u8; length];
@@ -383,9 +391,19 @@ impl FontParser {
     }
 
     pub fn extract_glyphs<P: AsRef<Path>>(path: P, font_index: u32) -> AppResult<Vec<super::model::GlyphItem>> {
-        let mut file = File::open(path.as_ref())?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
+        let path_ref = path.as_ref();
+        let meta = std::fs::metadata(path_ref)?;
+        let file_size = meta.len();
+        if file_size > crate::protocol::MAX_FONT_FILE_SIZE {
+            return Err(AppError::FontParse(format!(
+                "Font file size exceeds maximum limit ({} MB)",
+                crate::protocol::MAX_FONT_FILE_SIZE / (1024 * 1024)
+            )));
+        }
+
+        let file = File::open(path_ref)?;
+        let mut buffer = Vec::with_capacity(file_size.min(crate::protocol::MAX_FONT_FILE_SIZE) as usize);
+        file.take(crate::protocol::MAX_FONT_FILE_SIZE + 1).read_to_end(&mut buffer)?;
 
         let face = Face::parse(&buffer, font_index)
             .map_err(|e| AppError::FontParse(format!("Failed to parse font for glyphs: {:?}", e)))?;
@@ -426,7 +444,7 @@ impl FontParser {
         let tag = &header_data[0..4];
         if tag == b"\x00\x01\x00\x00" || tag == b"OTTO" || tag == b"true" || tag == b"typ1" {
             let num_tables = u16::from_be_bytes([header_data[4], header_data[5]]) as usize;
-            let directory_size = 12 + num_tables * 16;
+            let directory_size = num_tables.checked_mul(16)?.checked_add(12)?;
             if header_data.len() >= directory_size {
                 for i in 0..num_tables {
                     let entry_start = 12 + i * 16;
@@ -454,27 +472,28 @@ impl FontParser {
                 header_data[14],
                 header_data[15],
             ]) as usize;
-            if header_data.len() >= first_offset + 12 {
+            if first_offset.checked_add(12).map_or(false, |req| header_data.len() >= req) {
                 let sub = &header_data[first_offset..];
                 let num_tables = u16::from_be_bytes([sub[4], sub[5]]) as usize;
-                let directory_size = 12 + num_tables * 16;
-                if sub.len() >= directory_size {
-                    for i in 0..num_tables {
-                        let entry_start = 12 + i * 16;
-                        if &sub[entry_start..entry_start + 4] == tag_to_find {
-                            let offset = u32::from_be_bytes([
-                                sub[entry_start + 8],
-                                sub[entry_start + 9],
-                                sub[entry_start + 10],
-                                sub[entry_start + 11],
-                            ]) as usize;
-                            let length = u32::from_be_bytes([
-                                sub[entry_start + 12],
-                                sub[entry_start + 13],
-                                sub[entry_start + 14],
-                                sub[entry_start + 15],
-                            ]) as usize;
-                            return Some((offset, length));
+                if let Some(directory_size) = num_tables.checked_mul(16).and_then(|l| l.checked_add(12)) {
+                    if sub.len() >= directory_size {
+                        for i in 0..num_tables {
+                            let entry_start = 12 + i * 16;
+                            if &sub[entry_start..entry_start + 4] == tag_to_find {
+                                let offset = u32::from_be_bytes([
+                                    sub[entry_start + 8],
+                                    sub[entry_start + 9],
+                                    sub[entry_start + 10],
+                                    sub[entry_start + 11],
+                                ] as [u8; 4]) as usize;
+                                let length = u32::from_be_bytes([
+                                    sub[entry_start + 12],
+                                    sub[entry_start + 13],
+                                    sub[entry_start + 14],
+                                    sub[entry_start + 15],
+                                ] as [u8; 4]) as usize;
+                                return Some((offset, length));
+                            }
                         }
                     }
                 }
@@ -1283,7 +1302,18 @@ pub fn decode_raw_name_bytes(
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
                     .collect();
-                if let Ok(s) = String::from_utf16(&u16_chars) {
+                let decoded_str = String::from_utf16(&u16_chars)
+                    .ok()
+                    .or_else(|| {
+                        // 손상된 고아 서러게이트(Unpaired surrogate) 포함 시 손실 복원 폴백
+                        let lossy = String::from_utf16_lossy(&u16_chars);
+                        if lossy.chars().any(|c| c.is_alphanumeric()) {
+                            Some(lossy)
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(s) = decoded_str {
                     let trimmed = s.trim().to_string();
                     if !trimmed.is_empty() {
                         return Some(trimmed);
@@ -1398,10 +1428,14 @@ pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
         return result;
     }
 
-    let count = u16::from_be_bytes([name_data[2], name_data[3]]) as usize;
+    // 악의적인 DoS 공격 방어: name 레코드 최대 1024개로 상한 제한
+    let count = (u16::from_be_bytes([name_data[2], name_data[3]]) as usize).min(1024);
     let string_offset = u16::from_be_bytes([name_data[4], name_data[5]]) as usize;
 
-    if name_data.len() < 6 + count * 12 {
+    let Some(header_req) = count.checked_mul(12).and_then(|c| c.checked_add(6)) else {
+        return result;
+    };
+    if name_data.len() < header_req {
         return result;
     }
 
@@ -1432,8 +1466,8 @@ pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
         let length = u16::from_be_bytes([name_data[entry_start + 8], name_data[entry_start + 9]]) as usize;
         let offset = u16::from_be_bytes([name_data[entry_start + 10], name_data[entry_start + 11]]) as usize;
 
-        let str_start = string_offset + offset;
-        let str_end = str_start + length;
+        let Some(str_start) = string_offset.checked_add(offset) else { continue; };
+        let Some(str_end) = str_start.checked_add(length) else { continue; };
         if str_end > name_data.len() {
             continue;
         }

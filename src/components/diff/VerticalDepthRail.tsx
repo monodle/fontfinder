@@ -95,7 +95,7 @@ export function VerticalDepthRail({
           onReorder={handleReorder}
           onItemClick={(slotIdx) => onSelectFocusSlot(slotIdx)}
           className="space-y-1.5"
-          renderItem={(slotIdx, { isDragging, dropPosition }) => {
+          renderItem={(slotIdx, { isDragging }) => {
             const filledPos = filledSlots.indexOf(slotIdx);
             const slot = slots[slotIdx];
             const config = DIFF_SLOT_CONFIGS[slotIdx];
@@ -112,12 +112,8 @@ export function VerticalDepthRail({
                     ? `${config.bgActive} bg-theme-card shadow-sm`
                     : "bg-theme-card/80 border-theme-border/80 hover:bg-theme-card hover:border-theme-border"
                 } ${
-                  isDragging ? "opacity-30 scale-[0.98] bg-theme-active border-dashed" : ""
-                } ${
-                  dropPosition === "before"
-                    ? "border-t-2 border-theme-accent bg-theme-accent-subtle/50"
-                    : dropPosition === "after"
-                    ? "border-b-2 border-theme-accent bg-theme-accent-subtle/50"
+                  isDragging
+                    ? "opacity-40 scale-[0.98] bg-theme-active border-theme-accent ring-2 ring-theme-accent/60 shadow-md"
                     : ""
                 }`}
               >

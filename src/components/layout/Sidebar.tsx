@@ -28,21 +28,14 @@ import {
   X,
 } from "lucide-react";
 import type { SettingsTab } from "../settings/SettingsModal";
-import { FontSet, CustomFolder } from "../../types/font";
+import { FontSet, CustomFolder, CategoryCounts, FlatSetItem } from "../../types/font";
+import type { LibraryCategory } from "../../config/appConfig";
 import appIcon from "@/assets/128x128.png";
 import { SortableSidebarList, ConfirmModal } from "../common";
-import { SortableTreeSetList, FlatSetItem } from "../sidebar/SortableTreeSetList";
 import { LibraryItemModal } from "../sidebar/LibraryItemModal";
 import { ListRefreshButton } from "../controls/ListRefreshButton";
-
-interface CategoryCounts {
-  total: number;
-  system: number;
-  user: number;
-  activated: number;
-  favorites: number;
-  duplicates: number;
-}
+import { fontService } from "../../services/fontService";
+import { calculateOrderBetween } from "../../utils/orderUtils";
 
 function getParentDirHint(fullPath: string): string {
   const normalized = fullPath.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -239,22 +232,33 @@ export function Sidebar({
     return result;
   }, [flatSetList, setSearchQuery, setTree]);
 
-  // 통합 계층 드래그 앤 드롭 핸들러 (1depth <-> 2depth 자유 이동 및 즉시 DB 동기화)
+  // 통합 계층 드래그 앤 드롭 핸들러 (Fractional Indexing 기반 O(1) 원자적 갱신)
   const handleDropTreeItem = (movedSetId: number, newParentId: number | null, newFlatList: FlatSetItem[]) => {
-    // 1. 부모가 변경되었으면 DB sets.parent_id 영구 갱신
-    const prevItem = sets.find((s) => s.id === movedSetId);
-    if (prevItem && prevItem.parent_id !== newParentId) {
-      onUpdateSetParent?.(movedSetId, newParentId);
-    }
+    // 1. 목적지 부모(newParentId)와 동일한 계층의 형제 노드들만 추출하여 키 계산
+    const siblings = newFlatList.filter((item) => (item.parentId ?? null) === (newParentId ?? null));
+    const movedIndex = siblings.findIndex((item) => item.set.id === movedSetId);
 
-    // 2. 전체 새로운 순서 계산 (접혀있던 숨김 자식 세트까지 포함하여 정합성 유지)
+    const prevSibling = movedIndex > 0 ? siblings[movedIndex - 1] : null;
+    const nextSibling = movedIndex >= 0 && movedIndex < siblings.length - 1 ? siblings[movedIndex + 1] : null;
+    const prevKey = prevSibling?.set.sort_order ?? null;
+    const nextKey = nextSibling?.set.sort_order ?? null;
+    const newSortOrder = calculateOrderBetween(prevKey, nextKey);
+
+    // 2. DB 단 1건 원자적 동기화 (parent_id 및 sort_order 동시 갱신)
+    void fontService.updateSetPosition(movedSetId, newParentId, newSortOrder).catch((err) => {
+      console.error("세트 위치 갱신 실패:", err);
+    });
+
+    // 3. 전체 새로운 순서 계산 (접혀있던 숨김 자식 세트까지 포함하여 정합성 유지)
     const newSets: FontSet[] = [];
     const seenIds = new Set<number>();
 
     for (const item of newFlatList) {
+      const isMoved = item.set.id === movedSetId;
       newSets.push({
         ...item.set,
-        parent_id: item.set.id === movedSetId ? newParentId : item.set.parent_id,
+        parent_id: isMoved ? newParentId : item.set.parent_id,
+        sort_order: isMoved ? newSortOrder : item.set.sort_order,
       });
       seenIds.add(item.set.id);
     }
@@ -268,9 +272,33 @@ export function Sidebar({
     onReorderSets(newSets);
   };
 
-  const systemCategory = useMemo(
+  // 감시 폴더 드래그 앤 드롭 핸들러 (Fractional Indexing 기반 O(1) 원자적 갱신)
+  const handleReorderFolders = (
+    nextFolders: CustomFolder[],
+    movedFolder?: CustomFolder,
+    insertIndex?: number
+  ) => {
+    if (movedFolder && insertIndex !== undefined) {
+      const prev = insertIndex > 0 ? nextFolders[insertIndex - 1] : null;
+      const next = insertIndex < nextFolders.length - 1 ? nextFolders[insertIndex + 1] : null;
+      const newSortOrder = calculateOrderBetween(prev?.sort_order, next?.sort_order);
+
+      movedFolder.sort_order = newSortOrder;
+      void fontService.updateFolderPosition(movedFolder.id ?? null, movedFolder.path, newSortOrder).catch((err) => {
+        console.error("폴더 위치 갱신 실패:", err);
+      });
+    }
+    onReorderFolders(nextFolders);
+  };
+
+  const systemCategory: {
+    id: LibraryCategory;
+    label: string;
+    count: number;
+    icon: typeof Sparkles;
+  } = useMemo(
     () => ({
-      id: "system" as const,
+      id: "system",
       label: t("sidebar.category_system"),
       count: counts.system,
       icon: Sparkles,
@@ -278,35 +306,41 @@ export function Sidebar({
     [t, counts.system]
   );
 
-  const libraryCategories = useMemo(
+  const libraryCategories: Array<{
+    id: LibraryCategory;
+    label: string;
+    count: number;
+    icon: typeof Type;
+    iconClass?: string;
+  }> = useMemo(
     () => [
       {
-        id: "all" as const,
+        id: "all",
         label: t("sidebar.category_all"),
         count: counts.total,
         icon: Type,
       },
       {
-        id: "user" as const,
+        id: "user",
         label: t("sidebar.category_user"),
         count: counts.user,
         icon: User,
       },
       {
-        id: "activated" as const,
+        id: "activated",
         label: t("sidebar.category_activated"),
         count: counts.activated,
         icon: Zap,
       },
       {
-        id: "favorites" as const,
+        id: "favorites",
         label: t("sidebar.category_favorites"),
         count: counts.favorites,
         icon: Heart,
         iconClass: "fill-rose-500 text-rose-500",
       },
       {
-        id: "duplicates" as const,
+        id: "duplicates",
         label: t("sidebar.category_duplicates"),
         count: counts.duplicates,
         icon: Copy,
@@ -381,7 +415,7 @@ export function Sidebar({
 
       {/* Sidebar Nav Items */}
       <div
-        className={`flex-1 overflow-y-scroll overflow-x-hidden text-xs ${isCollapsed ? "p-1.5 space-y-2" : "pl-3 pr-2 py-3 space-y-3"
+        className={`flex-1 overflow-y-scroll overflow-x-hidden text-xs sidebar-scroll ${isCollapsed ? "p-1.5 space-y-2" : "pl-3 pr-2 py-3 space-y-3"
           }`}
       >
         {/* Collapsed top controls */}
@@ -556,8 +590,8 @@ export function Sidebar({
                   items={customFolders}
                   getId={(f) => f.path}
                   onItemClick={(folder) => onSelectFolder(folder.path)}
-                  onReorder={onReorderFolders}
-                  renderItem={(folder, { isDragging, dropPosition }) => {
+                  onReorder={handleReorderFolders}
+                  renderItem={(folder, { isDragging }) => {
                     const isDuplicateName = (folderNameCounts.get(folder.name) || 0) > 1;
                     const parentDir = isDuplicateName ? getParentDirHint(folder.path) : null;
                     const tooltipText = folder.isScanning
@@ -567,16 +601,13 @@ export function Sidebar({
                     return (
                       <div
                         title={tooltipText}
-                        className={`relative group w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${isDragging ? "opacity-30 scale-[0.98] bg-theme-active" : ""
-                          } ${dropPosition === "before"
-                            ? "border-t-2 border-theme-accent bg-theme-accent-subtle/50"
-                            : dropPosition === "after"
-                              ? "border-b-2 border-theme-accent bg-theme-accent-subtle/50"
-                              : ""
-                          } ${activeCategory === `folder:${folder.path}`
+                        className={`relative group w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-medium transition-all text-left cursor-grab active:cursor-grabbing select-none ${
+                          isDragging ? "opacity-30 scale-[0.98] bg-theme-active" : ""
+                        } ${
+                          activeCategory === `folder:${folder.path}`
                             ? "bg-theme-active text-theme-accent shadow-2xs font-semibold"
                             : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text"
-                          }`}
+                        }`}
                       >
                         <span className="flex items-center gap-2 truncate min-w-0 pointer-events-none">
                           <GripVertical className="w-3.5 h-3.5 text-theme-text-muted group-hover:text-theme-accent transition-colors shrink-0" />
@@ -822,11 +853,31 @@ export function Sidebar({
                   <p>{t("sidebar.no_matching_sets")}</p>
                 </div>
               ) : (
-                /* 1depth / 2depth 통합 트리 드래그 정렬 (X/Y 좌표 감지 + 명확한 깊이 인디케이터 + 데이터 무손실) */
-                <SortableTreeSetList
+                /* 1depth / 2depth 통합 트리 드래그 정렬 (공통 SortableSidebarList 컴포넌트의 treeOptions 활용) */
+                <SortableSidebarList<FlatSetItem>
                   items={displayFlatSetList}
-                  onDropItem={handleDropTreeItem}
-                  onItemClick={(set) => onSelectSet(set.id)}
+                  getId={(item) => item.set.id}
+                  onItemClick={(item) => onSelectSet(item.set.id)}
+                  treeOptions={{
+                    getDepth: (item) => item.depth,
+                    getParentId: (item) => item.parentId,
+                    hasChildren: (item) => item.hasChildren,
+                    getParentName: (parentId) =>
+                      sets.find((s) => s.id === Number(parentId))?.name,
+                    getItemName: (item) => item.set.name,
+                    updateItemHierarchy: (item, newDepth, newParentId) => ({
+                      ...item,
+                      depth: newDepth,
+                      parentId: newParentId as number | null,
+                      set: {
+                        ...item.set,
+                        parent_id: newParentId as number | null,
+                      },
+                    }),
+                    onDropTreeItem: (movedItem, newParentId, newFlatList) => {
+                      handleDropTreeItem(movedItem.set.id, newParentId as number | null, newFlatList);
+                    },
+                  }}
                   renderItem={(flatItem, { isDragging, isInsideTarget }) => {
                     const { set: itemSet, depth } = flatItem;
                     const isActive = activeCategory === `set:${itemSet.id}`;

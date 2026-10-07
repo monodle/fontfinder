@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { FontMetadata, PreviewSettings, FontLibraryTag } from "../../types/font";
 import { loadFontIntoDocument, retainFont, releaseFont } from "../../utils/fontLoader";
+import { appConfig, SETTINGS_BOUNDS } from "../../config/appConfig";
 import { FontDetailMode } from "./types";
 import { FontItemDetailed } from "./FontItemDetailed";
 import { FontItemSimple } from "./FontItemSimple";
 
 export interface FontItemProps {
   font: FontMetadata;
-  previewText?: string;
-  fontSize?: number;
   previewSettings?: PreviewSettings;
   detailMode?: FontDetailMode;
   isSelected: boolean;
@@ -24,8 +23,6 @@ export interface FontItemProps {
 
 export function FontItem({
   font,
-  previewText = "",
-  fontSize = 24,
   previewSettings,
   detailMode = "detailed",
   isSelected,
@@ -86,9 +83,9 @@ export function FontItem({
     onToggleActivate?.(font);
   };
 
-  // 유효 스타일 계산
-  const effectiveText = (previewSettings?.text !== undefined ? previewSettings.text : previewText) || font.full_name;
-  const effectiveFontSize = previewSettings?.fontSize ?? fontSize;
+  // 유효 스타일 계산 (단일 진실 공급원: previewSettings 및 appConfig)
+  const effectiveText = previewSettings?.text || font.full_name;
+  const effectiveFontSize = previewSettings?.fontSize ?? appConfig.preview.defaultFontSize;
 
   let effectiveWeight = font.weight;
   if (previewSettings) {
@@ -120,7 +117,7 @@ export function FontItem({
     fontSize: `${effectiveFontSize}px`,
     fontWeight: effectiveWeight,
     fontStyle: effectiveItalic ? "italic" : "normal",
-    lineHeight: previewSettings?.lineHeight ?? 1.45,
+    lineHeight: previewSettings?.lineHeight ?? SETTINGS_BOUNDS.lineHeight.default,
     letterSpacing: previewSettings ? `${previewSettings.letterSpacing}px` : undefined,
     textAlign: previewSettings?.textAlign ?? "left",
     textTransform: previewSettings?.textTransform ?? "none",

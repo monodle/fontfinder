@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { tauriDragDropEventPayloadSchema } from "../schemas";
 
 interface UseFolderDropOptions {
   onDropPaths: (paths: string[]) => void | Promise<void>;
@@ -42,12 +43,15 @@ export function useFolderDrop({ onDropPaths, enabled = true }: UseFolderDropOpti
         const unlistenFn = await webview.onDragDropEvent((event) => {
           if (!isSubscribed) return;
 
-          const payload = event.payload;
+          const parsed = tauriDragDropEventPayloadSchema.safeParse(event.payload);
+          if (!parsed.success) return;
+
+          const payload = parsed.data;
           if (payload.type === "enter" || payload.type === "over") {
             setIsDraggingOver(true);
           } else if (payload.type === "drop") {
             setIsDraggingOver(false);
-            if (payload.paths && payload.paths.length > 0) {
+            if (payload.paths.length > 0) {
               void onDropPathsRef.current(payload.paths);
             }
           } else if (payload.type === "leave") {

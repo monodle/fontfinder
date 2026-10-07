@@ -22,11 +22,13 @@ import {
   CustomAppSettings,
   getDefaultSettings,
   applyTheme,
-  sanitizeFontSortSettings,
+  sanitizeSettings,
 } from "../../services/settingsService";
+import { sanitizeLanguage } from "../../utils/settingsSanitizer";
 import { clearFontLoaderCache } from "../../utils/fontLoader";
 import {
-  LibraryCategory,
+  STARTUP_LIBRARY_CATEGORIES,
+  StartupLibraryCategory,
   getDefaultPreviewText,
   AppTheme,
 } from "../../config/appConfig";
@@ -42,18 +44,12 @@ import { ExportModal } from "./ExportModal";
 import { ImportModal } from "./ImportModal";
 import { SponsorSection } from "./SponsorSection";
 import { AboutSection } from "./AboutSection";
-import { backupService } from "../../services/backupService";
+import { backupService } from "../../services/backup";
 import { fontService } from "../../services/fontService";
 import type { AppBackupData } from "../../types/backup";
+import { settingsTabSchema, type SettingsTab } from "../../schemas";
 
-export type SettingsTab =
-  | "all"
-  | "appearance"
-  | "library"
-  | "layout"
-  | "advanced"
-  | "sponsor"
-  | "about";
+export type { SettingsTab };
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -75,7 +71,7 @@ export function SettingsModal({
   const { t, i18n } = useTranslation();
   const [form, setForm] = useState<CustomAppSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => settingsTabSchema.parse(initialTab));
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importedBackupData, setImportedBackupData] = useState<AppBackupData | null>(null);
@@ -86,7 +82,7 @@ export function SettingsModal({
   useEffect(() => {
     if (isOpen) {
       setForm(settings);
-      setActiveTab(initialTab);
+      setActiveTab(settingsTabSchema.parse(initialTab));
       applyTheme(settings.theme);
     }
   }, [isOpen, settings, initialTab]);
@@ -112,43 +108,25 @@ export function SettingsModal({
     applyTheme(newTheme);
   };
 
-  const categoryOptions: { id: LibraryCategory; label: string; desc: string }[] = [
-    { id: "all", label: t("sidebar.category_all"), desc: t("settings.cat_all_desc") },
-    { id: "user", label: t("sidebar.category_user"), desc: t("settings.cat_user_desc") },
-    { id: "activated", label: t("sidebar.category_activated"), desc: t("settings.cat_activated_desc") },
-    { id: "favorites", label: t("sidebar.category_favorites"), desc: t("settings.cat_favorites_desc") },
-    { id: "duplicates", label: t("sidebar.category_duplicates"), desc: t("settings.cat_duplicates_desc") },
-  ];
+  const categoryOptions: { id: StartupLibraryCategory; label: string; desc: string }[] =
+    STARTUP_LIBRARY_CATEGORIES.map((catId) => ({
+      id: catId,
+      label: t(`sidebar.category_${catId}`),
+      desc: t(`settings.cat_${catId}_desc`),
+    }));
 
   const handleLanguageChange = (langCode: string) => {
+    const validLang = sanitizeLanguage(langCode);
     setForm((prev) => ({
       ...prev,
-      language: langCode,
-      defaultPreviewText: getDefaultPreviewText(langCode),
+      language: validLang,
+      defaultPreviewText: getDefaultPreviewText(validLang),
     }));
-    changeLanguage(langCode);
+    changeLanguage(validLang);
   };
 
   const handleSave = async () => {
-    const validMin = Math.max(8, form.minFontSize);
-    const validMax = Math.max(validMin + 4, form.maxFontSize);
-    const validDefaultSize = Math.min(validMax, Math.max(validMin, form.defaultFontSize));
-
-    const finalSettings: CustomAppSettings = {
-      ...form,
-      minFontSize: validMin,
-      maxFontSize: validMax,
-      defaultFontSize: validDefaultSize,
-      defaultGridColumns: Math.min(5, Math.max(2, form.defaultGridColumns)),
-      defaultVariableWeight: Math.min(900, Math.max(100, form.defaultVariableWeight)),
-      defaultTextAlign: ["left", "center", "right"].includes(form.defaultTextAlign) ? form.defaultTextAlign : "left",
-      defaultLineHeight: Math.min(2.5, Math.max(1.0, form.defaultLineHeight || 1.45)),
-      defaultLetterSpacing: Math.min(12, Math.max(-2, form.defaultLetterSpacing ?? 0)),
-      defaultIsBold: Boolean(form.defaultIsBold),
-      defaultIsItalic: Boolean(form.defaultIsItalic),
-      defaultIsUnderline: Boolean(form.defaultIsUnderline),
-      fontSortSettings: sanitizeFontSortSettings(form.fontSortSettings),
-    };
+    const finalSettings = sanitizeSettings(form);
 
     setIsSaving(true);
     try {

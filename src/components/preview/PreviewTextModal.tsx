@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import { RotateCcw, Check, Sliders } from "lucide-react";
 import { PreviewSettings } from "../../types/font";
 import { defaultPreviewSettings, appConfig } from "../../config/appConfig";
-import {
-  PreviewTypographyForm,
-  TypographyStyleValues,
-} from "./PreviewTypographyForm";
+import { sanitizePreviewSettings } from "../../utils/settingsSanitizer";
+import { PreviewTypographyForm } from "./PreviewTypographyForm";
 import { ModalDialog } from "../common";
 
 interface PreviewTextModalProps {
@@ -40,31 +38,20 @@ export function PreviewTextModal({
   if (!isOpen) return null;
 
   const handleApply = () => {
-    onApply(current);
+    onApply(sanitizePreviewSettings(current, settings));
     onClose();
   };
 
   const handleReset = () => {
     setCurrent({
       ...defaultPreviewSettings,
-      fontSize: 24,
-      fontWeight: 0,
-      isBold: false,
-      isItalic: false,
-      isUnderline: false,
-      textAlign: "left",
-      letterSpacing: 0,
-      lineHeight: 1.45,
-      textTransform: "none",
-      textColor: "",
-      backgroundColor: "",
       text: defaultText ?? t("preview.default_text"),
     });
   };
 
-  const handleChange = <K extends keyof TypographyStyleValues>(
+  const handleChange = <K extends keyof PreviewSettings>(
     field: K,
-    value: TypographyStyleValues[K]
+    value: PreviewSettings[K]
   ) => {
     setCurrent((prev) => ({
       ...prev,

@@ -1,9 +1,10 @@
-import type { CustomAppSettings } from "../services/settingsService";
+import type { CustomAppSettings } from "./settings";
 
 export interface BackupFolder {
   path: string;
   name: string;
   color?: string;
+  sortOrder?: string;
 }
 
 export interface BackupFontHashRef {
@@ -17,6 +18,7 @@ export interface BackupSet {
   color?: string;
   parentId?: number | null;
   parentName?: string | null;
+  sortOrder?: string;
   fontHashes?: BackupFontHashRef[];
   fontIds?: number[];
 }

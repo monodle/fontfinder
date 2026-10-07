@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AlignLeft, AlignCenter, AlignRight, ChevronDown, Check } from "lucide-react";
 import { cn } from "../../utils/cn";
+import { TextAlignOption } from "../../types/font";
 
-export type TextAlignOption = "left" | "center" | "right";
+export type { TextAlignOption };
 
 export interface TextAlignDropdownProps {
   value: TextAlignOption;

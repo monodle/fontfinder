@@ -6,6 +6,10 @@ import {
   DiffMasterSettings,
   DiffSlotState,
 } from "../../types/diff";
+import {
+  sanitizeDiffMasterSettings,
+  sanitizeDiffSlotState,
+} from "../../schemas";
 import { loadFontIntoDocument } from "../../utils/fontLoader";
 import { DiffMasterControl } from "./DiffMasterControl";
 import { VerticalDepthRail } from "./VerticalDepthRail";
@@ -29,35 +33,18 @@ export function GlyphDiffModal({
 }: GlyphDiffModalProps) {
   const { t } = useTranslation();
   // 1. 마스터 전역 설정 상태
-  const [masterSettings, setMasterSettings] = useState<DiffMasterSettings>(() => {
-    const raw = fallbackText?.trim() || "Rghe";
-    const initialClean = Array.from(raw.replace(/\s+/g, "")).slice(0, 4).join("");
-    return {
-      text: initialClean || "Rghe",
-      fontSize: 280,
-      showGrid: true,
-      isBold: false,
-      isItalic: false,
-      renderMode: "fill",
-    };
-  });
+  const [masterSettings, setMasterSettings] = useState<DiffMasterSettings>(() =>
+    sanitizeDiffMasterSettings(undefined, fallbackText)
+  );
 
   // 2. 5개 고정 슬롯 상태
   const [slots, setSlots] = useState<DiffSlotState[]>(() => {
     return DIFF_SLOT_CONFIGS.map((_config, idx) => {
       const font = initialFonts[idx] || null;
+      const base = sanitizeDiffSlotState(undefined, idx);
       return {
-        slotIndex: idx,
+        ...base,
         font,
-        fontFamily: "var(--font-system)",
-        visible: true,
-        opacity: 60,
-        fontSize: 280,
-        offsetX: 0,
-        offsetY: 0,
-        isBold: false,
-        isItalic: false,
-        renderMode: "fill",
       };
     });
   });

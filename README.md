@@ -8,7 +8,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#다운로드-및-설치)
-[![Release](https://img.shields.io/badge/Release-v0.9.1-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
+[![Release](https://img.shields.io/badge/Release-v0.9.3-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
 
 
 <br>

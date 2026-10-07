@@ -23,9 +23,10 @@ import {
   CornerDownRight,
 } from "lucide-react";
 import { fontService } from "../../services/fontService";
-import { isFontFavorite } from "../../utils/fontSortUtils";
+import { isFavoriteCategoryFont as isFontFavorite } from "../../utils/fontFilterUtils";
 import { getFontFamilyName } from "../../utils/fontLocalization";
 import { formatBatchInstallFeedback, formatBatchUninstallFeedback } from "../../utils/batchFeedback";
+import { IS_MAC } from "../../utils/platform";
 
 interface SetGroupItem {
   parent: FontSet;
@@ -664,7 +665,6 @@ export function ContextMenu({
     onClose();
   };
 
-  const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
   // 각 그룹에 렌더링될 항목이 존재하는지 여부
   const hasGroup1Items =
@@ -728,8 +728,8 @@ export function ContextMenu({
               {!isMulti || favoritedFonts.length === 0
                 ? t("context_menu.favorite_add")
                 : t("context_menu.bulk_favorite_add", {
-                    count: unfavoritedFonts.length,
-                  })}
+                  count: unfavoritedFonts.length,
+                })}
             </span>
           </button>
         )}
@@ -747,8 +747,8 @@ export function ContextMenu({
               {!isMulti || unfavoritedFonts.length === 0
                 ? t("context_menu.favorite_remove")
                 : t("context_menu.bulk_favorite_remove", {
-                    count: favoritedFonts.length,
-                  })}
+                  count: favoritedFonts.length,
+                })}
             </span>
           </button>
         )}
@@ -771,11 +771,10 @@ export function ContextMenu({
                   openSubmenu("set");
                 }
               }}
-              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeSubmenu === "set"
+              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${activeSubmenu === "set"
                   ? "bg-theme-hover text-theme-text"
                   : "hover:bg-theme-hover text-theme-text"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2 truncate min-w-0">
                 <Tag className="w-3.5 h-3.5 text-theme-accent shrink-0" />
@@ -802,8 +801,8 @@ export function ContextMenu({
             <span>
               {isMulti
                 ? t("context_menu.bulk_remove_from_set", {
-                    count: fonts.length,
-                  })
+                  count: fonts.length,
+                })
                 : t("context_menu.remove_from_set")}
             </span>
           </button>
@@ -831,8 +830,8 @@ export function ContextMenu({
               {!isMulti || activeActivatableFonts.length === 0
                 ? t("context_menu.activate")
                 : t("context_menu.bulk_activate", {
-                    count: inactiveActivatableFonts.length,
-                  })}
+                  count: inactiveActivatableFonts.length,
+                })}
             </span>
           </button>
         )}
@@ -850,8 +849,8 @@ export function ContextMenu({
               {!isMulti || inactiveActivatableFonts.length === 0
                 ? t("context_menu.deactivate")
                 : t("context_menu.bulk_deactivate", {
-                    count: activeActivatableFonts.length,
-                  })}
+                  count: activeActivatableFonts.length,
+                })}
             </span>
           </button>
         )}
@@ -868,8 +867,8 @@ export function ContextMenu({
             <span>
               {isMulti
                 ? t("context_menu.bulk_install", {
-                    count: installableFonts.length,
-                  })
+                  count: installableFonts.length,
+                })
                 : t("context_menu.install")}
             </span>
           </button>
@@ -887,8 +886,8 @@ export function ContextMenu({
             <span>
               {isMulti
                 ? t("context_menu.bulk_uninstall", {
-                    count: uninstallableFonts.length,
-                  })
+                  count: uninstallableFonts.length,
+                })
                 : t("context_menu.uninstall")}
             </span>
           </button>
@@ -905,8 +904,8 @@ export function ContextMenu({
             <span className="truncate">
               {isMulti
                 ? t("context_menu.system_protected_count", {
-                    count: systemFonts.length,
-                  })
+                  count: systemFonts.length,
+                })
                 : t("context_menu.system_protected_label")}
             </span>
           </div>
@@ -918,7 +917,7 @@ export function ContextMenu({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* [Group 3] 폰트비교 */}
+        {/* [Group 3] 폰트 비교 */}
         {/* ------------------------------------------------------------- */}
         {onOpenDiff && fonts.length > 0 && (
           <button
@@ -956,11 +955,10 @@ export function ContextMenu({
                 openSubmenu("copy");
               }
             }}
-            className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              activeSubmenu === "copy"
+            className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${activeSubmenu === "copy"
                 ? "bg-theme-hover text-theme-text"
                 : "hover:bg-theme-hover text-theme-text"
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2 truncate min-w-0">
               <Copy className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
@@ -980,7 +978,7 @@ export function ContextMenu({
           >
             <FolderOpen className="w-3.5 h-3.5 text-theme-text-muted shrink-0" />
             <span>
-              {isMac
+              {IS_MAC
                 ? t("context_menu.show_in_folder_mac")
                 : t("context_menu.show_in_folder")}
             </span>
@@ -1006,8 +1004,8 @@ export function ContextMenu({
               <span>
                 {isMulti
                   ? t("context_menu.view_font_info_n", {
-                      count: fonts.length,
-                    })
+                    count: fonts.length,
+                  })
                   : t("context_menu.view_font_info")}
               </span>
             </button>
@@ -1191,8 +1189,8 @@ export function ContextMenu({
               <span className="truncate">
                 {isMulti
                   ? t("context_menu.copy_names", {
-                      count: fonts.length,
-                    })
+                    count: fonts.length,
+                  })
                   : t("context_menu.copy_name")}
               </span>
             </button>
@@ -1207,8 +1205,8 @@ export function ContextMenu({
               <span className="truncate">
                 {isMulti
                   ? t("context_menu.copy_paths", {
-                      count: fonts.length,
-                    })
+                    count: fonts.length,
+                  })
                   : t("context_menu.copy_path")}
               </span>
             </button>

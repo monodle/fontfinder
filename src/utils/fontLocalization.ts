@@ -1,4 +1,5 @@
 import { FontMetadata } from "../types/font";
+import { fontBitmaskCodeSchema } from "../schemas";
 
 /**
  * i18n 언어 코드를 표준 키(예: 'ko-KR' -> 'ko')로 정규화
@@ -107,11 +108,12 @@ export function matchesFontSearch(font: FontMetadata, query: string): boolean {
  * OS/2 fsType 비트 플래그를 i18n 번역 라벨로 변환
  */
 export function formatFsType(
-  fsType: number | undefined | null,
+  rawFsType: unknown,
   t: (key: string, options?: any) => string,
   fallbackLabel?: string
 ): string {
-  if (fsType === undefined || fsType === null || fsType === 0) {
+  const fsType = fontBitmaskCodeSchema.parse(rawFsType);
+  if (fsType === null || fsType === 0) {
     return t("font_info.fs_type.installable");
   }
   const parts: string[] = [];
@@ -141,11 +143,12 @@ export function formatFsType(
  * classID는 상위 8비트 ((sFamilyClass >> 8) & 0xFF)
  */
 export function formatFamilyClass(
-  sFamilyClass: number | undefined | null,
+  rawFamilyClass: unknown,
   t: (key: string, options?: any) => string,
   fallbackLabel?: string
 ): string {
-  if (sFamilyClass === undefined || sFamilyClass === null) {
+  const sFamilyClass = fontBitmaskCodeSchema.parse(rawFamilyClass);
+  if (sFamilyClass === null) {
     return fallbackLabel || t("font_info.family_class.none");
   }
   const classId = (sFamilyClass >> 8) & 0xff;

@@ -53,7 +53,16 @@ impl FontScanner {
                     .and_then(|e| e.to_str())
                     .map(|e| e.to_lowercase())
                     .unwrap_or_default();
-                Self::FONT_EXTENSIONS.contains(&ext.as_str())
+                if !Self::FONT_EXTENSIONS.contains(&ext.as_str()) {
+                    return false;
+                }
+                match std::fs::metadata(path) {
+                    Ok(meta) => {
+                        let len = meta.len();
+                        len > 0 && len <= crate::protocol::MAX_FONT_FILE_SIZE
+                    }
+                    Err(_) => false,
+                }
             })
             .map(|entry| entry.into_path())
             .collect();
@@ -126,13 +135,15 @@ impl FontScanner {
                 if Self::FONT_EXTENSIONS.contains(&ext.as_str()) {
                     if let Ok(meta) = std::fs::metadata(path) {
                         let size = meta.len();
-                        let mtime = meta
-                            .modified()
-                            .ok()
-                            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                            .map(|d| d.as_secs() as i64)
-                            .unwrap_or(0);
-                        discovered_files.push((path.to_path_buf(), size, mtime));
+                        if size > 0 && size <= crate::protocol::MAX_FONT_FILE_SIZE {
+                            let mtime = meta
+                                .modified()
+                                .ok()
+                                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                                .map(|d| d.as_secs() as i64)
+                                .unwrap_or(0);
+                            discovered_files.push((path.to_path_buf(), size, mtime));
+                        }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { z } from "zod";
+import { STORAGE_KEYS } from "../config/storageKeys";
 
 import ko from "./locales/ko.json";
 import en from "./locales/en.json";
@@ -21,6 +23,13 @@ export const SUPPORTED_LANGUAGES = [
   { code: "fr", label: "Français", englishLabel: "French" },
 ] as const;
 
+export type SupportedLanguageCode = typeof SUPPORTED_LANGUAGES[number]["code"];
+export const SUPPORTED_LANGUAGE_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);
+
+export const supportedLanguageCodeSchema = z.enum(
+  SUPPORTED_LANGUAGE_CODES as [SupportedLanguageCode, ...SupportedLanguageCode[]]
+);
+
 const resources = {
   ko: { translation: ko },
   en: { translation: en },
@@ -33,10 +42,15 @@ const resources = {
 };
 
 // 브라우저 또는 시스템 언어 탐지
-export const detectInitialLanguage = (): string => {
-  const saved = localStorage.getItem("fontfinder_language");
-  if (saved && saved in resources) {
-    return saved;
+export const detectInitialLanguage = (): SupportedLanguageCode => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
+    const parsed = supportedLanguageCodeSchema.safeParse(saved);
+    if (parsed.success && parsed.data in resources) {
+      return parsed.data;
+    }
+  } catch {
+    // localStorage 접근 제한 환경 방어
   }
 
   const browserLang = navigator.language || (navigator as { userLanguage?: string }).userLanguage || "";
@@ -74,12 +88,14 @@ void i18n
   });
 
 export const changeLanguage = (lang: string) => {
-  if (lang in resources) {
-    void i18n.changeLanguage(lang);
-    localStorage.setItem("fontfinder_language", lang);
+  const parsed = supportedLanguageCodeSchema.safeParse(lang);
+  if (parsed.success && parsed.data in resources) {
+    const validLang = parsed.data;
+    void i18n.changeLanguage(validLang);
+    localStorage.setItem(STORAGE_KEYS.LANGUAGE, validLang);
     if (typeof document !== "undefined") {
-      document.documentElement.lang = lang;
-      document.documentElement.setAttribute("data-lang", lang);
+      document.documentElement.lang = validLang;
+      document.documentElement.setAttribute("data-lang", validLang);
     }
   }
 };

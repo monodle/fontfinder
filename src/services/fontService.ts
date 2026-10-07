@@ -8,41 +8,58 @@ import {
   FontDetailedInfo,
 } from "../types/font";
 import { normalizePath } from "../utils/pathUtils";
+import { IS_WINDOWS } from "../utils/platform";
+import {
+  batchInstallResultSchema,
+  batchUninstallResultSchema,
+  folderStatusListSchema,
+  pathTypeInfoListSchema,
+  fontSetSchema,
+  fontSetListSchema,
+  dbFolderSchema,
+  dbFolderListSchema,
+  activatedFontRecordListSchema,
+  fontDetailedInfoSchema,
+  fontIdListSchema,
+  allSetFontIdsSchema,
+  allSetFontsMapSchema,
+  systemThemeSchema,
+  fontMetadataListSchema,
+  type BatchInstallResult,
+  type BatchUninstallResult,
+  type PathTypeInfo,
+} from "../schemas";
 
-export interface BatchInstallResult {
-  installed: string[];
-  failed_count: number;
-  errors: string[];
-}
+export type { BatchInstallResult, BatchUninstallResult, PathTypeInfo };
 
-export interface BatchUninstallResult {
-  deleted_count: number;
-  failed_count: number;
-  errors: string[];
-}
 
 export const fontService = {
   async getFontDetails(filePath: string, fontIndex: number = 0): Promise<FontDetailedInfo> {
-    return await invoke<FontDetailedInfo>("get_font_details", {
+    const raw = await invoke<unknown>("get_font_details", {
       filePath,
       fontIndex,
     });
+    return fontDetailedInfoSchema.parse(raw);
   },
   async getCachedFonts(): Promise<FontMetadata[]> {
-    return await invoke<FontMetadata[]>("get_cached_fonts");
+    const raw = await invoke<unknown>("get_cached_fonts");
+    return fontMetadataListSchema.parse(raw);
   },
 
   async getCachedFontsByHashes(hashes: string[]): Promise<FontMetadata[]> {
     if (!hashes || hashes.length === 0) return [];
-    return await invoke<FontMetadata[]>("get_cached_fonts_by_hashes", { hashes });
+    const raw = await invoke<unknown>("get_cached_fonts_by_hashes", { hashes });
+    return fontMetadataListSchema.parse(raw);
   },
 
   async syncFontLibrary(customPaths: string[] = []): Promise<FontMetadata[]> {
-    return await invoke<FontMetadata[]>("sync_font_library", { customPaths });
+    const raw = await invoke<unknown>("sync_font_library", { customPaths });
+    return fontMetadataListSchema.parse(raw);
   },
 
   async scanDirectory(path: string): Promise<FontMetadata[]> {
-    return await invoke<FontMetadata[]>("scan_directory", { path });
+    const raw = await invoke<unknown>("scan_directory", { path });
+    return fontMetadataListSchema.parse(raw);
   },
 
   async activateFont(path: string, fontId: number): Promise<void> {
@@ -71,16 +88,20 @@ export const fontService = {
   },
 
   async installFonts(paths: string[]): Promise<BatchInstallResult> {
-    return await invoke<BatchInstallResult>("install_fonts", { paths });
+    const raw = await invoke<unknown>("install_fonts", { paths });
+    return batchInstallResultSchema.parse(raw);
   },
 
   async uninstallFonts(paths: string[]): Promise<BatchUninstallResult> {
-    return await invoke<BatchUninstallResult>("uninstall_fonts", { paths });
+    const raw = await invoke<unknown>("uninstall_fonts", { paths });
+    return batchUninstallResultSchema.parse(raw);
   },
 
+
   // --- Sets ---
-  async createSet(name: string, color?: string, parentId?: number | null): Promise<FontSet> {
-    return await invoke<FontSet>("create_set", { name, color, parentId: parentId ?? null });
+  async createSet(name: string, color?: string, parentId?: number | null, sortOrder?: string): Promise<FontSet> {
+    const raw = await invoke<unknown>("create_set", { name, color, parentId: parentId ?? null, sortOrder: sortOrder ?? null });
+    return fontSetSchema.parse(raw);
   },
 
   async updateSetColor(setId: number, color: string): Promise<void> {
@@ -95,8 +116,13 @@ export const fontService = {
     return await invoke<void>("update_set_parent", { setId, parentId });
   },
 
+  async updateSetPosition(setId: number, parentId: number | null, sortOrder: string): Promise<void> {
+    return await invoke<void>("update_set_position", { setId, parentId, sortOrder });
+  },
+
   async getSets(): Promise<FontSet[]> {
-    return await invoke<FontSet[]>("get_sets");
+    const raw = await invoke<unknown>("get_sets");
+    return fontSetListSchema.parse(raw);
   },
 
   async deleteSet(setId: number): Promise<void> {
@@ -112,11 +138,18 @@ export const fontService = {
   },
 
   async getSetFontIds(setId: number): Promise<number[]> {
-    return await invoke<number[]>("get_set_font_ids", { setId });
+    const raw = await invoke<unknown>("get_set_font_ids", { setId });
+    return fontIdListSchema.parse(raw);
   },
 
   async getAllSetFontIds(): Promise<Record<number, number[]>> {
-    return await invoke<Record<number, number[]>>("get_all_set_font_ids");
+    const raw = await invoke<unknown>("get_all_set_font_ids");
+    return allSetFontIdsSchema.parse(raw);
+  },
+
+  async getAllSetFontIdsMap(): Promise<Map<number, number[]>> {
+    const raw = await invoke<unknown>("get_all_set_font_ids");
+    return allSetFontsMapSchema.parse(raw);
   },
 
   async addFontsToSetBulk(setId: number, fontIds: number[]): Promise<void> {
@@ -140,12 +173,14 @@ export const fontService = {
   },
 
   async getFavoriteFontIds(): Promise<number[]> {
-    return await invoke<number[]>("get_favorite_font_ids");
+    const raw = await invoke<unknown>("get_favorite_font_ids");
+    return fontIdListSchema.parse(raw);
   },
 
   async getCachedFontsByIds(ids: number[]): Promise<FontMetadata[]> {
     if (!ids || ids.length === 0) return [];
-    return await invoke<FontMetadata[]>("get_cached_fonts_by_ids", { ids });
+    const raw = await invoke<unknown>("get_cached_fonts_by_ids", { ids });
+    return fontMetadataListSchema.parse(raw);
   },
 
 
@@ -154,12 +189,9 @@ export const fontService = {
     try {
       return convertFileSrc(cleanPath, "font");
     } catch {
-      const isWindows =
-        typeof navigator !== "undefined" &&
-        (navigator.userAgent.includes("Windows") || navigator.platform?.includes("Win"));
       const parts = cleanPath.split("/").map((seg) => encodeURIComponent(seg));
       const joined = parts.join("/");
-      if (isWindows) {
+      if (IS_WINDOWS) {
         return `http://font.localhost/${joined.replace(/^\/+/, "")}`;
       }
       return `font://localhost${joined.startsWith("/") ? "" : "/"}${joined}`;
@@ -177,15 +209,21 @@ export const fontService = {
 
   // --- Watched Folders DB ---
   async getFolders(): Promise<DbFolder[]> {
-    return await invoke<DbFolder[]>("get_folders");
+    const raw = await invoke<unknown>("get_folders");
+    return dbFolderListSchema.parse(raw);
   },
 
-  async addFolder(path: string, name: string, color?: string): Promise<DbFolder> {
-    return await invoke<DbFolder>("add_folder", { path, name, color });
+  async addFolder(path: string, name: string, color?: string, sortOrder?: string): Promise<DbFolder> {
+    const raw = await invoke<unknown>("add_folder", { path, name, color, sortOrder: sortOrder ?? null });
+    return dbFolderSchema.parse(raw);
   },
 
   async updateFolderColor(folderId: number, color: string): Promise<void> {
     return await invoke<void>("update_folder_color", { folderId, color });
+  },
+
+  async updateFolderPosition(folderId: number | null, path: string | null, sortOrder: string): Promise<void> {
+    return await invoke<void>("update_folder_position", { folderId, path, sortOrder });
   },
 
   async removeFolder(path: string): Promise<void> {
@@ -197,7 +235,8 @@ export const fontService = {
   },
 
   async checkFoldersStatus(): Promise<FolderStatus[]> {
-    return await invoke<FolderStatus[]>("check_folders_status");
+    const raw = await invoke<unknown>("check_folders_status");
+    return folderStatusListSchema.parse(raw);
   },
 
   async relinkFolder(oldPath: string, newPath: string, newName?: string): Promise<void> {
@@ -205,7 +244,8 @@ export const fontService = {
   },
 
   async validateAndCleanupActivatedFonts(): Promise<ActivatedFontRecord[]> {
-    return await invoke<ActivatedFontRecord[]>("validate_and_cleanup_activated_fonts");
+    const raw = await invoke<unknown>("validate_and_cleanup_activated_fonts");
+    return activatedFontRecordListSchema.parse(raw);
   },
 
   // --- App Settings DB ---
@@ -219,8 +259,8 @@ export const fontService = {
 
   async getSystemTheme(): Promise<"dark" | "light"> {
     try {
-      const theme = await invoke<string>("get_system_theme");
-      return theme === "dark" ? "dark" : "light";
+      const raw = await invoke<unknown>("get_system_theme");
+      return systemThemeSchema.parse(raw);
     } catch {
       return "light";
     }
@@ -240,15 +280,10 @@ export const fontService = {
 
   async checkPaths(paths: string[]): Promise<PathTypeInfo[]> {
     if (!paths || paths.length === 0) return [];
-    return await invoke<PathTypeInfo[]>("check_paths", { paths });
+    const raw = await invoke<unknown>("check_paths", { paths });
+    return pathTypeInfoListSchema.parse(raw);
   },
 };
 
-export interface PathTypeInfo {
-  path: string;
-  name: string;
-  is_dir: boolean;
-  exists: boolean;
-}
 
 

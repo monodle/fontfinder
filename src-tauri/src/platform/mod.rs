@@ -280,6 +280,11 @@ impl Platform {
 
     #[cfg(target_os = "macos")]
     pub fn install_font(src_path: &PathBuf) -> Result<PathBuf, String> {
+        Self::install_font_internal(src_path, true)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn install_font_internal(src_path: &PathBuf, _broadcast: bool) -> Result<PathBuf, String> {
         use core_foundation::base::TCFType;
         use core_foundation::url::CFURL;
 
@@ -326,20 +331,36 @@ impl Platform {
         // 설치 전 원본 파일의 임시 활성화를 먼저 해제하여 충돌 방지
         let _ = Self::deactivate_font(src_path);
 
-        // 대상 위치에 이전 파일이 존재하는 경우 선제 비활성화 및 기존 파일 정리
-        // (원본 파일이 읽기 전용 0444인 경우 덮어쓰기 권한 거부 에러 원천 차단)
-        if target_path.exists() {
-            let _ = Self::deactivate_font(&target_path);
-            let _ = std::fs::remove_file(&target_path);
+        // 원자적 파일 교체(Atomic Copy & Replace) 보장:
+        // 기존 파일을 선제 삭제하지 않고, 먼저 고유 임시 파일에 복사하여
+        // 디스크 용량 부족이나 I/O 에러 시 기존 폰트 파일이 영구 손실되는 데이터 유실(Data Loss) 원천 방어
+        let random_suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let temp_path = user_fonts_dir.join(format!("{}.{}.tmp", file_name.to_string_lossy(), random_suffix));
+
+        if let Err(e) = std::fs::copy(src_path, &temp_path) {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(format!("폰트 파일 복사 실패: {}", e));
         }
 
-        std::fs::copy(src_path, &target_path).map_err(|e| format!("Failed to copy font file: {}", e))?;
-
-        // 복사된 대상 파일에 표준 사용자 쓰기 권한(0644, rw-r--r--) 보장
+        // 복사된 임시 파일에 표준 사용자 쓰기 권한(0644, rw-r--r--) 보장
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&target_path, std::fs::Permissions::from_mode(0o644));
+            let _ = std::fs::set_permissions(&temp_path, std::fs::Permissions::from_mode(0o644));
+        }
+
+        // 대상 위치에 이전 파일 또는 깨진 심볼릭 링크가 존재하는 경우 선제 비활성화
+        if target_path.exists() || target_path.symlink_metadata().is_ok() {
+            let _ = Self::deactivate_font(&target_path);
+        }
+
+        // 임시 파일을 최종 목적지로 원자적 교체 (POSIX rename(2) 원자적 덮어쓰기 보장으로 기존 파일 유실 방지)
+        if let Err(e) = std::fs::rename(&temp_path, &target_path) {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(format!("폰트 파일 원자적 교체 실패: {}", e));
         }
 
         #[link(name = "CoreText", kind = "framework")]
@@ -365,10 +386,15 @@ impl Platform {
 
     #[cfg(target_os = "macos")]
     pub fn uninstall_font(font_path: &PathBuf) -> Result<(), String> {
+        Self::uninstall_font_internal(font_path, true)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn uninstall_font_internal(font_path: &PathBuf, _broadcast: bool) -> Result<(), String> {
         use core_foundation::base::TCFType;
         use core_foundation::url::CFURL;
 
-        if !font_path.exists() {
+        if !font_path.exists() && font_path.symlink_metadata().is_err() {
             return Err("Font file does not exist".to_string());
         }
 
@@ -432,6 +458,11 @@ impl Platform {
 
     #[cfg(target_os = "windows")]
     pub fn install_font(src_path: &PathBuf) -> Result<PathBuf, String> {
+        Self::install_font_internal(src_path, true)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn install_font_internal(src_path: &PathBuf, broadcast: bool) -> Result<PathBuf, String> {
         use std::os::windows::ffi::OsStrExt;
         use windows_sys::Win32::Graphics::Gdi::{AddFontResourceExW, RemoveFontResourceExW, FR_PRIVATE};
 
@@ -482,9 +513,40 @@ impl Platform {
         // 설치 전 원본 파일의 임시 활성화를 먼저 해제하여 충돌 방지
         let _ = Self::deactivate_font(src_path);
 
-        // 설치 대상 경로에 파일이 이미 존재하는 경우, Windows GDI 파일 잠금(FILE_SHARE_READ) 완전 해제
-        // 및 읽기 전용 속성(READONLY) 선제 해제 후 기존 파일 삭제 (덮어쓰기 권한 거부 에러 원천 차단)
-        if target_path.exists() {
+        // 원자적 파일 복사(Atomic Copy & Replace) 보장:
+        // 기존 파일을 선제 삭제하지 않고, 먼저 고유 임시 파일에 복사하여
+        // 디스크 용량 부족이나 I/O 에러 시 기존 폰트 파일이 영구 손실되는 데이터 유실(Data Loss) 원천 방어
+        let random_suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let temp_path = user_fonts_dir.join(format!("{}.{}.tmp", file_name.to_string_lossy(), random_suffix));
+
+        if let Err(e) = std::fs::copy(src_path, &temp_path) {
+            let _ = std::fs::remove_file(&temp_path);
+            let raw_os_err = e.raw_os_error();
+            // Win32 32: ERROR_SHARING_VIOLATION, 5: ERROR_ACCESS_DENIED
+            if raw_os_err == Some(32) || raw_os_err == Some(5) {
+                return Err(format!(
+                    "폰트 파일이 다른 프로그램(Office, 웹 브라우저 등)에서 사용 중이어서 설치를 완료할 수 없습니다. 관련 프로그램을 종료한 후 다시 시도해주세요. ({})",
+                    e
+                ));
+            }
+            return Err(format!("폰트 파일 복사 실패: {}", e));
+        }
+
+        // 복사된 임시 파일의 읽기 전용 속성 해제 및 사용자 쓰기 권한 보장
+        if let Ok(meta) = std::fs::metadata(&temp_path) {
+            let mut perms = meta.permissions();
+            if perms.readonly() {
+                perms.set_readonly(false);
+                let _ = std::fs::set_permissions(&temp_path, perms);
+            }
+        }
+
+        // 설치 대상 경로에 파일 또는 깨진 심볼릭 링크가 이미 존재하는 경우, Windows GDI 파일 잠금(FILE_SHARE_READ) 완전 해제
+        // 및 읽기 전용 속성(READONLY) 선제 해제
+        if target_path.exists() || target_path.symlink_metadata().is_ok() {
             let clean_existing = crate::protocol::to_windows_native_path(&target_path);
             let mut ex_wide: Vec<u16> = clean_existing.as_os_str().encode_wide().collect();
             ex_wide.push(0);
@@ -500,28 +562,31 @@ impl Platform {
                     let _ = std::fs::set_permissions(&target_path, perms);
                 }
             }
-            let _ = std::fs::remove_file(&target_path);
         }
 
-        if let Err(e) = std::fs::copy(src_path, &target_path) {
-            let raw_os_err = e.raw_os_error();
-            // Win32 32: ERROR_SHARING_VIOLATION, 5: ERROR_ACCESS_DENIED
-            if raw_os_err == Some(32) || raw_os_err == Some(5) {
-                return Err(format!(
-                    "폰트 파일이 다른 프로그램(Office, 웹 브라우저 등)에서 사용 중이어서 설치를 완료할 수 없습니다. 관련 프로그램을 종료한 후 다시 시도해주세요. ({})",
-                    e
-                ));
-            }
-            return Err(format!("폰트 파일 복사 실패: {}", e));
-        }
+        // Win32 MoveFileExW(MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)를 통한 원자적 파일 교체
+        // 기존 파일을 선제 삭제하지 않고 원자적으로 교체하므로 디스크/권한 에러 발생 시 기존 폰트 유실 차단
+        let clean_temp = crate::protocol::to_windows_native_path(&temp_path);
+        let clean_target = crate::protocol::to_windows_native_path(&target_path);
 
-        // 복사된 대상 파일의 읽기 전용 속성 해제 및 사용자 쓰기 권한 보장
-        if let Ok(meta) = std::fs::metadata(&target_path) {
-            let mut perms = meta.permissions();
-            if perms.readonly() {
-                perms.set_readonly(false);
-                let _ = std::fs::set_permissions(&target_path, perms);
-            }
+        let mut temp_wide: Vec<u16> = clean_temp.as_os_str().encode_wide().collect();
+        temp_wide.push(0);
+        let mut target_wide: Vec<u16> = clean_target.as_os_str().encode_wide().collect();
+        target_wide.push(0);
+
+        use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH};
+        let move_res = unsafe {
+            MoveFileExW(
+                temp_wide.as_ptr(),
+                target_wide.as_ptr(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            )
+        };
+
+        if move_res == 0 {
+            let err = std::io::Error::last_os_error();
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(format!("폰트 파일 원자적 교체 실패: {}", err));
         }
 
         let clean_target = crate::protocol::to_windows_native_path(&target_path);
@@ -574,16 +639,23 @@ impl Platform {
             eprintln!("[platform] Failed to register font in HKCU registry: {}", e);
         }
 
-        Self::notify_font_change();
+        if broadcast {
+            Self::notify_font_change();
+        }
         Ok(crate::protocol::to_posix_normalized_path(&target_path))
     }
 
     #[cfg(target_os = "windows")]
     pub fn uninstall_font(font_path: &PathBuf) -> Result<(), String> {
+        Self::uninstall_font_internal(font_path, true)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn uninstall_font_internal(font_path: &PathBuf, broadcast: bool) -> Result<(), String> {
         use std::os::windows::ffi::OsStrExt;
         use windows_sys::Win32::Graphics::Gdi::{AddFontResourceExW, RemoveFontResourceExW, FR_PRIVATE};
 
-        if !font_path.exists() {
+        if !font_path.exists() && font_path.symlink_metadata().is_err() {
             return Err("Font file does not exist".to_string());
         }
 
@@ -679,17 +751,29 @@ impl Platform {
 
         // 3. 파일 삭제 성공 시에만 HKCU 레지스트리 영구 제거 및 브로드캐스트 확정 (원자성 보장)
         let _ = unregister_font_from_registry(&target_file);
-        Self::notify_font_change();
+        if broadcast {
+            Self::notify_font_change();
+        }
         Ok(())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    pub fn install_font(_src_path: &PathBuf) -> Result<PathBuf, String> {
+    pub fn install_font(src_path: &PathBuf) -> Result<PathBuf, String> {
+        Self::install_font_internal(src_path, true)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    pub fn install_font_internal(_src_path: &PathBuf, _broadcast: bool) -> Result<PathBuf, String> {
         Err("Unsupported platform for font installation".to_string())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    pub fn uninstall_font(_font_path: &PathBuf) -> Result<(), String> {
+    pub fn uninstall_font(font_path: &PathBuf) -> Result<(), String> {
+        Self::uninstall_font_internal(font_path, true)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    pub fn uninstall_font_internal(_font_path: &PathBuf, _broadcast: bool) -> Result<(), String> {
         Err("Unsupported platform for font uninstallation".to_string())
     }
 
@@ -780,20 +864,26 @@ impl Platform {
     pub fn notify_font_change() {
         #[cfg(target_os = "windows")]
         {
-            use windows_sys::Win32::UI::WindowsAndMessaging::{
-                SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_FONTCHANGE,
-            };
-            unsafe {
-                SendMessageTimeoutW(
-                    HWND_BROADCAST,
-                    WM_FONTCHANGE,
-                    0,
-                    0,
-                    SMTO_ABORTIFHUNG,
-                    1000,
-                    std::ptr::null_mut(),
-                );
-            }
+            tauri::async_runtime::spawn(async move {
+                tokio::task::spawn_blocking(|| {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::{
+                        SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_FONTCHANGE,
+                    };
+                    unsafe {
+                        SendMessageTimeoutW(
+                            HWND_BROADCAST,
+                            WM_FONTCHANGE,
+                            0,
+                            0,
+                            SMTO_ABORTIFHUNG,
+                            300,
+                            std::ptr::null_mut(),
+                        );
+                    }
+                })
+                .await
+                .ok();
+            });
         }
     }
 
@@ -923,7 +1013,7 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::System::Registry::{
         RegCloseKey, RegDeleteValueW, RegEnumValueW, RegOpenKeyExW, HKEY_CURRENT_USER,
-        HKEY_LOCAL_MACHINE, KEY_READ, KEY_SET_VALUE, REG_SZ,
+        KEY_READ, KEY_SET_VALUE, REG_SZ,
     };
 
     let subkey: Vec<u16> = OsStr::new(r"Software\Microsoft\Windows NT\CurrentVersion\Fonts")
@@ -939,7 +1029,9 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
         .map(|s| s.to_lowercase())
         .unwrap_or_default();
 
-    for root_key in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE] {
+    // 사용자 수준 서체는 HKEY_CURRENT_USER에만 등록되므로 HKCU를 우선 대상으로 처리
+    // (HKLM은 관리자 권한 없이 KEY_SET_VALUE 요청 시 ACCESS_DENIED로 실패함)
+    for root_key in [HKEY_CURRENT_USER] {
         let mut hkey = std::ptr::null_mut();
         unsafe {
             if RegOpenKeyExW(root_key, subkey.as_ptr(), 0, KEY_READ | KEY_SET_VALUE, &mut hkey) != 0 {
@@ -950,11 +1042,11 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
             let mut keys_to_delete = Vec::new();
 
             loop {
-                // 대형 TTC/OTC 다중 서체 결합명(" & ")을 안전하게 수용하도록 버퍼 2048 와이드 문자로 대폭 확장
                 let mut name_buf = [0u16; 2048];
                 let mut name_len = name_buf.len() as u32;
-                let mut data_buf = [0u8; 4096];
-                let mut data_len = data_buf.len() as u32;
+                // 메모리 정렬(2-byte alignment) 보장을 위해 u16 배열로 직접 선언 (UB 방어)
+                let mut data_buf = [0u16; 2048];
+                let mut data_len = (data_buf.len() * std::mem::size_of::<u16>()) as u32;
                 let mut val_type = 0u32;
 
                 let status = RegEnumValueW(
@@ -964,12 +1056,10 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
                     &mut name_len,
                     std::ptr::null_mut(),
                     &mut val_type,
-                    data_buf.as_mut_ptr(),
+                    data_buf.as_mut_ptr() as *mut u8,
                     &mut data_len,
                 );
 
-                // 234: ERROR_MORE_DATA (데이터 버퍼 1024바이트 초과).
-                // 다른 애플리케이션이 등록한 긴 데이터 등으로 인한 오류 발생 시 조기 break하지 않고 다음 항목으로 계속 이동
                 if status == 234 {
                     index += 1;
                     continue;
@@ -980,16 +1070,26 @@ fn unregister_font_from_registry(font_path: &Path) -> Result<(), String> {
                 }
 
                 if val_type == REG_SZ {
-                    let u16_slice = std::slice::from_raw_parts(
-                        data_buf.as_ptr() as *const u16,
-                        (data_len as usize) / std::mem::size_of::<u16>(),
-                    );
-                    let val_data = String::from_utf16_lossy(u16_slice)
+                    let valid_u16_count = (data_len as usize / std::mem::size_of::<u16>()).min(data_buf.len());
+                    let val_data = String::from_utf16_lossy(&data_buf[..valid_u16_count])
                         .trim_matches('\0')
                         .replace('/', "\\")
                         .to_lowercase();
 
-                    if val_data == target_str || (!target_file_name.is_empty() && val_data == target_file_name) {
+                    let is_inbox_protected = WINDOWS_INBOX_FONTS.contains(target_file_name.as_str());
+                    let is_exact_path_match = val_data == target_str;
+                    // 파일명만 등록된 값의 경우: 대상 서체 경로가 실제 사용자 서체 디렉토리(%LOCALAPPDATA%\Microsoft\Windows\Fonts) 내에 위치하는 경우에만 안전하게 매칭 (타 디렉토리 서체 오삭제 차단)
+                    let is_safe_filename_match = !target_file_name.is_empty()
+                        && val_data == target_file_name
+                        && !is_inbox_protected
+                        && std::env::var("LOCALAPPDATA")
+                            .map(|lad| {
+                                let user_fonts = PathBuf::from(lad).join(r"Microsoft\Windows\Fonts");
+                                crate::protocol::is_same_or_subpath(&user_fonts, &clean_target)
+                            })
+                            .unwrap_or(false);
+
+                    if is_exact_path_match || is_safe_filename_match {
                         keys_to_delete.push(name_buf[..name_len as usize].to_vec());
                     }
                 }

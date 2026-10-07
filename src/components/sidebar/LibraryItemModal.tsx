@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BookmarkPlus,
@@ -17,6 +17,7 @@ import {
   getRandomLibraryColor,
   isLightColor,
 } from "../../config/colorPresets";
+import { librarySetFormSchema, libraryFolderColorFormSchema } from "../../schemas";
 
 type LibraryModalMode = "create_set" | "edit_set" | "edit_folder";
 
@@ -34,8 +35,6 @@ export interface LibraryItemModalProps {
   onSubmitFolderColor?: (color: string) => void;
 }
 
-type PaletteCategory = "all" | "warm" | "nature" | "cool" | "purple" | "neutral";
-
 export function LibraryItemModal({
   isOpen,
   onClose,
@@ -51,46 +50,91 @@ export function LibraryItemModal({
 }: LibraryItemModalProps) {
   const { t } = useTranslation();
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const paletteContainerRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState(initialName);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [parentId, setParentId] = useState<number | null>(initialParentId);
   const [selectedColor, setSelectedColor] = useState(
     initialColor || getRandomLibraryColor()
   );
-  const [activeTab, setActiveTab] = useState<PaletteCategory>("all");
   const [customHex, setCustomHex] = useState(
     initialColor || selectedColor
+  );
+
+  /**
+   * 지정한 HEX 색상이 팔레트 스크롤 영역에 노출되도록 부드럽게 스크롤
+   */
+  const scrollToColor = useCallback(
+    (color: string, behavior: ScrollBehavior = "smooth") => {
+      const container = paletteContainerRef.current;
+      if (!container) return;
+
+      const target = container.querySelector<HTMLElement>(
+        `[data-color="${color.toLowerCase()}"]`
+      );
+      if (!target) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+
+      // 컨테이너 스크롤 기준 상대 오프셋 계산
+      const relativeTop = targetRect.top - containerRect.top + container.scrollTop;
+      const newScrollTop = Math.max(
+        0,
+        relativeTop - container.clientHeight / 2 + target.offsetHeight / 2
+      );
+
+      container.scrollTo({
+        top: newScrollTop,
+        behavior,
+      });
+    },
+    []
   );
 
   // 모달이 열릴 때 초기값 설정 및 세트 이름 입력창 포커스
   useEffect(() => {
     if (!isOpen) return;
 
+    setNameError(null);
+    let targetColor: string;
     if (mode === "create_set") {
       setName("");
       setParentId(initialParentId);
       const rand = getRandomLibraryColor();
       setSelectedColor(rand);
       setCustomHex(rand);
+      targetColor = rand;
     } else {
       setName(initialName);
       setParentId(initialParentId);
       const color = initialColor || getRandomLibraryColor();
       setSelectedColor(color);
       setCustomHex(color);
+      targetColor = color;
     }
-    setActiveTab("all");
+
+    // 모달 오픈 시 현재 선택된 색상 위치로 스크롤
+    const scrollTimer = setTimeout(() => {
+      scrollToColor(targetColor, "auto");
+    }, 60);
 
     // 색상 초기화 및 렌더링 이후 세트 이름 입력창으로 포커스 이동
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     if (mode !== "edit_folder") {
-      const timer = setTimeout(() => {
+      focusTimer = setTimeout(() => {
         nameInputRef.current?.focus();
         if (mode === "edit_set") {
           nameInputRef.current?.select();
         }
       }, 50);
-      return () => clearTimeout(timer);
     }
-  }, [isOpen, mode, initialName, initialColor, initialParentId]);
+
+    return () => {
+      clearTimeout(scrollTimer);
+      if (focusTimer) clearTimeout(focusTimer);
+    };
+  }, [isOpen, mode, initialName, initialColor, initialParentId, scrollToColor]);
 
   const handleSelectColor = (color: string) => {
     setSelectedColor(color);
@@ -101,47 +145,63 @@ export function LibraryItemModal({
     const rand = getRandomLibraryColor();
     setSelectedColor(rand);
     setCustomHex(rand);
+    requestAnimationFrame(() => {
+      scrollToColor(rand, "smooth");
+    });
   };
 
   const handleCustomHexChange = (value: string) => {
     setCustomHex(value);
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
       setSelectedColor(value);
+      requestAnimationFrame(() => {
+        scrollToColor(value, "smooth");
+      });
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (nameError) {
+      setNameError(null);
+    }
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (mode === "edit_folder") {
-      onSubmitFolderColor?.(selectedColor);
+      const parsedColor = libraryFolderColorFormSchema.safeParse({ color: selectedColor });
+      if (!parsedColor.success) return;
+      onSubmitFolderColor?.(parsedColor.data.color);
       onClose();
       return;
     }
 
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmitSet?.(trimmed, selectedColor, parentId);
+    const validation = librarySetFormSchema.safeParse({
+      name,
+      color: selectedColor,
+      parentId,
+    });
+
+    if (!validation.success) {
+      const firstIssue = validation.error.issues[0];
+      if (firstIssue.path[0] === "name") {
+        setNameError(firstIssue.message);
+      }
+      return;
+    }
+
+    setNameError(null);
+    onSubmitSet?.(validation.data.name, validation.data.color, validation.data.parentId);
     onClose();
   };
-
-  // 톤별 카테고리 필터링
-  const filteredPresets = useMemo(() => {
-    if (activeTab === "all") return LIBRARY_LABEL_COLOR_PRESETS;
-    if (activeTab === "warm") return LIBRARY_LABEL_COLOR_PRESETS.slice(0, 16);
-    if (activeTab === "nature") return LIBRARY_LABEL_COLOR_PRESETS.slice(14, 28);
-    if (activeTab === "cool") return LIBRARY_LABEL_COLOR_PRESETS.slice(26, 40);
-    if (activeTab === "purple") return LIBRARY_LABEL_COLOR_PRESETS.slice(38, 48);
-    return LIBRARY_LABEL_COLOR_PRESETS.slice(46);
-  }, [activeTab]);
-
-  const categoryTabs: { id: PaletteCategory; label: string }[] = [
-    { id: "all", label: t("library_modal.tab_all_colors") },
-    { id: "warm", label: t("library_modal.tab_warm") },
-    { id: "nature", label: t("library_modal.tab_nature") },
-    { id: "cool", label: t("library_modal.tab_cool") },
-    { id: "purple", label: t("library_modal.tab_purple") },
-    { id: "neutral", label: t("library_modal.tab_neutral") },
-  ];
 
   // 현재 색상 명칭
   const currentPreset = LIBRARY_LABEL_COLOR_PRESETS.find(
@@ -169,7 +229,7 @@ export function LibraryItemModal({
       icon: <BookmarkPlus className="w-4 h-4 text-theme-accent" />,
       submitLabel: t("common.create"),
       submitIcon: <Plus className="w-3.5 h-3.5" />,
-      isSubmitDisabled: !name.trim(),
+      isSubmitDisabled: !name.trim() || name.length > 100,
     },
     edit_set: {
       title: t("sidebar.edit_set_title"),
@@ -177,7 +237,7 @@ export function LibraryItemModal({
       icon: <Tag className="w-4 h-4 text-theme-accent" />,
       submitLabel: t("common.save"),
       submitIcon: <Check className="w-3.5 h-3.5" />,
-      isSubmitDisabled: !name.trim(),
+      isSubmitDisabled: !name.trim() || name.length > 100,
     },
     edit_folder: {
       title: t("sidebar.folder_color_title"),
@@ -188,6 +248,7 @@ export function LibraryItemModal({
       isSubmitDisabled: false,
     },
   }[mode];
+
 
   return (
     <ModalDialog
@@ -302,11 +363,14 @@ export function LibraryItemModal({
                 prefixIcon={<Tag className="w-4 h-4 text-theme-text-muted" />}
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onKeyDown={handleNameKeyDown}
                 placeholder={t("sidebar.new_set_placeholder")}
                 clearable
-                onClear={() => setName("")}
+                onClear={() => handleNameChange("")}
+                error={nameError || undefined}
               />
+
             </div>
 
             {/* 상위 세트(위치) 선택 드롭다운 (2depth 제한) */}
@@ -381,30 +445,12 @@ export function LibraryItemModal({
             </button>
           </div>
 
-          {/* 카테고리 탭 */}
-          <div className="flex items-center gap-1 border-b border-theme-border/60 pb-2 overflow-x-auto no-scrollbar">
-            {categoryTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-theme-accent text-theme-accent-text font-semibold shadow-2xs"
-                      : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 50종 컬러 팔레트 그리드 */}
-          <div className="grid grid-cols-10 gap-2 max-h-[190px] overflow-y-auto p-1 pr-1.5 scrollbar-thin">
-            {filteredPresets.map((preset) => {
+          {/* 200종 컬러 팔레트 그리드 */}
+          <div
+            ref={paletteContainerRef}
+            className="grid grid-cols-10 gap-2 max-h-[220px] overflow-y-auto p-1 pr-1.5 scrollbar-thin"
+          >
+            {LIBRARY_LABEL_COLOR_PRESETS.map((preset) => {
               const isSelected =
                 selectedColor.toLowerCase() === preset.color.toLowerCase();
               const light = isLightColor(preset.color);
@@ -413,6 +459,7 @@ export function LibraryItemModal({
                 <button
                   key={preset.color}
                   type="button"
+                  data-color={preset.color.toLowerCase()}
                   onClick={() => handleSelectColor(preset.color)}
                   style={{ backgroundColor: preset.color }}
                   title={`${preset.label} (${preset.color})`}

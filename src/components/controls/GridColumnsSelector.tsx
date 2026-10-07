@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "../../utils/cn";
+import { createGridColumnsSchema } from "../../schemas";
 
 const GRID_COLUMN_OPTIONS = [2, 3, 4, 5] as const;
 
@@ -35,7 +36,10 @@ export function GridColumnsSelector({
         <select
           value={columns}
           disabled={disabled}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => {
+            const next = createGridColumnsSchema(columns).parse(e.target.value);
+            onChange(next);
+          }}
           className="h-full bg-transparent text-xs text-theme-text font-semibold focus:outline-none cursor-pointer pr-0.5"
           title={t("toolbar.column")}
           aria-label={t("toolbar.column")}

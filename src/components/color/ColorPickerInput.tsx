@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "../../utils/cn";
+import { HEX_COLOR_REGEX } from "../../schemas";
 
 export interface ColorPickerInputProps {
   value: string;
@@ -24,7 +25,8 @@ export function ColorPickerInput({
   const { t } = useTranslation();
   const effectivePlaceholder = placeholder ?? t("style_modal.weight_default_short");
 
-  const displayColor = value || fallbackColor;
+  const isValidHex = Boolean(value && HEX_COLOR_REGEX.test(value));
+  const displayColor = isValidHex ? value : fallbackColor;
 
   return (
     <div
@@ -61,6 +63,11 @@ export function ColorPickerInput({
             val = `#${val}`;
           }
           onChange(val);
+        }}
+        onBlur={() => {
+          if (value && !HEX_COLOR_REGEX.test(value)) {
+            onChange("");
+          }
         }}
         className={`flex-1 min-w-0 bg-transparent text-theme-text font-mono uppercase focus:outline-none placeholder-theme-text-muted truncate ${
           compact ? "text-[10px]" : "text-xs"

@@ -7,6 +7,7 @@ use crate::error::{AppError, AppResult};
 
 pub mod models;
 pub mod schema;
+pub mod migration;
 mod sets;
 mod favorites;
 mod folders;
@@ -30,8 +31,8 @@ impl Database {
       fs::create_dir_all(parent)?;
     }
 
-    let conn = Connection::open(&db_path)?;
-    schema::initialize_schema(&conn)?;
+    let mut conn = Connection::open(&db_path)?;
+    schema::initialize_schema(&mut conn)?;
 
     Ok(Self {
       conn: Mutex::new(conn),
@@ -40,8 +41,8 @@ impl Database {
 
   #[cfg(test)]
   pub fn new_in_memory() -> AppResult<Self> {
-    let conn = Connection::open_in_memory()?;
-    schema::initialize_schema(&conn)?;
+    let mut conn = Connection::open_in_memory()?;
+    schema::initialize_schema(&mut conn)?;
 
     Ok(Self {
       conn: Mutex::new(conn),

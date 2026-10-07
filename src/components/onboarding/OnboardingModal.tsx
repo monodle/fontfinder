@@ -8,11 +8,12 @@ import {
 import { ModalDialog } from "../common";
 import { ThemeSelector } from "../controls/ThemeSelector";
 import { LanguageSelector } from "../controls/LanguageSelector";
-import { changeLanguage } from "../../i18n";
+import { changeLanguage, SupportedLanguageCode } from "../../i18n";
 import {
   settingsService,
   CustomAppSettings,
   applyTheme,
+  sanitizeLanguage,
 } from "../../services/settingsService";
 
 interface OnboardingModalProps {
@@ -30,8 +31,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
 
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(
-    initialSettings.language || i18n.language || "en"
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguageCode>(() =>
+    sanitizeLanguage(initialSettings.language || i18n.language)
   );
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(
     initialSettings.theme || "glass"
@@ -39,8 +40,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLanguageSelect = (code: string) => {
-    setSelectedLanguage(code);
-    changeLanguage(code);
+    const validLang = sanitizeLanguage(code);
+    setSelectedLanguage(validLang);
+    changeLanguage(validLang);
   };
 
   const handleThemeSelect = (theme: AppTheme) => {

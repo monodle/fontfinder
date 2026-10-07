@@ -54,7 +54,7 @@ export function DiffMasterControl({
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-theme-accent/10 border border-theme-accent/25 text-theme-accent font-semibold text-xs tracking-wider">
           <Type className="w-4 h-4" />
-          <span>GLYPH DIFF</span>
+          <span>{t("context_menu.diff_compare")}</span>
         </div>
 
         {/* 텍스트 입력창 */}

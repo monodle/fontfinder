@@ -24,16 +24,27 @@ import {
   OpenSourceLicense,
 } from "../../data/aboutData";
 import { openExternalUrl } from "../../utils/url";
+import { licenseCategoryFilterSchema, type LicenseCategory } from "../../schemas";
 import appIcon from "@/assets/128x128.png";
 
 type AboutSubSection = "all" | "version" | "creators" | "licenses" | "privacy";
 
+const ABOUT_SUB_SECTIONS: ReadonlyArray<{
+  id: AboutSubSection;
+  labelKey: string;
+  icon: typeof Info;
+}> = [
+  { id: "all", labelKey: "about.subtab_all", icon: Info },
+  { id: "version", labelKey: "about.subtab_version", icon: Tag },
+  { id: "creators", labelKey: "about.subtab_creators", icon: Users },
+  { id: "licenses", labelKey: "about.subtab_licenses", icon: FileCode2 },
+  { id: "privacy", labelKey: "about.subtab_privacy", icon: ShieldCheck },
+];
+
 export function AboutSection() {
   const { t } = useTranslation();
   const [activeSubTab, setActiveSubTab] = useState<AboutSubSection>("all");
-  const [licenseCategory, setLicenseCategory] = useState<
-    "all" | "frontend" | "backend"
-  >("all");
+  const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>("all");
   const [isPrivacyExpanded, setIsPrivacyExpanded] = useState(true);
 
   const filteredLicenses = OPEN_SOURCE_LICENSES.filter((item) => {
@@ -45,27 +56,21 @@ export function AboutSection() {
     <div className="space-y-6">
       {/* 서브 탭 필터 (선택 사항: 전체 또는 특정 섹션만 보기) */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-theme-border-subtle no-scrollbar">
-        {[
-          { id: "all", label: t("about.subtab_all"), icon: Info },
-          { id: "version", label: t("about.subtab_version"), icon: Tag },
-          { id: "creators", label: t("about.subtab_creators"), icon: Users },
-          { id: "licenses", label: t("about.subtab_licenses"), icon: FileCode2 },
-          { id: "privacy", label: t("about.subtab_privacy"), icon: ShieldCheck },
-        ].map((tab) => {
+        {ABOUT_SUB_SECTIONS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveSubTab(tab.id as AboutSubSection)}
+              onClick={() => setActiveSubTab(tab.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${isActive
                   ? "bg-theme-accent text-theme-accent-text font-semibold shadow-xs"
                   : "text-theme-text-secondary hover:text-theme-text hover:bg-theme-hover"
                 }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
+              <span>{t(tab.labelKey)}</span>
             </button>
           );
         })}
@@ -223,19 +228,17 @@ export function AboutSection() {
 
           {/* 카테고리 필터 */}
           <div className="flex items-center gap-1">
-            {[
-              { id: "all", label: t("about.filter_all") },
-              { id: "frontend", label: t("about.filter_frontend") },
-              { id: "backend", label: t("about.filter_backend") },
-            ].map((cat) => (
+            {(
+              [
+                { id: "all", label: t("about.filter_all") },
+                { id: "frontend", label: t("about.filter_frontend") },
+                { id: "backend", label: t("about.filter_backend") },
+              ] as const
+            ).map((cat) => (
               <button
                 key={cat.id}
                 type="button"
-                onClick={() =>
-                  setLicenseCategory(
-                    cat.id as "all" | "frontend" | "backend"
-                  )
-                }
+                onClick={() => setLicenseCategory(licenseCategoryFilterSchema.parse(cat.id))}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${licenseCategory === cat.id
                     ? "bg-theme-accent/20 text-theme-accent font-semibold border border-theme-accent/30"
                     : "text-theme-text-muted hover:text-theme-text hover:bg-theme-hover"

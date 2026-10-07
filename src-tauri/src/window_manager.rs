@@ -170,7 +170,12 @@ impl WindowManager {
       }
     };
 
-    let _ = self.db.set_setting(SETTING_KEY_WINDOW_WIDTH, &w.round().to_string());
-    let _ = self.db.set_setting(SETTING_KEY_WINDOW_HEIGHT, &h.round().to_string());
+    let db_clone = Arc::clone(&self.db);
+    tauri::async_runtime::spawn(async move {
+      let _ = tokio::task::spawn_blocking(move || {
+        let _ = db_clone.set_setting(SETTING_KEY_WINDOW_WIDTH, &w.round().to_string());
+        let _ = db_clone.set_setting(SETTING_KEY_WINDOW_HEIGHT, &h.round().to_string());
+      }).await;
+    });
   }
 }

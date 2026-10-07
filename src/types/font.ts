@@ -1,4 +1,4 @@
-type FontFormat =
+export type FontFormat =
   | "TrueType"
   | "OpenType"
   | "TrueTypeCollection"
@@ -73,6 +73,15 @@ export interface FontSet {
   color: string;
   count: number;
   parent_id?: number | null;
+  sort_order?: string;
+}
+
+export interface FlatSetItem {
+  set: FontSet;
+  depth: 1 | 2;
+  parentId: number | null;
+  hasChildren: boolean;
+  isCollapsed: boolean;
 }
 
 export interface FontSection {
@@ -85,6 +94,28 @@ export interface FontSection {
   fonts: FontMetadata[];
 }
 
+export const VIEW_MODES = ["list", "grid"] as const;
+export type ViewMode = typeof VIEW_MODES[number];
+
+export const FONT_DETAIL_MODES = ["detailed", "simple"] as const;
+export type FontDetailMode = typeof FONT_DETAIL_MODES[number];
+
+export const TEXT_ALIGN_OPTIONS = ["left", "center", "right"] as const;
+export type TextAlignOption = typeof TEXT_ALIGN_OPTIONS[number];
+
+export const TEXT_TRANSFORM_OPTIONS = ["none", "uppercase", "lowercase", "capitalize"] as const;
+export type TextTransformOption = typeof TEXT_TRANSFORM_OPTIONS[number];
+
+export interface CategoryCounts {
+  total: number;
+  system: number;
+  user: number;
+  activated: number;
+  favorites: number;
+  duplicates: number;
+  duplicateGroups?: number;
+}
+
 export interface PreviewSettings {
   text: string;
   fontSize: number;
@@ -92,10 +123,10 @@ export interface PreviewSettings {
   isBold: boolean;
   isItalic: boolean;
   isUnderline: boolean;
-  letterSpacing: number; // px 단위, -2 ~ 10
-  lineHeight: number; // 배수, 1.0 ~ 2.5
-  textAlign: "left" | "center" | "right";
-  textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
+  letterSpacing: number; // px 단위
+  lineHeight: number; // 배수
+  textAlign: TextAlignOption;
+  textTransform: TextTransformOption;
   textColor: string; // 빈 문자열("")이면 기본 테마 색상 사용
   backgroundColor: string; // 빈 문자열("")이면 기본 테마 색상 사용
 }
@@ -105,6 +136,7 @@ export interface DbFolder {
   path: string;
   name: string;
   color: string;
+  sort_order?: string;
 }
 
 export interface ActivatedFontRecord {
@@ -118,6 +150,7 @@ export interface CustomFolder {
   name: string;
   color: string;
   count: number;
+  sort_order?: string;
   isMissing?: boolean;
   isScanning?: boolean;
   scanProgress?: { current: number; total: number };
@@ -129,6 +162,7 @@ export interface FolderStatus {
   name: string;
   color: string;
   exists: boolean;
+  sort_order?: string;
 }
 
 export interface FontNameRecord {

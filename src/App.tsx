@@ -11,7 +11,10 @@ import {
   getDefaultPreviewText,
   isDefaultPreviewText,
 } from "./config/appConfig";
+import { STORAGE_KEYS, DB_SETTINGS_KEYS } from "./config/storageKeys";
 import { changeLanguage } from "./i18n";
+import { sanitizePreviewSettings } from "./utils/settingsSanitizer";
+import { storageBooleanSchema } from "./schemas";
 
 import { useFontLibrary } from "./hooks/useFontLibrary";
 import { useFontSelection } from "./hooks/useFontSelection";
@@ -37,7 +40,7 @@ import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "./types/sort";
 export default function App() {
   const { t } = useTranslation();
 
-  // 1. 환경 설정 및 프리뷰 설정 상태
+  // 1. 환경 설정 및 프리뷰 설정 상태 (단일 진실원천: appSettings)
   const [appSettings, setAppSettings] = useState<CustomAppSettings>(() =>
     settingsService.getInitialSettings()
   );
@@ -53,7 +56,7 @@ export default function App() {
   const [previewSettings, setPreviewSettings] = useState<PreviewSettings>(() => {
     try {
       const initialApp = settingsService.getInitialSettings();
-      const saved = localStorage.getItem("fontfinder_preview_settings");
+      const saved = localStorage.getItem(STORAGE_KEYS.PREVIEW_SETTINGS);
       const base: PreviewSettings = {
         ...defaultPreviewSettings,
         text: initialApp.defaultPreviewText,
@@ -68,12 +71,7 @@ export default function App() {
         isUnderline: Boolean(initialApp.defaultIsUnderline),
       };
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          ...base,
-          ...parsed,
-          fontSize: typeof parsed.fontSize === "number" ? parsed.fontSize : initialApp.defaultFontSize,
-        };
+        return sanitizePreviewSettings(JSON.parse(saved), base);
       }
       return base;
     } catch {
@@ -81,18 +79,16 @@ export default function App() {
     }
   });
 
-  // 뷰 모드, 디테일 모드, 그리드 열 및 정렬 설정 상태
-  const [viewMode, setViewMode] = useState<"list" | "grid">(appSettings.defaultViewMode);
-  const [detailMode, setDetailMode] = useState<FontDetailMode>(appSettings.defaultFontDetailMode || "detailed");
-  const [gridColumns, setGridColumns] = useState<number>(appSettings.defaultGridColumns);
-  const [sortSettings, setSortSettings] = useState<FontSortSettings>(
-    () => appSettings.fontSortSettings || DEFAULT_SORT_SETTINGS
-  );
+  // 뷰 모드, 디테일 모드, 그리드 열 및 정렬 설정 (appSettings 단일 진실원천으로부터 파생)
+  const viewMode: "list" | "grid" = appSettings.defaultViewMode;
+  const detailMode: FontDetailMode = appSettings.defaultFontDetailMode || "detailed";
+  const gridColumns: number = appSettings.defaultGridColumns;
+  const sortSettings: FontSortSettings = appSettings.fontSortSettings || DEFAULT_SORT_SETTINGS;
 
   // 사이드바 접기/펼치기 상태
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("fontfinder_sidebar_collapsed") === "true";
+      return storageBooleanSchema.parse(localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED));
     } catch {
       return false;
     }
@@ -102,7 +98,7 @@ export default function App() {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem("fontfinder_sidebar_collapsed", String(next));
+        localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(next));
       } catch (err) {
         console.error("사이드바 상태 저장 실패:", err);
       }
@@ -254,13 +250,13 @@ export default function App() {
   // 프리뷰 설정 동기화 (로컬스토리지 즉시, DB 300ms 디바운스 저장)
   useEffect(() => {
     try {
-      localStorage.setItem("fontfinder_preview_settings", JSON.stringify(previewSettings));
+      localStorage.setItem(STORAGE_KEYS.PREVIEW_SETTINGS, JSON.stringify(previewSettings));
     } catch (e) {
       console.error("previewSettings 로컬 저장 실패:", e);
     }
 
     const timer = setTimeout(() => {
-      void fontService.setSetting("preview_settings", JSON.stringify(previewSettings));
+      void fontService.setSetting(DB_SETTINGS_KEYS.PREVIEW_SETTINGS, JSON.stringify(previewSettings));
     }, 300);
 
     return () => clearTimeout(timer);
@@ -270,47 +266,31 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       settingsService.loadSettings(),
-      fontService.getSetting("preview_settings"),
+      fontService.getSetting(DB_SETTINGS_KEYS.PREVIEW_SETTINGS),
     ])
       .then(([loaded, dbPreviewStr]) => {
         setAppSettings(loaded);
         if (loaded.language) {
           changeLanguage(loaded.language);
         }
-        if (loaded.fontSortSettings) {
-          setSortSettings(loaded.fontSortSettings);
-        }
-        if (loaded.defaultViewMode) {
-          setViewMode(loaded.defaultViewMode);
-        }
-        if (loaded.defaultGridColumns) {
-          setGridColumns(loaded.defaultGridColumns);
-        }
-        if (loaded.defaultFontDetailMode) {
-          setDetailMode(loaded.defaultFontDetailMode);
-        }
 
         // DB에 저장된 preview_settings 파싱하여 상태 복원
-        let dbPreview: Partial<PreviewSettings> | null = null;
         if (dbPreviewStr) {
           try {
-            dbPreview = JSON.parse(dbPreviewStr);
+            const parsed = JSON.parse(dbPreviewStr);
+            setPreviewSettings((prev) => {
+              const sanitized = sanitizePreviewSettings(parsed, prev);
+              const isDefault = isDefaultPreviewText(sanitized.text);
+              return {
+                ...sanitized,
+                text: isDefault && loaded.language
+                  ? getDefaultPreviewText(loaded.language)
+                  : sanitized.text,
+              };
+            });
           } catch (e) {
             console.warn("DB 프리뷰 설정 파싱 실패:", e);
           }
-        }
-
-        if (dbPreview) {
-          setPreviewSettings((prev) => {
-            const merged = { ...prev, ...dbPreview };
-            const isDefault = isDefaultPreviewText(merged.text);
-            return {
-              ...merged,
-              text: isDefault && loaded.language
-                ? getDefaultPreviewText(loaded.language)
-                : merged.text,
-            };
-          });
         }
       })
       .catch((e) => {
@@ -486,7 +466,6 @@ export default function App() {
 
   // 정렬 설정 빠른 변경 핸들러 (LocationBar 정렬 토글)
   const handleSortSettingsChange = useCallback((newSortSettings: FontSortSettings) => {
-    setSortSettings(newSortSettings);
     setAppSettings((prev) => {
       const next = { ...prev, fontSortSettings: newSortSettings };
       void settingsService.saveSettings(next);
@@ -496,7 +475,6 @@ export default function App() {
 
   // 뷰 모드(리스트/그리드) 변경 핸들러 (환경설정 DB 동기화)
   const handleViewModeChange = useCallback((mode: "list" | "grid") => {
-    setViewMode(mode);
     setAppSettings((prev) => {
       const next = { ...prev, defaultViewMode: mode };
       void settingsService.saveSettings(next);
@@ -506,7 +484,6 @@ export default function App() {
 
   // 그리드 기본 열 수 변경 핸들러 (환경설정 DB 동기화)
   const handleGridColumnsChange = useCallback((cols: number) => {
-    setGridColumns(cols);
     setAppSettings((prev) => {
       const next = { ...prev, defaultGridColumns: cols };
       void settingsService.saveSettings(next);
@@ -516,7 +493,6 @@ export default function App() {
 
   // 카드 상세 수준 변경 핸들러 (환경설정 DB 동기화)
   const handleDetailModeChange = useCallback((mode: FontDetailMode) => {
-    setDetailMode(mode);
     setAppSettings((prev) => {
       const next = { ...prev, defaultFontDetailMode: mode };
       void settingsService.saveSettings(next);
@@ -524,23 +500,11 @@ export default function App() {
     });
   }, []);
 
-  // 환경 설정 저장 핸들러
+  // 환경 설정 저장 핸들러 (단일 진실원천: appSettings)
   const handleSaveSettings = async (newSettings: CustomAppSettings) => {
     try {
       await settingsService.saveSettings(newSettings);
       setAppSettings(newSettings);
-      if (newSettings.fontSortSettings) {
-        setSortSettings(newSettings.fontSortSettings);
-      }
-      if (newSettings.defaultViewMode) {
-        setViewMode(newSettings.defaultViewMode);
-      }
-      if (newSettings.defaultGridColumns) {
-        setGridColumns(newSettings.defaultGridColumns);
-      }
-      if (newSettings.defaultFontDetailMode) {
-        setDetailMode(newSettings.defaultFontDetailMode);
-      }
       showToast(t("toast.settings_saved"));
     } catch (err) {
       console.error("환경 설정 저장 실패:", err);
@@ -553,9 +517,6 @@ export default function App() {
     setAppSettings(savedSettings);
     if (savedSettings.language) {
       changeLanguage(savedSettings.language);
-    }
-    if (savedSettings.defaultFontDetailMode) {
-      setDetailMode(savedSettings.defaultFontDetailMode);
     }
     setPreviewSettings((prev) => ({
       ...prev,
@@ -599,14 +560,12 @@ export default function App() {
         onRelinkFolder={actions.handleRelinkFolder}
         onReorderFolders={(nextFolders) => {
           library.setCustomFolders(nextFolders);
-          void fontService.setSetting("folder_order", JSON.stringify(nextFolders.map((f) => f.path)));
         }}
         onSelectSet={library.handleSelectSet}
         onCreateSet={actions.handleCreateSet}
         onDeleteSet={actions.handleDeleteSet}
         onReorderSets={(nextSets) => {
           library.setSets(nextSets);
-          void fontService.setSetting("set_order", JSON.stringify(nextSets.map((s) => s.id)));
         }}
         onUpdateSet={library.handleUpdateSet}
         onUpdateSetParent={library.handleUpdateSetParent}

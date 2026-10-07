@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Upload, Sliders, Folder, BookOpen } from "lucide-react";
 import { ModalDialog, Button, Alert, CheckboxCard } from "../common";
-import { backupService, summarizeBackupData } from "../../services/backupService";
+import { backupService, summarizeBackupData } from "../../services/backup";
 import type { AppBackupData, BackupCategorySelection, BackupSummary } from "../../types/backup";
 
 export interface ImportModalProps {

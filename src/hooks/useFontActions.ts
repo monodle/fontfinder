@@ -7,6 +7,8 @@ import { getRandomLibraryColor } from "../config/colorPresets";
 import { isPathInFolder, normalizePath } from "../utils/pathUtils";
 import { deduplicateFonts } from "../utils/fontDeduplication";
 import { formatBatchInstallFeedback, formatBatchUninstallFeedback, formatErrorMessage } from "../utils/batchFeedback";
+import { calculateOrderBetween } from "../utils/orderUtils";
+import { nativeDialogSinglePathSchema } from "../schemas";
 
 interface UseFontActionsProps {
   fonts: FontMetadata[];
@@ -43,6 +45,7 @@ export function useFontActions({
   setFavoriteIds,
   activatedFontIds,
   setActivatedFontIds,
+  sets,
   setSets,
   setCustomFolders,
   customFoldersRef,
@@ -290,18 +293,19 @@ export function useFontActions({
     async (name: string, color?: string, parentId?: number | null) => {
       try {
         const finalColor = color || getRandomLibraryColor();
-        const newSet = await fontService.createSet(name, finalColor, parentId);
-        setSets((prev) => {
-          const next = [newSet, ...prev];
-          void fontService.setSetting("set_order", JSON.stringify(next.map((s) => s.id)));
-          return next;
-        });
+        // 동일 부모(형제) 목록의 첫 번째 항목 앞 키 계산 (신규 생성 세트 상단 배치)
+        const siblings = sets.filter((s) => (s.parent_id ?? null) === (parentId ?? null));
+        const firstKey = siblings[0]?.sort_order ?? null;
+        const initialOrder = calculateOrderBetween(null, firstKey);
+
+        const newSet = await fontService.createSet(name, finalColor, parentId, initialOrder);
+        setSets((prev) => [newSet, ...prev]);
         setActiveCategory(`set:${newSet.id}`);
       } catch (err) {
         console.error("세트 생성 실패:", err);
       }
     },
-    [setActiveCategory, setSets]
+    [setActiveCategory, setSets, sets]
   );
 
   // 세트 삭제 (부모 삭제 시 자식 세트도 CASCADE 정리)
@@ -313,9 +317,7 @@ export function useFontActions({
         setSets((prev) => {
           const children = prev.filter((s) => s.parent_id === setId);
           children.forEach((c) => deletedChildIds.add(c.id));
-          const next = prev.filter((s) => s.id !== setId && s.parent_id !== setId);
-          void fontService.setSetting("set_order", JSON.stringify(next.map((s) => s.id)));
-          return next;
+          return prev.filter((s) => s.id !== setId && s.parent_id !== setId);
         });
         if (
           activeCategory === `set:${setId}` ||
@@ -513,7 +515,9 @@ export function useFontActions({
 
           try {
             const folderFonts = await fontService.scanDirectory(dir.path);
-            const dbFolder = await fontService.addFolder(dir.path, folderName, folderColor);
+            const lastFolder = customFoldersRef.current[customFoldersRef.current.length - 1];
+            const sortOrder = calculateOrderBetween(lastFolder?.sort_order, null);
+            const dbFolder = await fontService.addFolder(dir.path, folderName, folderColor, sortOrder);
             const uniqueFolderCount = deduplicateFonts(folderFonts, activatedFontIds).length;
 
             const finalizedFolder: CustomFolder = {
@@ -522,6 +526,7 @@ export function useFontActions({
               name: folderName,
               color: dbFolder.color || folderColor,
               count: uniqueFolderCount,
+              sort_order: dbFolder.sort_order,
               isScanning: false,
               scanProgress: undefined,
             };
@@ -552,12 +557,6 @@ export function useFontActions({
           }
         }
 
-        // 전체 서재 폴더 순서 저장
-        setCustomFolders((prev) => {
-          void fontService.setSetting("folder_order", JSON.stringify(prev.map((f) => f.path)));
-          return prev;
-        });
-
         // 6. 완료 토스트 알림
         if (newFoldersToAdd.length === 1) {
           const added = newFoldersToAdd[0];
@@ -583,13 +582,14 @@ export function useFontActions({
   // 폴더 추가 다이얼로그
   const handleAddFolder = useCallback(async () => {
     try {
-      const selected = await open({
+      const raw = await open({
         directory: true,
         multiple: false,
         title: t("toast.folder_dialog_title"),
       });
 
-      if (!selected || typeof selected !== "string") {
+      const selected = nativeDialogSinglePathSchema.parse(raw);
+      if (!selected) {
         return;
       }
 
@@ -689,11 +689,7 @@ export function useFontActions({
       await fontService.removeFolder(folderPath);
 
       // 4. 프론트엔드 상태 갱신
-      setCustomFolders((prev) => {
-        const next = prev.filter((f) => f.path !== folderPath);
-        void fontService.setSetting("folder_order", JSON.stringify(next.map((f) => f.path)));
-        return next;
-      });
+      setCustomFolders((prev) => prev.filter((f) => f.path !== folderPath));
       setFonts(remainingFonts);
       void fontService.unwatchFolder(folderPath);
 
@@ -714,13 +710,14 @@ export function useFontActions({
   const handleRelinkFolder = useCallback(
     async (oldPath: string) => {
       try {
-        const selected = await open({
+        const raw = await open({
           directory: true,
           multiple: false,
           title: t("folder.relink_dialog_title"),
         });
 
-        if (!selected || typeof selected !== "string") {
+        const selected = nativeDialogSinglePathSchema.parse(raw);
+        if (!selected) {
           return;
         }
 
@@ -744,11 +741,7 @@ export function useFontActions({
     async (folderPath: string) => {
       try {
         await fontService.removeFolderWithData(folderPath);
-        setCustomFolders((prev) => {
-          const next = prev.filter((f) => f.path !== folderPath);
-          void fontService.setSetting("folder_order", JSON.stringify(next.map((f) => f.path)));
-          return next;
-        });
+        setCustomFolders((prev) => prev.filter((f) => f.path !== folderPath));
         setFonts((prev) => prev.filter((f) => !isPathInFolder(f.file_path, folderPath)));
         if (activeCategory === `folder:${folderPath}`) {
           setActiveCategory("all");

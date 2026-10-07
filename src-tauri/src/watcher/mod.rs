@@ -169,12 +169,10 @@ impl FontFolderWatcher {
                         // 파일시스템 마운트 I/O 안정화 대기 (100ms)
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         // 연속 인입된 Recover 액션 통합 (중복 연산 방어)
-                        while let Ok(_) = action_rx.try_recv() {}
+                        while action_rx.try_recv().is_ok() {}
                         if let Some(arc) = weak_instance.upgrade() {
                             let _ = tokio::task::spawn_blocking(move || {
-                                if let Ok(mut w) = arc.lock() {
-                                    let _ = w.check_and_recover_missing();
-                                }
+                                Self::run_recover_cycle(&arc);
                             }).await;
                         } else {
                             break;
@@ -182,12 +180,10 @@ impl FontFolderWatcher {
                     }
                     WatcherAction::CheckMissing => {
                         // 네트워크/드라이브 단절 시 연속 인입되는 에러 폭풍 통합 (coalescing)
-                        while let Ok(_) = action_rx.try_recv() {}
+                        while action_rx.try_recv().is_ok() {}
                         if let Some(arc) = weak_instance.upgrade() {
                             let _ = tokio::task::spawn_blocking(move || {
-                                if let Ok(mut w) = arc.lock() {
-                                    let _ = w.check_missing_folders();
-                                }
+                                Self::run_missing_check_cycle(&arc);
                             }).await;
                         } else {
                             break;
@@ -278,6 +274,155 @@ impl FontFolderWatcher {
         Ok(())
     }
 
+    /// 락 점유 없이 비동기 스레드 풀에서 사전 디스크 I/O를 수행한 뒤, 최소 락 구간에서만 와처 상태를 갱신 (ANR 방어)
+    pub fn run_recover_cycle(arc: &Arc<Mutex<Self>>) -> Vec<PathBuf> {
+        let registered: Vec<PathBuf> = match arc.lock() {
+            Ok(guard) => guard.registered_folders.iter().cloned().collect(),
+            Err(_) => return Vec::new(),
+        };
+
+        // 락 해제 상태에서 파일시스템 I/O (exists, canonicalize) 사전 수행
+        let mut live_infos = Vec::new();
+        for path in registered {
+            if path.exists() && path.is_dir() {
+                let canonical = path
+                    .canonicalize()
+                    .map(|p| crate::protocol::strip_unc_prefix(&p))
+                    .unwrap_or_else(|_| path.clone());
+                live_infos.push((path, canonical));
+            }
+        }
+
+        // 최소 락 구간: 와처 등록/해제 및 내부 인메모리 상태 맵 갱신만 고속 수행
+        let mut recovered = Vec::new();
+        if let Ok(mut w) = arc.lock() {
+            for (path, canonical) in live_infos {
+                w.known_missing.remove(&path);
+
+                let needs_reattach = match w.watched_targets.get(&path) {
+                    Some(target) => !crate::protocol::is_same_or_subpath(target, &canonical) || !crate::protocol::is_same_or_subpath(&canonical, target),
+                    None => true,
+                };
+
+                if needs_reattach {
+                    if let Some(old_target) = w.watched_targets.remove(&path) {
+                        let is_used_elsewhere = w.watched_targets.values().any(|t| t == &old_target);
+                        #[cfg(target_os = "macos")]
+                        let is_root_volumes = old_target == Path::new("/Volumes");
+                        #[cfg(not(target_os = "macos"))]
+                        let is_root_volumes = false;
+
+                        if !is_used_elsewhere && !is_root_volumes {
+                            let _ = w.debouncer.watcher().unwatch(&old_target);
+                        }
+                    }
+
+                    let is_canonical_watched = w.watched_targets.values().any(|t| t == &canonical);
+                    let watch_result = if !is_canonical_watched {
+                        w.debouncer.watcher().watch(&canonical, RecursiveMode::Recursive)
+                    } else {
+                        Ok(())
+                    };
+
+                    if watch_result.is_ok() {
+                        w.watched_targets.insert(path.clone(), canonical);
+                        recovered.push(path.clone());
+                        println!("[FontWatcher] Re-attached watcher for recovered folder: {:?}", path);
+                        let _ = w.app_handle.emit("folder-font-changed", path.to_string_lossy().to_string());
+                    }
+                }
+            }
+
+            if let Ok(mut shared) = w.shared_missing.lock() {
+                *shared = w.known_missing.clone();
+            }
+        }
+
+        recovered
+    }
+
+    /// 락 점유 없이 비동기 스레드 풀에서 끊긴 폴더 및 살아있는 조상 폴더 탐색을 사전 수행 (ANR 방어)
+    pub fn run_missing_check_cycle(arc: &Arc<Mutex<Self>>) -> Vec<PathBuf> {
+        let registered: Vec<PathBuf> = match arc.lock() {
+            Ok(guard) => guard.registered_folders.iter().cloned().collect(),
+            Err(_) => return Vec::new(),
+        };
+
+        // 락 해제 상태에서 파일시스템 부재 확인 및 조상 폴더 탐색
+        let mut newly_missing_candidates = Vec::new();
+        for path in registered {
+            if !path.exists() || !path.is_dir() {
+                let mut ancestor_target = None;
+                let mut ancestor = path.parent();
+                while let Some(parent) = ancestor {
+                    if parent.exists() && parent.is_dir() {
+                        let canonical_parent = parent
+                            .canonicalize()
+                            .map(|p| crate::protocol::strip_unc_prefix(&p))
+                            .unwrap_or_else(|_| parent.to_path_buf());
+                        ancestor_target = Some(canonical_parent);
+                        break;
+                    }
+                    ancestor = parent.parent();
+                }
+                newly_missing_candidates.push((path, ancestor_target));
+            }
+        }
+
+        // 최소 락 구간: 조상 와처 전환 및 missing 이벤트 발행만 고속 수행
+        let mut missing = Vec::new();
+        if let Ok(mut w) = arc.lock() {
+            for (path, ancestor_target) in newly_missing_candidates {
+                let is_newly_missing = w.known_missing.insert(path.clone());
+                if is_newly_missing {
+                    missing.push(path.clone());
+                    let path_str = path.to_string_lossy().to_string();
+                    println!("[FontWatcher] Detected unmounted/missing folder: {}", path_str);
+                    let _ = w.app_handle.emit("folder-missing", path_str);
+                }
+
+                let is_self_watched = w.watched_targets.get(&path).map(|t| {
+                    crate::protocol::is_same_or_subpath(t, &path) && crate::protocol::is_same_or_subpath(&path, t)
+                }).unwrap_or(false);
+
+                if is_self_watched {
+                    if let Some(target) = w.watched_targets.remove(&path) {
+                        let is_used_elsewhere = w.watched_targets.values().any(|t| t == &target);
+                        #[cfg(target_os = "macos")]
+                        let is_root_volumes = target == Path::new("/Volumes");
+                        #[cfg(not(target_os = "macos"))]
+                        let is_root_volumes = false;
+
+                        if !is_used_elsewhere && !is_root_volumes {
+                            let _ = w.debouncer.watcher().unwatch(&target);
+                        }
+                    }
+
+                    if let Some(canonical_parent) = ancestor_target {
+                        let already_watched = w.watched_targets.values().any(|t| t == &canonical_parent);
+                        if !already_watched {
+                            #[cfg(target_os = "macos")]
+                            let is_root_volumes = canonical_parent == Path::new("/Volumes");
+                            #[cfg(not(target_os = "macos"))]
+                            let is_root_volumes = false;
+
+                            if !is_root_volumes {
+                                let _ = w.debouncer.watcher().watch(&canonical_parent, RecursiveMode::NonRecursive);
+                            }
+                        }
+                        w.watched_targets.insert(path.clone(), canonical_parent);
+                    }
+                }
+            }
+
+            if let Ok(mut shared) = w.shared_missing.lock() {
+                *shared = w.known_missing.clone();
+            }
+        }
+
+        missing
+    }
+
     /// 외장 드라이브 마운트나 복구 이벤트 발생 시, 연결 끊겼던 폴더들을 재확인하여 정규 와처로 재부착
     pub fn check_and_recover_missing(&mut self) -> Vec<PathBuf> {
         let mut recovered = Vec::new();
@@ -317,7 +462,7 @@ impl FontFolderWatcher {
                         Ok(())
                     };
 
-                    if let Ok(_) = watch_result {
+                    if watch_result.is_ok() {
                         self.watched_targets.insert(path.clone(), canonical);
                         recovered.push(path.clone());
                         println!("[FontWatcher] Re-attached watcher for recovered folder: {:?}", path);

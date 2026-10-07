@@ -98,6 +98,9 @@ export function FontItemDetailed({
               libraries={font.libraries}
               onSelectLibrary={onSelectLibrary}
               maxDisplay={isUltraCompact ? 1 : 2}
+              isFavorite={isFavorite}
+              isActivated={isActivated}
+              isUserFont={font.source === "user" || font.install_status === "installed_user"}
             />
           )}
         </div>

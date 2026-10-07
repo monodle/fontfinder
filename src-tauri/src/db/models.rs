@@ -7,6 +7,7 @@ pub struct FontSet {
   pub color: String,
   pub count: usize,
   pub parent_id: Option<i64>,
+  pub sort_order: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,6 +16,7 @@ pub struct DbFolder {
   pub path: String,
   pub name: String,
   pub color: String,
+  pub sort_order: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

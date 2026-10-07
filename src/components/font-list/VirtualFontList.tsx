@@ -3,16 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FontMetadata, PreviewSettings, FontLibraryTag, FontSection } from "../../types/font";
 import { FontItem } from "../font-card/FontItem";
-import { appConfig } from "../../config/appConfig";
-import { isFontFavorite } from "../../utils/fontSortUtils";
+import { appConfig, SETTINGS_BOUNDS } from "../../config/appConfig";
+import { isFavoriteCategoryFont as isFontFavorite } from "../../utils/fontFilterUtils";
 
 import { FontDetailMode } from "../font-card/types";
 
 interface VirtualFontListProps {
   fonts: FontMetadata[];
   sections?: FontSection[];
-  previewText?: string;
-  fontSize?: number;
   previewSettings?: PreviewSettings;
   viewMode: "list" | "grid";
   detailMode?: FontDetailMode;
@@ -53,8 +51,6 @@ interface VirtualRowItem {
 export function VirtualFontList({
   fonts,
   sections,
-  previewText,
-  fontSize,
   previewSettings,
   viewMode,
   detailMode = "detailed",
@@ -144,9 +140,9 @@ export function VirtualFontList({
 
   const rowCount = virtualRows.length;
 
-  const effectiveText = previewSettings?.text ?? previewText ?? "";
-  const effectiveFontSize = previewSettings?.fontSize ?? fontSize ?? 24;
-  const effectiveLineHeight = previewSettings?.lineHeight ?? 1.45;
+  const effectiveText = previewSettings?.text ?? "";
+  const effectiveFontSize = previewSettings?.fontSize ?? appConfig.preview.defaultFontSize;
+  const effectiveLineHeight = previewSettings?.lineHeight ?? SETTINGS_BOUNDS.lineHeight.default;
 
   // 아이템 대략적 높이: 줄 수와 폰트 크기 및 줄간격에 따라 정밀 추정 (간단 모드/상세 모드 구분)
   const estimateRowHeight = useCallback(
@@ -556,7 +552,7 @@ export function VirtualFontList({
         onClick={handleContainerClick}
         onClickCapture={handleClickCapture}
         onScroll={handleScroll}
-        className={`h-full w-full overflow-y-auto overflow-x-hidden p-4 min-w-0 ${
+        className={`h-full w-full overflow-y-auto overflow-x-hidden p-4 min-w-0 font-list-scroll ${
           isDragging ? "cursor-crosshair" : ""
         }`}
       >
@@ -656,8 +652,6 @@ export function VirtualFontList({
                       >
                         <FontItem
                           font={font}
-                          previewText={previewText}
-                          fontSize={fontSize}
                           previewSettings={previewSettings}
                           detailMode={detailMode}
                           columns={columns}

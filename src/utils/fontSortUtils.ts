@@ -1,11 +1,13 @@
 import { FontMetadata } from "../types/font";
 import { getFontFamilyName } from "./fontLocalization";
+import { isFavoriteCategoryFont } from "./fontFilterUtils";
 import {
   FontSortBlock,
   FontSortField,
   FontSortOrder,
   FontSortSettings,
   DEFAULT_SORT_SETTINGS,
+  DEFAULT_SORT_BLOCK_ORDER,
 } from "../types/sort";
 
 export interface FontSortContext {
@@ -13,12 +15,7 @@ export interface FontSortContext {
   activatedFontIds: Set<number>;
 }
 
-/**
- * 정수 폰트 ID 기반 즐겨찾기 소속 판별
- */
-export function isFontFavorite(font: FontMetadata, favoriteIds: Set<number>): boolean {
-  return favoriteIds.has(font.id);
-}
+export { isFavoriteCategoryFont as isFontFavorite };
 
 /**
  * 폰트의 상태 그룹(블록) 판별
@@ -38,7 +35,7 @@ function getFontSortBlock(font: FontMetadata, ctx: FontSortContext): FontSortBlo
   }
 
   // 2. 즐겨찾기 폰트
-  if (isFontFavorite(font, ctx.favoriteIds)) {
+  if (isFavoriteCategoryFont(font, ctx.favoriteIds)) {
     return "favorites";
   }
 
@@ -121,9 +118,9 @@ export function sortFonts(
 
   // 2. 스마트 정렬 또는 사용자 정의 정렬
   // 스마트 정렬 우선순위: 즐겨찾기(1) -> 활성화(2) -> 비활성화(3) -> 접근불가(4)
-  const priorityOrder: FontSortBlock[] =
+  const priorityOrder: readonly FontSortBlock[] =
     sortSettings.mode === "smart"
-      ? ["favorites", "activated", "deactivated", "unplugged"]
+      ? DEFAULT_SORT_BLOCK_ORDER
       : sortSettings.customPriority;
 
   const field: FontSortField =

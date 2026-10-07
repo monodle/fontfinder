@@ -18,7 +18,7 @@ function syncVersionPlugin() {
 
 export default defineConfig({
   build: {
-    emptyOutDir: false,
+    emptyOutDir: true,
   },
   plugins: [syncVersionPlugin(), react(), tailwindcss()],
   resolve: {

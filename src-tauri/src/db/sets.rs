@@ -4,12 +4,33 @@ use super::models::FontSet;
 use super::Database;
 
 impl Database {
-  pub fn create_set(&self, name: &str, color: Option<&str>, parent_id: Option<i64>) -> AppResult<FontSet> {
+  pub fn create_set(&self, name: &str, color: Option<&str>, parent_id: Option<i64>, sort_order: Option<&str>) -> AppResult<FontSet> {
     let conn = self.conn()?;
     let set_color = color.unwrap_or("#6366f1");
+    let calculated_order = match sort_order {
+      Some(o) if !o.trim().is_empty() => o.trim().to_string(),
+      _ => {
+        let last_order: Option<String> = match parent_id {
+          Some(pid) => conn.query_row(
+            "SELECT sort_order FROM sets WHERE parent_id = ?1 AND sort_order != '' ORDER BY sort_order DESC LIMIT 1",
+            params![pid],
+            |row| row.get(0),
+          ).ok(),
+          None => conn.query_row(
+            "SELECT sort_order FROM sets WHERE parent_id IS NULL AND sort_order != '' ORDER BY sort_order DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+          ).ok(),
+        };
+        match last_order {
+          Some(last) => format!("{}z", last),
+          None => "a0".to_string(),
+        }
+      }
+    };
     conn.execute(
-      "INSERT INTO sets (name, color, parent_id) VALUES (?1, ?2, ?3)",
-      params![name, set_color, parent_id],
+      "INSERT INTO sets (name, color, parent_id, sort_order) VALUES (?1, ?2, ?3, ?4)",
+      params![name, set_color, parent_id, calculated_order],
     )?;
     let id = conn.last_insert_rowid();
     Ok(FontSet {
@@ -18,6 +39,7 @@ impl Database {
       color: set_color.to_string(),
       count: 0,
       parent_id,
+      sort_order: calculated_order,
     })
   }
 
@@ -32,6 +54,11 @@ impl Database {
 
   pub fn update_set(&self, set_id: i64, name: &str, color: &str, parent_id: Option<i64>) -> AppResult<()> {
     let conn = self.conn()?;
+    if let Some(pid) = parent_id {
+      if would_create_cycle(&conn, set_id, pid) {
+        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+      }
+    }
     conn.execute(
       "UPDATE sets SET name = ?1, color = ?2, parent_id = ?3 WHERE id = ?4",
       params![name, color, parent_id, set_id],
@@ -41,9 +68,28 @@ impl Database {
 
   pub fn update_set_parent(&self, set_id: i64, parent_id: Option<i64>) -> AppResult<()> {
     let conn = self.conn()?;
+    if let Some(pid) = parent_id {
+      if would_create_cycle(&conn, set_id, pid) {
+        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+      }
+    }
     conn.execute(
       "UPDATE sets SET parent_id = ?1 WHERE id = ?2",
       params![parent_id, set_id],
+    )?;
+    Ok(())
+  }
+
+  pub fn update_set_position(&self, set_id: i64, parent_id: Option<i64>, sort_order: &str) -> AppResult<()> {
+    let conn = self.conn()?;
+    if let Some(pid) = parent_id {
+      if would_create_cycle(&conn, set_id, pid) {
+        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+      }
+    }
+    conn.execute(
+      "UPDATE sets SET parent_id = ?1, sort_order = ?2 WHERE id = ?3",
+      params![parent_id, sort_order, set_id],
     )?;
     Ok(())
   }
@@ -52,11 +98,11 @@ impl Database {
     let conn = self.conn()?;
     let mut stmt = conn.prepare(
       "
-      SELECT s.id, s.name, s.color, COUNT(sf.font_id) as font_count, s.parent_id
+      SELECT s.id, s.name, s.color, COUNT(sf.font_id) as font_count, s.parent_id, s.sort_order
       FROM sets s
       LEFT JOIN set_fonts sf ON sf.set_id = s.id
       GROUP BY s.id
-      ORDER BY s.id DESC
+      ORDER BY s.sort_order ASC, s.id ASC
       ",
     )?;
 
@@ -66,7 +112,8 @@ impl Database {
       let color: String = row.get(2)?;
       let count: usize = row.get(3)?;
       let parent_id: Option<i64> = row.get(4)?;
-      Ok(FontSet { id, name, color, count, parent_id })
+      let sort_order: String = row.get(5)?;
+      Ok(FontSet { id, name, color, count, parent_id, sort_order })
     })?;
 
     let mut sets = Vec::new();
@@ -162,4 +209,26 @@ impl Database {
     tx.commit()?;
     Ok(())
   }
+}
+
+/// 계층형 세트 트리 순환 참조(Cycle Reference) 탐지 헬퍼
+fn would_create_cycle(conn: &rusqlite::Connection, set_id: i64, new_parent_id: i64) -> bool {
+  if set_id == new_parent_id {
+    return true;
+  }
+  let mut current = new_parent_id;
+  for _ in 0..100 {
+    let parent_res: Result<Option<i64>, _> = conn.query_row(
+      "SELECT parent_id FROM sets WHERE id = ?1",
+      params![current],
+      |row| row.get(0),
+    );
+
+    match parent_res {
+      Ok(Some(pid)) if pid == set_id => return true,
+      Ok(Some(pid)) => current = pid,
+      _ => return false,
+    }
+  }
+  true // 최대 깊이(100) 초과 또는 순환 구조 감지 시 안전하게 차단
 }

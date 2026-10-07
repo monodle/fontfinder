@@ -15,7 +15,23 @@ import { isPathInFolder, normalizePath } from "../utils/pathUtils";
 import { sortFonts } from "../utils/fontSortUtils";
 import { deduplicateFonts, getFontUniqueKey } from "../utils/fontDeduplication";
 import { matchesFontSearch } from "../utils/fontLocalization";
+import {
+  isAllCategoryFont,
+  isSystemCategoryFont,
+  isUserCategoryFont,
+  isActivatedCategoryFont,
+  isFavoriteCategoryFont,
+  isDuplicateCategoryFont,
+} from "../utils/fontFilterUtils";
+import { DEFAULT_SET_COLOR, DEFAULT_FOLDER_COLOR } from "../config/colorPresets";
+import { STORAGE_KEYS } from "../config/storageKeys";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "../types/sort";
+import {
+  fontScanProgressPayloadSchema,
+  folderScanProgressPayloadSchema,
+  folderPathEventPayloadSchema,
+  legacyCustomFolderListSchema,
+} from "../schemas";
 
 /**
  * 서재 세트 목록의 실시간 카운트 계산
@@ -129,38 +145,15 @@ export function useFontLibrary({
   // 서재(세트) 목록 및 폰트 매핑 즉각 동기화 (개수 및 리스트 즉시 갱신)
   const refreshSets = useCallback(async () => {
     try {
-      const [fetchedSets, setOrderJson] = await Promise.all([
-        fontService.getSets(),
-        fontService.getSetting("set_order").catch(() => null),
-      ]);
-
-      // 서재 세트 순서 복원
-      if (setOrderJson) {
-        try {
-          const order: number[] = JSON.parse(setOrderJson);
-          const orderMap = new Map(order.map((id, idx) => [id, idx]));
-          fetchedSets.sort((a, b) => {
-            const hasA = orderMap.has(a.id);
-            const hasB = orderMap.has(b.id);
-            if (hasA && hasB) {
-              return orderMap.get(a.id)! - orderMap.get(b.id)!;
-            }
-            if (!hasA && hasB) return -1;
-            if (hasA && !hasB) return 1;
-            return b.id - a.id;
-          });
-        } catch {
-          // ignore parsing error
-        }
-      }
+      const fetchedSets = await fontService.getSets();
       // DB 원본 sets는 순수 direct count 상태로 보관 (오염 및 누적 합산 방지)
       setSets(fetchedSets);
 
-      // 모든 세트의 폰트 ID 목록을 단일 쿼리로 일괄 로드하여 1+N 쿼리/IPC 방지
-      const allSetFonts = await fontService.getAllSetFontIds().catch(() => ({} as Record<number, number[]>));
+      // 모든 세트의 폰트 ID 목록을 단일 쿼리로 일괄 로드하여 1+N 쿼리/IPC 방지 (Zod Map 정규화로 as any 완전 제거)
+      const allSetFontsMap = await fontService.getAllSetFontIdsMap().catch(() => new Map<number, number[]>());
       const newSetMap = new Map<number, Set<number>>();
       for (const s of fetchedSets) {
-        const ids = (allSetFonts as any)[s.id] ?? (allSetFonts as any)[String(s.id)] ?? [];
+        const ids = allSetFontsMap.get(s.id) ?? [];
         newSetMap.set(s.id, new Set(ids));
       }
       setSetMap(newSetMap);
@@ -231,7 +224,7 @@ export function useFontLibrary({
                 id: df.id,
                 path: df.path,
                 name: df.name,
-                color: df.color || "#0ea5e9",
+                color: df.color || DEFAULT_FOLDER_COLOR,
                 count: 0,
                 isMissing: false,
               }))
@@ -254,13 +247,11 @@ export function useFontLibrary({
         favIds,
         folderStatuses,
         activatedRecords,
-        folderOrderJson,
       ] = await Promise.all([
         refreshSets(),
         fontService.getFavoriteFontIds(),
         fontService.checkFoldersStatus().catch(() => []),
         fontService.validateAndCleanupActivatedFonts().catch(() => []),
-        fontService.getSetting("folder_order"),
       ]);
 
       setFavoriteIds(new Set(favIds));
@@ -275,45 +266,39 @@ export function useFontLibrary({
         setActivatedFontIds(new Set());
       }
 
-      // 등록 폴더 동기화 및 마이그레이션 (checkFoldersStatus 결과로 단일화하여 중복 쿼리 방지)
+      // 등록 폴더 동기화 및 마이그레이션 (checkFoldersStatus가 DB sort_order ASC 순으로 직접 반환)
       let targetFolders: CustomFolder[] = [];
       if (folderStatuses && folderStatuses.length > 0) {
         targetFolders = folderStatuses.map((fs) => ({
           id: fs.id,
           path: fs.path,
           name: fs.name,
-          color: fs.color || "#0ea5e9",
+          color: fs.color || DEFAULT_FOLDER_COLOR,
           count: 0,
+          sort_order: fs.sort_order,
           isMissing: !fs.exists,
         }));
       } else {
         try {
-          const legacy = localStorage.getItem("fontfinder_custom_folders");
+          const legacy = localStorage.getItem(STORAGE_KEYS.LEGACY_CUSTOM_FOLDERS);
           if (legacy) {
-            const parsedLegacy: CustomFolder[] = JSON.parse(legacy);
-            for (const f of parsedLegacy) {
-              await fontService.addFolder(f.path, f.name);
+            const parsed = legacyCustomFolderListSchema.safeParse(JSON.parse(legacy));
+            if (parsed.success && parsed.data.length > 0) {
+              for (const f of parsed.data) {
+                await fontService.addFolder(f.path, f.name);
+              }
+              targetFolders = parsed.data.map((f) => ({
+                path: f.path,
+                name: f.name,
+                color: f.color || DEFAULT_FOLDER_COLOR,
+                count: 0,
+                isMissing: false,
+              }));
             }
-            targetFolders = parsedLegacy;
-            localStorage.removeItem("fontfinder_custom_folders");
+            localStorage.removeItem(STORAGE_KEYS.LEGACY_CUSTOM_FOLDERS);
           }
         } catch {
           // ignore legacy migration error
-        }
-      }
-
-      // 폴더 순서 복원
-      if (folderOrderJson && targetFolders.length > 0) {
-        try {
-          const order: string[] = JSON.parse(folderOrderJson);
-          const orderMap = new Map(order.map((p, idx) => [p, idx]));
-          targetFolders.sort((a, b) => {
-            const posA = orderMap.has(a.path) ? orderMap.get(a.path)! : 999999;
-            const posB = orderMap.has(b.path) ? orderMap.get(b.path)! : 999999;
-            return posA - posB;
-          });
-        } catch {
-          // ignore parsing error
         }
       }
 
@@ -336,18 +321,24 @@ export function useFontLibrary({
     void loadDbState();
 
     // 1. 폰트 스캔 진행률 이벤트
-    const unlistenProgressPromise = listen<{ current: number; total: number }>(
+    const unlistenProgressPromise = listen<unknown>(
       "font-scan-progress",
       (event) => {
-        setScanProgress(event.payload);
+        const parsed = fontScanProgressPayloadSchema.safeParse(event.payload);
+        if (parsed.success) {
+          setScanProgress(parsed.data);
+        }
       }
     );
 
     // 1-2. 개별 폴더 스캔 진행률 이벤트
-    const unlistenFolderProgressPromise = listen<{ path: string; current: number; total: number }>(
+    const unlistenFolderProgressPromise = listen<unknown>(
       "folder-scan-progress",
       (event) => {
-        const { path, current, total } = event.payload;
+        const parsed = folderScanProgressPayloadSchema.safeParse(event.payload);
+        if (!parsed.success) return;
+
+        const { path, current, total } = parsed.data;
         setCustomFolders((prev) =>
           prev.map((f) =>
             normalizePath(f.path) === normalizePath(path)
@@ -363,8 +354,10 @@ export function useFontLibrary({
     );
 
     // 2. 폴더 내 폰트 변경/삭제 또는 폴더 복구 이벤트
-    const unlistenChangedPromise = listen<string>("folder-font-changed", async (event) => {
-      const changedPath = event.payload;
+    const unlistenChangedPromise = listen<unknown>("folder-font-changed", async (event) => {
+      const parsed = folderPathEventPayloadSchema.safeParse(event.payload);
+      if (!parsed.success) return;
+      const changedPath = parsed.data;
       try {
         // 해당 폴더가 실제 디스크에 존재하는지 선행 확인하여 언마운트 오탐 및 폰트 증발 방지
         const pathInfos = await fontService.checkPaths([changedPath]).catch(() => []);
@@ -438,8 +431,10 @@ export function useFontLibrary({
     });
 
     // 2. 폴더 자체 부재 / 외장 드라이브 언마운트 이벤트
-    const unlistenMissingPromise = listen<string>("folder-missing", (event) => {
-      const missingPath = event.payload;
+    const unlistenMissingPromise = listen<unknown>("folder-missing", (event) => {
+      const parsed = folderPathEventPayloadSchema.safeParse(event.payload);
+      if (!parsed.success) return;
+      const missingPath = parsed.data;
       setCustomFolders((prev) =>
         prev.map((f) =>
           normalizePath(f.path) === normalizePath(missingPath) ? { ...f, isMissing: true } : f
@@ -521,7 +516,7 @@ export function useFontLibrary({
               id: s.id,
               name: s.name,
               type: "set",
-              color: s.color || "#6366f1",
+              color: s.color || DEFAULT_SET_COLOR,
             });
           }
         }
@@ -597,17 +592,17 @@ export function useFontLibrary({
 
   // 폰트 상태(설치, 임시활성화, 미설치, 버전상태) 및 소속 서재(libraries) 동적 매핑
   const processedFonts = useMemo(() => {
-    // 1. 동일 지문/경로를 가진 폴더 매핑
-    const hashToFoldersMap = new Map<string, Set<CustomFolder>>();
+    // 1. 동일 지문/경로를 가진 폴더 ID/Path 매핑
+    const hashToFolderKeysMap = new Map<string, Set<string | number>>();
     for (const f of fonts) {
       const key = f.fast_hash || f.file_path;
-      if (!hashToFoldersMap.has(key)) {
-        hashToFoldersMap.set(key, new Set());
+      if (!hashToFolderKeysMap.has(key)) {
+        hashToFolderKeysMap.set(key, new Set());
       }
-      const folderSet = hashToFoldersMap.get(key)!;
+      const folderKeySet = hashToFolderKeysMap.get(key)!;
       for (const folder of customFolders) {
         if (isPathInFolder(f.file_path, folder.path)) {
-          folderSet.add(folder);
+          folderKeySet.add(folder.id ?? folder.path);
         }
       }
     }
@@ -622,8 +617,37 @@ export function useFontLibrary({
     }
 
     return fonts.map((font): FontMetadata => {
-      // 1. 소속 서재(세트 & 감시 폴더) 계산
+      // 1. 소속 서재(감시 폴더 & 세트) 계산 (폴더 우선 매핑)
       const libraries: FontLibraryTag[] = [];
+
+      // 등록 폴더 매핑 (사이드바 customFolders의 현재 정렬 순서를 엄격히 반영)
+      const folderKey = font.fast_hash || font.file_path;
+      const matchedFolderKeys = hashToFolderKeysMap.get(folderKey);
+      if (matchedFolderKeys && matchedFolderKeys.size > 0) {
+        for (const folder of customFolders) {
+          const key = folder.id ?? folder.path;
+          if (matchedFolderKeys.has(key)) {
+            libraries.push({
+              id: key,
+              name: folder.name,
+              type: "folder",
+              color: folder.color || DEFAULT_FOLDER_COLOR,
+            });
+          }
+        }
+      } else {
+        // 폴더 매핑 폴백 (사이드바 customFolders의 현재 정렬 순서 유지)
+        for (const folder of customFolders) {
+          if (isPathInFolder(font.file_path, folder.path)) {
+            libraries.push({
+              id: folder.id ?? folder.path,
+              name: folder.name,
+              type: "folder",
+              color: folder.color || DEFAULT_FOLDER_COLOR,
+            });
+          }
+        }
+      }
 
       // 세트 매핑 (정수 ID로 단일 매핑)
       for (const set of sets) {
@@ -633,34 +657,8 @@ export function useFontLibrary({
             id: set.id,
             name: set.name,
             type: "set",
-            color: set.color || "#6366f1",
+            color: set.color || DEFAULT_SET_COLOR,
           });
-        }
-      }
-
-      // 등록 폴더 매핑
-      const folderKey = font.fast_hash || font.file_path;
-      const matchedFolders = hashToFoldersMap.get(folderKey);
-      if (matchedFolders && matchedFolders.size > 0) {
-        for (const folder of matchedFolders) {
-          libraries.push({
-            id: folder.id ?? folder.path,
-            name: folder.name,
-            type: "folder",
-            color: folder.color || "#0ea5e9",
-          });
-        }
-      } else {
-        // 폴더 매핑 폴백
-        for (const folder of customFolders) {
-          if (isPathInFolder(font.file_path, folder.path)) {
-            libraries.push({
-              id: folder.id ?? folder.path,
-              name: folder.name,
-              type: "folder",
-              color: folder.color || "#0ea5e9",
-            });
-          }
         }
       }
 
@@ -744,19 +742,12 @@ export function useFontLibrary({
     });
   }, [fonts, sets, setMap, customFolders, activatedFontIds]);
 
-  // 카테고리별 실시간 파일/그룹 카운트
+  // 카테고리별 실시간 파일/그룹 카운트 (SSOT: fontFilterUtils)
   const categoryCounts = useMemo(() => {
-    const activeNonSystemFonts = processedFonts.filter(
-      (f) =>
-        f.install_status !== "deleted" &&
-        f.install_status !== "unplugged" &&
-        f.source !== "system"
-    );
-    const systemFonts = processedFonts.filter((f) => f.source === "system");
-    const userFonts = processedFonts.filter((f) => f.source === "user");
-    const activatedFonts = processedFonts.filter(
-      (f) => activatedFontIds.has(f.id) && f.source !== "system" && f.source !== "user"
-    );
+    const activeNonSystemFonts = processedFonts.filter(isAllCategoryFont);
+    const systemFonts = processedFonts.filter(isSystemCategoryFont);
+    const userFonts = processedFonts.filter(isUserCategoryFont);
+    const activatedFonts = processedFonts.filter((f) => isActivatedCategoryFont(f, activatedFontIds));
 
     return {
       total: activeNonSystemFonts.length,
@@ -819,30 +810,20 @@ export function useFontLibrary({
     };
 
     if (activeCategory === "all") {
-      result = processedFonts.filter(
-        (f) =>
-          f.install_status !== "deleted" &&
-          f.install_status !== "unplugged" &&
-          f.source !== "system"
-      );
+      result = processedFonts.filter(isAllCategoryFont);
     } else if (activeCategory === "system") {
-      result = processedFonts.filter((f) => f.source === "system");
+      result = processedFonts.filter(isSystemCategoryFont);
     } else if (activeCategory === "user") {
-      result = processedFonts.filter((f) => f.source === "user");
+      result = processedFonts.filter(isUserCategoryFont);
     } else if (activeCategory === "activated") {
-      result = processedFonts.filter(
-        (f) => activatedFontIds.has(f.id) && f.source !== "system" && f.source !== "user"
-      );
+      result = processedFonts.filter((f) => isActivatedCategoryFont(f, activatedFontIds));
     } else if (activeCategory === "favorites") {
-      const matchesFavorite = (f: FontMetadata) => favoriteIds.has(f.id);
-      const activeFavs = processedFonts.filter(matchesFavorite);
-      const unpluggedFavs = unpluggedFonts.filter(matchesFavorite);
+      const activeFavs = processedFonts.filter((f) => isFavoriteCategoryFont(f, favoriteIds));
+      const unpluggedFavs = unpluggedFonts.filter((f) => isFavoriteCategoryFont(f, favoriteIds));
       result = [...activeFavs, ...unpluggedFavs];
     } else if (activeCategory === "duplicates") {
       // 중복 폰트 탭: 시스템 폰트를 제외하고, 중복된 폰트들 중 같은 폰트면 대표 1개만 집약 노출하며 중복 개수(duplicate_count) 표시
-      const nonSystemDuplicates = processedFonts.filter(
-        (f) => duplicateFontIds.has(f.id) && f.source !== "system"
-      );
+      const nonSystemDuplicates = processedFonts.filter((f) => isDuplicateCategoryFont(f, duplicateFontIds));
       result = deduplicateFonts(nonSystemDuplicates, activatedFontIds).map((font) => ({
         ...font,
         duplicate_count: nonSystemDupCounts.get(getFontUniqueKey(font)) || 1,
