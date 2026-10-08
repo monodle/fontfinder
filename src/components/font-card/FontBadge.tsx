@@ -5,15 +5,13 @@ import { cn } from "../../utils/cn";
 import type { FontInstallStatus, FontVersionStatus } from "../../types/font";
 
 /**
- * 폰트 포맷 약어 변환 헬퍼 (TTC, OTF, TTF, WOFF2, WOFF)
+ * 폰트 포맷 약어 변환 헬퍼 (TTC, OTF, TTF)
  */
 function getShortFormat(format: string): string {
   const f = format.toLowerCase();
   if (f.includes("collection") || f.includes("ttc")) return "TTC";
   if (f.includes("opentype") || f.includes("otf")) return "OTF";
   if (f.includes("truetype") || f.includes("ttf")) return "TTF";
-  if (f.includes("woff2")) return "WOFF2";
-  if (f.includes("woff")) return "WOFF";
   return format.slice(0, 4);
 }
 

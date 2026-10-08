@@ -43,7 +43,7 @@ export function sanitizePreviewSettings(
   return createPreviewSettingsSchema(fallback).parse(raw);
 }
 
-export function createDefaultSettings(lang?: SupportedLanguageCode, theme?: AppTheme): CustomAppSettings {
+function createDefaultSettings(lang?: SupportedLanguageCode, theme?: AppTheme): CustomAppSettings {
   const resolvedLang = lang ?? detectInitialLanguage();
   const resolvedTheme = theme ?? getInitialThemeByOS();
   return {
@@ -67,6 +67,8 @@ export function createDefaultSettings(lang?: SupportedLanguageCode, theme?: AppT
     fontSortSettings: { ...DEFAULT_SORT_SETTINGS, customPriority: [...DEFAULT_SORT_BLOCK_ORDER] },
     language: resolvedLang,
     theme: resolvedTheme,
+    enableGoogleFonts: false,
+    enableFontsource: false,
   };
 }
 

@@ -1,4 +1,4 @@
-import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
+import { generateKeyBetween } from "fractional-indexing";
 import { fractionalIndexKeySchema } from "../schemas";
 
 /**
@@ -21,17 +21,5 @@ export function calculateOrderBetween(
     if (a && !b) return `${a}z`;
     if (!a && b) return "Zz";
     return `${a}V`;
-  }
-}
-
-/**
- * N개의 초기 아이템에 대한 순차적 Fractional Index 키 목록 생성
- */
-export function generateInitialOrderKeys(count: number): string[] {
-  if (count <= 0) return [];
-  try {
-    return generateNKeysBetween(null, null, count);
-  } catch {
-    return Array.from({ length: count }, (_, idx) => `a${idx}`);
   }
 }

@@ -6,8 +6,6 @@ pub enum FontFormat {
     TrueType,
     OpenType,
     TrueTypeCollection,
-    Woff,
-    Woff2,
     Unknown,
 }
 

@@ -14,25 +14,20 @@ export const APP_THEMES = [
 
 export type AppTheme = typeof APP_THEMES[number]["id"];
 
-export interface ThemeOption {
-  id: AppTheme;
-  previewColors: readonly [string, string, string];
-}
-
 export const VALID_THEMES: AppTheme[] = APP_THEMES.map((theme) => theme.id);
 
-export const LIBRARY_CATEGORIES = [
+const LIBRARY_CATEGORIES = [
   "all",
   "system",
   "user",
   "activated",
   "favorites",
   "duplicates",
+  "google_fonts",
+  "fontsource",
 ] as const;
 
 export type LibraryCategory = typeof LIBRARY_CATEGORIES[number];
-
-export const VALID_CATEGORIES: LibraryCategory[] = [...LIBRARY_CATEGORIES];
 
 /**
  * 환경 설정의 시작 라이브러리 카테고리 선택 옵션 (시스템 폰트 제외)

@@ -40,23 +40,23 @@ import { createHexColorSchema, sanitizeRawString } from "./commonSchemas";
 /**
  * 정렬 설정 관련 Zod 스키마
  */
-export const fontSortModeSchema = z
+const fontSortModeSchema = z
   .enum(FONT_SORT_MODES)
   .catch(DEFAULT_SORT_SETTINGS.mode);
 
-export const fontSortNameFieldSchema = z
+const fontSortNameFieldSchema = z
   .enum(FONT_SORT_FIELDS)
   .catch(DEFAULT_SORT_SETTINGS.nameField);
 
-export const fontSortNameOrderSchema = z
+const fontSortNameOrderSchema = z
   .enum(FONT_SORT_ORDERS)
   .catch(DEFAULT_SORT_SETTINGS.nameOrder);
 
-export const fontSortCustomFieldSchema = z
+const fontSortCustomFieldSchema = z
   .enum(FONT_SORT_FIELDS)
   .catch(DEFAULT_SORT_SETTINGS.customField);
 
-export const fontSortCustomOrderSchema = z
+const fontSortCustomOrderSchema = z
   .enum(FONT_SORT_ORDERS)
   .catch(DEFAULT_SORT_SETTINGS.customOrder);
 
@@ -107,7 +107,7 @@ export const supportedLanguageSchema = supportedLanguageCodeSchema.catch(
 /**
  * 앱 설정 개별 필드 스키마 생성 헬퍼
  */
-export const createLibraryCategorySchema = (fallback: StartupLibraryCategory) => {
+const createLibraryCategorySchema = (fallback: StartupLibraryCategory) => {
   const safeFallback: StartupLibraryCategory =
     (STARTUP_LIBRARY_CATEGORIES as readonly string[]).includes(fallback)
       ? fallback
@@ -115,33 +115,33 @@ export const createLibraryCategorySchema = (fallback: StartupLibraryCategory) =>
   return z.enum(STARTUP_LIBRARY_CATEGORIES).catch(safeFallback);
 };
 
-export const createTextAlignSchema = (fallback: TextAlignOption) =>
+const createTextAlignSchema = (fallback: TextAlignOption) =>
   z.enum(TEXT_ALIGN_OPTIONS).catch(fallback);
 
-export const createViewModeSchema = (fallback: ViewMode) =>
+const createViewModeSchema = (fallback: ViewMode) =>
   z.enum(VIEW_MODES).catch(fallback);
 
-export const createFontDetailModeSchema = (fallback: FontDetailMode) =>
+const createFontDetailModeSchema = (fallback: FontDetailMode) =>
   z.enum(FONT_DETAIL_MODES).catch(fallback);
 
-export const createLanguageSchema = (fallback: SupportedLanguageCode) =>
+const createLanguageSchema = (fallback: SupportedLanguageCode) =>
   z.enum(SUPPORTED_LANGUAGE_CODES).catch(fallback);
 
-export const createLineHeightSchema = (fallback: number) =>
+const createLineHeightSchema = (fallback: number) =>
   z
     .number()
     .min(SETTINGS_BOUNDS.lineHeight.min)
     .max(SETTINGS_BOUNDS.lineHeight.max)
     .catch(fallback);
 
-export const createLetterSpacingSchema = (fallback: number) =>
+const createLetterSpacingSchema = (fallback: number) =>
   z
     .number()
     .min(SETTINGS_BOUNDS.letterSpacing.min)
     .max(SETTINGS_BOUNDS.letterSpacing.max)
     .catch(fallback);
 
-export const createFontSizeSchema = (fallback: number) =>
+const createFontSizeSchema = (fallback: number) =>
   z
     .number()
     .min(SETTINGS_BOUNDS.fontSize.min)
@@ -212,6 +212,8 @@ export const createAppSettingsSchema = (fallback: CustomAppSettings) =>
       fontSortSettings: createFontSortSettingsSchema(fallback.fontSortSettings),
       language: createLanguageSchema(fallback.language),
       theme: createThemeSchema(fallback.theme),
+      enableGoogleFonts: z.coerce.boolean().catch(fallback.enableGoogleFonts ?? false),
+      enableFontsource: z.coerce.boolean().catch(fallback.enableFontsource ?? false),
     })
     .transform((data): CustomAppSettings => {
       const minFontSize = data.minFontSize;
@@ -236,7 +238,7 @@ export const createAppSettingsSchema = (fallback: CustomAppSettings) =>
 /**
  * 텍스트 변환 옵션 검증 스키마
  */
-export const createTextTransformSchema = (fallback: TextTransformOption = "none") =>
+const createTextTransformSchema = (fallback: TextTransformOption = "none") =>
   z.enum(TEXT_TRANSFORM_OPTIONS).catch(fallback);
 
 /**

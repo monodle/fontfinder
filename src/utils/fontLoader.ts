@@ -183,6 +183,43 @@ class FontCacheManager {
    * 폰트를 브라우저 Document에 로드하고 CSS familyName 반환
    */
   public async loadFont(font: FontMetadata): Promise<string> {
+    // Google Fonts 공급자 폰트인 경우 (file_path가 google:로 시작)
+    if (font.file_path.startsWith("google:")) {
+      const gFamily = font.family_name || font.full_name;
+      const linkId = `gfont-${encodeURIComponent(gFamily)}`;
+      if (typeof document !== "undefined" && !document.getElementById(linkId)) {
+        const link = document.createElement("link");
+        link.id = linkId;
+        link.rel = "stylesheet";
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(gFamily)}&display=swap`;
+        link.onerror = () => {
+          // 개별 폰트 로드 실패는 시스템 폰트로 폴백 표시 (전역 네트워크 상태를 오프라인으로 왜곡하지 않음)
+          console.warn(`[FontLoader] 구글 웹폰트 로드 실패: ${gFamily} (폴백 폰트로 대체)`);
+        };
+        document.head.appendChild(link);
+      }
+      return `"${gFamily}", var(--font-system)`;
+    }
+
+    // Fontsource 공급자 폰트인 경우 (file_path가 fontsource:로 시작)
+    if (font.file_path.startsWith("fontsource:")) {
+      const fontId = font.file_path.replace("fontsource:", "");
+      const linkId = `fsource-${encodeURIComponent(fontId)}`;
+      if (typeof document !== "undefined" && !document.getElementById(linkId)) {
+        const link = document.createElement("link");
+        link.id = linkId;
+        link.rel = "stylesheet";
+        link.href = `https://cdn.jsdelivr.net/npm/@fontsource/${encodeURIComponent(fontId)}@latest/index.css`;
+        link.onerror = () => {
+          // 개별 폰트 로드 실패는 시스템 폰트로 폴백 표시
+          console.warn(`[FontLoader] Fontsource 웹폰트 로드 실패: ${fontId} (폴백 폰트로 대체)`);
+        };
+        document.head.appendChild(link);
+      }
+      const familyName = font.family_name || font.full_name;
+      return `"${familyName}", var(--font-system)`;
+    }
+
     const familyName = getCustomFontFamily(font);
 
     // 1. 이미 로드된 폰트인 경우

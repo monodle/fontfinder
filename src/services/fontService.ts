@@ -52,13 +52,13 @@ export const fontService = {
     return fontMetadataListSchema.parse(raw);
   },
 
-  async syncFontLibrary(customPaths: string[] = []): Promise<FontMetadata[]> {
-    const raw = await invoke<unknown>("sync_font_library", { customPaths });
+  async syncFontLibrary(customPaths: string[] = [], forceRescan?: boolean): Promise<FontMetadata[]> {
+    const raw = await invoke<unknown>("sync_font_library", { customPaths, forceRescan });
     return fontMetadataListSchema.parse(raw);
   },
 
-  async scanDirectory(path: string): Promise<FontMetadata[]> {
-    const raw = await invoke<unknown>("scan_directory", { path });
+  async scanDirectory(path: string, forceRescan?: boolean): Promise<FontMetadata[]> {
+    const raw = await invoke<unknown>("scan_directory", { path, forceRescan });
     return fontMetadataListSchema.parse(raw);
   },
 

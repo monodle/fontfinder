@@ -29,6 +29,7 @@ export function FontItemDetailed({
 }: FontCardRenderProps) {
   const { t, i18n } = useTranslation();
   const displayName = getFontFamilyName(font, i18n.language);
+  const isOnlineProviderFont = font.file_path.startsWith("google:") || font.file_path.startsWith("fontsource:");
 
   return (
     <div
@@ -65,19 +66,21 @@ export function FontItemDetailed({
       <div className="flex items-center justify-between gap-1.5 mb-1.5 min-w-0 shrink-0">
         {/* Left: Heart + Family + Subfamily + LibraryAvatarStack */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite?.(font.id);
-            }}
-            className={`p-0.5 rounded hover:bg-theme-hover transition-colors shrink-0 cursor-pointer ${
-              isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted hover:text-rose-500"
-            }`}
-            title={isFavorite ? t("font_item.favorite_remove") : t("font_item.favorite_add")}
-          >
-            <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-rose-500 text-rose-500" : ""}`} />
-          </button>
+          {!isOnlineProviderFont && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite?.(font.id);
+              }}
+              className={`p-0.5 rounded hover:bg-theme-hover transition-colors shrink-0 cursor-pointer ${
+                isFavorite ? "text-rose-500 fill-rose-500" : "text-theme-text-muted hover:text-rose-500"
+              }`}
+              title={isFavorite ? t("font_item.favorite_remove") : t("font_item.favorite_add")}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-rose-500 text-rose-500" : ""}`} />
+            </button>
+          )}
 
           <span className="font-semibold text-xs text-theme-text tracking-tight truncate group-hover:text-theme-accent transition-colors">
             {displayName}
@@ -116,8 +119,8 @@ export function FontItemDetailed({
           {/* Install Status Badge (설치됨/미설치/언플러그 상태) */}
           <FontInstallStatusBadge status={font.install_status} compact={isCompact} />
 
-          {/* Activate Button / Badge: 외부 폰트만 임시 활성화 가능 (연결끊김/삭제 폰트 제외) */}
-          {!isInstalled && !isDisconnected && (
+          {/* Activate Button / Badge: 외부 폰트만 임시 활성화 가능 (연결끊김/삭제/온라인 공급자 제외) */}
+          {!isInstalled && !isDisconnected && !isOnlineProviderFont && (
             <button
               type="button"
               onClick={handleActivate}
@@ -139,7 +142,7 @@ export function FontItemDetailed({
             </button>
           )}
 
-          {/* Format Badge (3열 이상 시 WOFF2, TTC, OTF 등 약어로 표시) */}
+          {/* Format Badge (3열 이상 시 TTC, OTF 등 약어로 표시) */}
           <FontFormatBadge format={font.format} compact={isCompact} />
 
           {/* Glyph Count (3열 이상 시 공간 확보를 위해 숨김) */}
@@ -197,7 +200,11 @@ export function FontItemDetailed({
             {font.file_name}
           </span>
         </div>
-        <span className="font-mono text-[10px] shrink-0">{formatFileSize(font.file_size)}</span>
+        <span className="font-mono text-[10px] shrink-0">
+          {font.file_size > 0
+            ? formatFileSize(font.file_size)
+            : font.license || "Online"}
+        </span>
       </div>
     </div>
   );

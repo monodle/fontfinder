@@ -2,6 +2,7 @@ pub mod commands;
 pub mod db;
 pub mod error;
 pub mod font;
+pub mod network;
 pub mod platform;
 pub mod protocol;
 pub mod watcher;
@@ -91,6 +92,9 @@ pub fn run() {
             commands::save_backup_file,
             commands::read_backup_file,
             commands::get_font_details,
+            commands::fetch_google_fonts_metadata,
+            commands::fetch_fontsource_metadata,
+            commands::check_network_connectivity,
         ])
         .on_window_event(|window, event| {
             if let Some(wm) = window.try_state::<Arc<window_manager::WindowManager>>() {
@@ -130,7 +134,21 @@ pub fn run() {
             let db_path = app_data_dir.join("fontfinder.db");
 
             let database = Arc::new(
-                db::Database::new(db_path).expect("Failed to initialize SQLite database"),
+                match db::Database::new(db_path.clone()) {
+                    Ok(db) => db,
+                    Err(err) => {
+                        eprintln!("[db] Database initialization failed: {}. Attempting corruption recovery...", err);
+                        let timestamp = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        let backup_path = db_path.with_extension(format!("corrupted.{}.bak", timestamp));
+                        let _ = std::fs::rename(&db_path, &backup_path);
+                        let _ = std::fs::remove_file(db_path.with_extension("db-wal"));
+                        let _ = std::fs::remove_file(db_path.with_extension("db-shm"));
+                        db::Database::new(db_path).expect("Failed to initialize fresh SQLite database after corruption recovery")
+                    }
+                }
             );
 
             let watcher = watcher::FontFolderWatcher::new(app.handle().clone())
@@ -139,7 +157,11 @@ pub fn run() {
             if let Ok(folders) = database.get_folders() {
                 if let Ok(mut w) = watcher.lock() {
                     for f in folders {
-                        let _ = w.watch(&std::path::PathBuf::from(f.path));
+                        if let Ok(valid_path) = commands::validation::validate_folder_path(&f.path) {
+                            let _ = w.watch(&valid_path);
+                        } else {
+                            eprintln!("[security] Blocked dangerous or invalid watched folder from DB: {}", f.path);
+                        }
                     }
                 }
             }
@@ -242,6 +264,9 @@ pub fn run() {
             if let Some(main_window) = app.get_webview_window("main") {
                 window_manager.apply_initial_size(&main_window.as_ref().window());
             }
+
+            // OS 네이티브 네트워크 알림 모니터 백그라운드 구동 (Zero-Polling)
+            network::start_network_monitor(app.handle().clone());
 
             #[cfg(debug_assertions)]
             {

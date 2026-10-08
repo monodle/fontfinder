@@ -9,7 +9,7 @@ import { sanitizeRawString } from "./commonSchemas";
 /**
  * Vite 환경 변수(import.meta.env) 엄격 검증 및 기본값 정규화 스키마
  */
-export const appEnvSchema = z
+const appEnvSchema = z
   .object({
     VITE_APP_NAME: z
       .unknown()

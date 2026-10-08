@@ -6,7 +6,7 @@ import { webUrlSchema } from "../schemas";
  * @param url 검증할 URL 문자열
  * @returns 정규화된 URL 문자열 또는 검증 실패 시 null
  */
-export function validateWebUrl(url: unknown): string | null {
+function validateWebUrl(url: unknown): string | null {
   const result = webUrlSchema.safeParse(url);
   if (!result.success) {
     if (typeof url === "string" && url.trim().length > 0) {

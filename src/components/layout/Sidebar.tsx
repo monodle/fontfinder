@@ -26,6 +26,9 @@ import {
   ArrowUpToLine,
   Search,
   X,
+  Globe,
+  WifiOff,
+  Package,
 } from "lucide-react";
 import type { SettingsTab } from "../settings/SettingsModal";
 import { FontSet, CustomFolder, CategoryCounts, FlatSetItem } from "../../types/font";
@@ -70,6 +73,14 @@ interface SidebarProps {
   onUpdateSetParent?: (setId: number, parentId: number | null) => void;
   onUpdateSetColor?: (setId: number, color: string) => void;
   onUpdateFolderColor?: (folderId: number, color: string) => void;
+  googleFontsCount?: number;
+  isGoogleFontsOnline?: boolean;
+  isGoogleFontsLoading?: boolean;
+  fontsourceCount?: number;
+  isFontsourceOnline?: boolean;
+  isFontsourceLoading?: boolean;
+  enableGoogleFonts?: boolean;
+  enableFontsource?: boolean;
 }
 
 export function Sidebar({
@@ -81,6 +92,14 @@ export function Sidebar({
   sets,
   isCollapsed = false,
   isLoading = false,
+  googleFontsCount = 0,
+  isGoogleFontsOnline = true,
+  isGoogleFontsLoading = false,
+  fontsourceCount = 0,
+  isFontsourceOnline = true,
+  isFontsourceLoading = false,
+  enableGoogleFonts = false,
+  enableFontsource = false,
   onRefresh,
   onToggleCollapse,
   onOpenSettings,
@@ -513,6 +532,122 @@ export function Sidebar({
                 </button>
               );
             })}
+
+            {/* Google Fonts 메뉴 (중복 폰트 바로 아래) */}
+            {enableGoogleFonts && (() => {
+              const isGfActive = activeCategory === "google_fonts";
+              const titleText = !isGoogleFontsOnline
+                ? t("sidebar.google_fonts_offline", "인터넷 연결이 필요합니다")
+                : `Google Fonts (${googleFontsCount.toLocaleString()})`;
+
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isGoogleFontsOnline) {
+                      onSelectCategory("google_fonts");
+                    }
+                  }}
+                  disabled={!isGoogleFontsOnline}
+                  title={titleText}
+                  className={`w-full flex items-center rounded-lg font-medium transition-colors ${
+                    isCollapsed
+                      ? "w-9 h-9 mx-auto justify-center px-0 py-0"
+                      : "justify-between px-2.5 py-2"
+                  } ${
+                    !isGoogleFontsOnline
+                      ? "opacity-40 cursor-not-allowed text-theme-text-muted hover:bg-transparent"
+                      : isGfActive
+                      ? "bg-theme-active text-theme-accent shadow-2xs font-semibold cursor-pointer"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text cursor-pointer"
+                  }`}
+                >
+                  <span
+                    className={`flex items-center gap-2 ${
+                      isCollapsed ? "justify-center" : ""
+                    }`}
+                  >
+                    {!isGoogleFontsOnline ? (
+                      <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+                    )}
+                    {!isCollapsed && (
+                      <span className="truncate">Google Fonts</span>
+                    )}
+                  </span>
+                  {!isCollapsed && (
+                    <span className="text-[11px] font-mono opacity-80">
+                      {!isGoogleFontsOnline
+                        ? "오프라인"
+                        : isGoogleFontsLoading && googleFontsCount === 0
+                        ? "..."
+                        : googleFontsCount > 0
+                        ? googleFontsCount.toLocaleString()
+                        : "-"}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+
+            {/* Font Source 메뉴 (Google Fonts 바로 아래) */}
+            {enableFontsource && (() => {
+              const isFsActive = activeCategory === "fontsource";
+              const titleText = !isFontsourceOnline
+                ? t("sidebar.fontsource_offline", "인터넷 연결이 필요합니다")
+                : `Font Source (${fontsourceCount.toLocaleString()})`;
+
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isFontsourceOnline) {
+                      onSelectCategory("fontsource");
+                    }
+                  }}
+                  disabled={!isFontsourceOnline}
+                  title={titleText}
+                  className={`w-full flex items-center rounded-lg font-medium transition-colors ${
+                    isCollapsed
+                      ? "w-9 h-9 mx-auto justify-center px-0 py-0"
+                      : "justify-between px-2.5 py-2"
+                  } ${
+                    !isFontsourceOnline
+                      ? "opacity-40 cursor-not-allowed text-theme-text-muted hover:bg-transparent"
+                      : isFsActive
+                      ? "bg-theme-active text-theme-accent shadow-2xs font-semibold cursor-pointer"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text cursor-pointer"
+                  }`}
+                >
+                  <span
+                    className={`flex items-center gap-2 ${
+                      isCollapsed ? "justify-center" : ""
+                    }`}
+                  >
+                    {!isFontsourceOnline ? (
+                      <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    ) : (
+                      <Package className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    )}
+                    {!isCollapsed && (
+                      <span className="truncate">Font Source</span>
+                    )}
+                  </span>
+                  {!isCollapsed && (
+                    <span className="text-[11px] font-mono opacity-80">
+                      {!isFontsourceOnline
+                        ? "오프라인"
+                        : isFontsourceLoading && fontsourceCount === 0
+                        ? "..."
+                        : fontsourceCount > 0
+                        ? fontsourceCount.toLocaleString()
+                        : "-"}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </div>
 

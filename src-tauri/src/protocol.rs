@@ -111,7 +111,7 @@ pub fn to_posix_normalized_path(path: &Path) -> PathBuf {
     // Windows 드라이브 문자 단독(예: "C:", "c:")인 경우 "C:/"로 루트 보정
     if normalized.len() == 2
         && normalized.ends_with(':')
-        && normalized.chars().next().map_or(false, |c| c.is_ascii_alphabetic())
+        && normalized.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
     {
         normalized.push('/');
     }
@@ -126,7 +126,7 @@ pub fn to_posix_normalized_path(path: &Path) -> PathBuf {
             normalized.replace_range(0..1, &upper.to_string());
             if normalized.len() == 2 {
                 normalized.push('/');
-            } else if !normalized.chars().nth(2).map_or(false, |c| c == '/') {
+            } else if normalized.chars().nth(2) != Some('/') {
                 normalized.insert(2, '/');
             }
         }
@@ -136,7 +136,7 @@ pub fn to_posix_normalized_path(path: &Path) -> PathBuf {
     let is_root = normalized == "/"
         || (normalized.len() == 3
             && normalized.ends_with(":/")
-            && normalized.chars().next().map_or(false, |c| c.is_ascii_alphabetic()));
+            && normalized.chars().next().is_some_and(|c| c.is_ascii_alphabetic()));
 
     if !is_root {
         while normalized.len() > 1 && normalized.ends_with('/') {
@@ -276,13 +276,18 @@ fn get_cached_watched_folders(db: &crate::db::Database) -> Vec<WatchedFolderPair
 
     // 2단계: 캐시 만료 시 락 해제 상태에서 DB I/O 및 경로 사전 정규화 수행 (Lock Inversion 데드락 차단)
     let fetched: Vec<WatchedFolderPair> = if let Ok(db_folders) = db.get_folders() {
-        db_folders.into_iter().map(|f| {
+        db_folders.into_iter().filter_map(|f| {
+            // DB에 조작된 시스템 루트/특수 폴더가 삽입되어 있어도 프로토콜 인가 화이트리스트에서 차단
+            if crate::commands::validation::validate_folder_path(&f.path).is_err() {
+                eprintln!("[security] Protocol filtered out invalid/protected watched folder from DB: {}", f.path);
+                return None;
+            }
             let orig = PathBuf::from(f.path);
             let canon = orig.canonicalize().ok();
-            WatchedFolderPair {
+            Some(WatchedFolderPair {
                 original: orig,
                 canonical: canon,
-            }
+            })
         }).collect()
     } else {
         Vec::new()
@@ -314,6 +319,14 @@ pub fn is_font_path_allowed<R: tauri::Runtime>(
 ) -> bool {
     // 심볼릭 링크 악용(Symlink Swap TOCTOU) 방어: 실제 물리 대상을 기준으로 캐시 키 및 인가 검증
     let canonical_target = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+
+    // 민감 시스템 경로 및 자격증명 폴더 원천 차단 (DB 조작 및 Traversal 무력화)
+    if crate::commands::validation::is_protected_system_path(&canonical_target)
+        || crate::commands::validation::is_protected_system_path(path)
+    {
+        return false;
+    }
+
     let now = Instant::now();
 
     // 0. 최근 검증 성공한 물리 경로 인메모리 빠른 반환 (TTL 30초, DB 조회 0회)
@@ -454,8 +467,7 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
     //   - macOS: font://localhost/%2Fpath%2Fto%2Ffont.ttf -> uri_path: "/%2Fpath%2Fto%2Ffont.ttf"
     //   - Windows: http://font.localhost/C%3A%5Cpath... -> uri_path: "/C%3A%5Cpath..." or "/C%3A%2Fpath..."
     // Stripping the leading '/' before percent-decoding restores the exact absolute path.
-    let path_str = if uri_path.starts_with('/') {
-        let stripped = &uri_path[1..];
+    let path_str = if let Some(stripped) = uri_path.strip_prefix('/') {
         let decoded = percent_decode_str(stripped).decode_utf8_lossy().to_string();
 
         #[cfg(target_os = "windows")]
@@ -513,7 +525,7 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
             return Response::builder()
                 .status(StatusCode::FORBIDDEN)
                 .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &allow_origin)
-                .body(b"Forbidden: Only font files (.ttf, .otf, .ttc, .woff, .woff2) are allowed".to_vec())
+                .body(b"Forbidden: Only font files (.ttf, .otf, .ttc) are allowed".to_vec())
                 .unwrap_or_default();
         }
     };
@@ -621,8 +633,6 @@ pub fn handle_font_protocol<R: tauri::Runtime>(
         || buffer.starts_with(b"ttcf")           // TrueType / OpenType Collection
         || buffer.starts_with(b"true")           // Apple TrueType
         || buffer.starts_with(b"typ1")           // PostScript Type 1
-        || buffer.starts_with(b"wOFF")           // WOFF 1.0
-        || buffer.starts_with(b"wOF2")           // WOFF 2.0
     );
 
     if !is_valid_font_magic {
@@ -670,8 +680,6 @@ pub fn get_allowed_font_mime_type(path: &Path) -> Option<&'static str> {
     match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).as_deref() {
         Some("ttf") => Some("font/ttf"),
         Some("otf") => Some("font/otf"),
-        Some("woff") => Some("font/woff"),
-        Some("woff2") => Some("font/woff2"),
         Some("ttc") => Some("font/collection"),
         _ => None,
     }
@@ -694,7 +702,7 @@ pub fn sanitize_font_buffer(buffer: &mut [u8]) {
         let safe_limit = num_fonts.min(1024);
         let mut offset = 12usize;
         for _ in 0..safe_limit {
-            if offset.checked_add(4).map_or(true, |end| end > buffer.len()) {
+            if offset.checked_add(4).is_none_or(|end| end > buffer.len()) {
                 break;
             }
             let font_offset = u32::from_be_bytes([
@@ -714,7 +722,7 @@ pub fn sanitize_font_buffer(buffer: &mut [u8]) {
 }
 
 fn sanitize_single_face_tables(buffer: &mut [u8], base_offset: usize) {
-    if base_offset.checked_add(12).map_or(true, |end| end > buffer.len()) {
+    if base_offset.checked_add(12).is_none_or(|end| end > buffer.len()) {
         return;
     }
 
@@ -811,9 +819,9 @@ mod tests {
         assert_eq!(get_allowed_font_mime_type(Path::new("font.ttf")), Some("font/ttf"));
         assert_eq!(get_allowed_font_mime_type(Path::new("FONT.TTF")), Some("font/ttf"));
         assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.otf")), Some("font/otf"));
-        assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.woff")), Some("font/woff"));
-        assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.woff2")), Some("font/woff2"));
         assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.ttc")), Some("font/collection"));
+        assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.woff")), None);
+        assert_eq!(get_allowed_font_mime_type(Path::new("/path/to/font.woff2")), None);
 
         // Disallowed files / security sensitive targets
         assert_eq!(get_allowed_font_mime_type(Path::new("/etc/passwd")), None);
@@ -859,6 +867,8 @@ mod tests {
         // Sensitive paths outside system font directories should be rejected
         assert!(!is_font_path_allowed::<tauri::Wry>(Path::new("/etc/passwd"), None));
         assert!(!is_font_path_allowed::<tauri::Wry>(Path::new("/private/var/log/system.log"), None));
+        assert!(!is_font_path_allowed::<tauri::Wry>(Path::new("/Users/user/.ssh/id_rsa.ttf"), None));
+        assert!(!is_font_path_allowed::<tauri::Wry>(Path::new(r"C:\Users\user\.aws\credentials.ttf"), None));
     }
 
     #[test]

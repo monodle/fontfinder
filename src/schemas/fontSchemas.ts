@@ -1,18 +1,16 @@
 import { z } from "zod";
 import type { FontMetadata } from "../types/font";
 
-export const fontFormatSchema = z.enum([
+const fontFormatSchema = z.enum([
   "TrueType",
   "OpenType",
   "TrueTypeCollection",
-  "Woff",
-  "Woff2",
   "Unknown",
 ] as const).catch("Unknown");
 
-export const fontSourceSchema = z.enum(["system", "user", "external"] as const).catch("external");
+const fontSourceSchema = z.enum(["system", "user", "external"] as const).catch("external");
 
-export const fontInstallStatusSchema = z.enum([
+const fontInstallStatusSchema = z.enum([
   "installed_system",
   "installed_user",
   "activated",
@@ -21,14 +19,14 @@ export const fontInstallStatusSchema = z.enum([
   "deleted",
 ] as const);
 
-export const fontVersionStatusSchema = z.enum([
+const fontVersionStatusSchema = z.enum([
   "up_to_date",
   "update_available",
   "outdated",
   "none",
 ] as const);
 
-export const fontLibraryTagSchema = z.object({
+const fontLibraryTagSchema = z.object({
   id: z.union([z.string(), z.number()]),
   name: z.string(),
   type: z.enum(["set", "folder"]),
@@ -38,7 +36,7 @@ export const fontLibraryTagSchema = z.object({
 /**
  * 단일 폰트 메타데이터 검증 스키마
  */
-export const fontMetadataSchema: z.ZodType<FontMetadata> = z.object({
+const fontMetadataSchema: z.ZodType<FontMetadata> = z.object({
   id: z.number().int(),
   file_path: z.string().min(1),
   file_name: z.string().min(1),

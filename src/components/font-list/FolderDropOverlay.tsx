@@ -55,12 +55,6 @@ export const FolderDropOverlay: React.FC<FolderDropOverlayProps> = ({ isVisible 
             .OTF
           </span>
           <span className="px-2.5 py-1 rounded-md bg-theme-hover border border-theme-border/60">
-            .WOFF
-          </span>
-          <span className="px-2.5 py-1 rounded-md bg-theme-hover border border-theme-border/60">
-            .WOFF2
-          </span>
-          <span className="px-2.5 py-1 rounded-md bg-theme-hover border border-theme-border/60">
             .TTC
           </span>
         </div>

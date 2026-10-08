@@ -22,7 +22,7 @@ function getPlatformString(): string {
 /**
  * 현재 실행 환경이 macOS(또는 Apple OS 계열)인지 여부를 반환합니다.
  */
-export function isMac(): boolean {
+function isMac(): boolean {
   const platform = getPlatformString();
   return /Mac|iPhone|iPod|iPad/i.test(platform);
 }
@@ -30,7 +30,7 @@ export function isMac(): boolean {
 /**
  * 현재 실행 환경이 Windows인지 여부를 반환합니다.
  */
-export function isWindows(): boolean {
+function isWindows(): boolean {
   const platform = getPlatformString();
   return /Win/i.test(platform);
 }

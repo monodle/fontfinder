@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, Sliders, Folder, BookOpen } from "lucide-react";
+import { Download, Sliders, Folder, BookOpen } from "lucide-react";
 import { ModalDialog, Button, Alert, CheckboxCard } from "../common";
 import { backupService, summarizeBackupData } from "../../services/backup";
 import type { AppBackupData, BackupCategorySelection, BackupSummary } from "../../types/backup";
@@ -97,7 +97,7 @@ export function ImportModal({
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="md"
-      icon={<Upload className="w-4 h-4 text-theme-accent" />}
+      icon={<Download className="w-4 h-4 text-theme-accent" />}
       title={t("settings.import_modal_title")}
       subtitle={t("settings.import_modal_subtitle")}
       footer={
@@ -112,7 +112,7 @@ export function ImportModal({
             disabled={isNoneSelected}
             isLoading={isImporting}
             loadingText={t("common.loading")}
-            leftIcon={<Upload className="w-3.5 h-3.5" />}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
           >
             {t("settings.import_btn_confirm")}
           </Button>

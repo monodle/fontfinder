@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-export const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/g;
+const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/g;
 
 /**
  * 문자열에서 유효하지 않은 제어 문자를 제거하고 길이를 제한하는 고속 순수 헬퍼
@@ -27,21 +27,6 @@ export const createHexColorSchema = (fallback: string) =>
  */
 export const createSafeStringSchema = (maxLen = 255, fallback = "") =>
   z.unknown().optional().transform((val) => sanitizeRawString(val, maxLen, fallback));
-
-/**
- * 양의 정수 검증 스키마 생성 헬퍼
- */
-export const createPositiveIntegerSchema = (fallback?: number) =>
-  z
-    .number()
-    .int()
-    .positive()
-    .catch(fallback as number);
-
-/**
- * 양의 정수 검증 스키마 (기본)
- */
-export const positiveIntegerSchema = createPositiveIntegerSchema(NaN);
 
 /**
  * 안전한 웹 URL(http, https) 검증 및 정규화 스키마
@@ -75,18 +60,6 @@ export const singlePathSchema = z
   .min(1)
   .nullable()
   .catch(null);
-
-/**
- * 다중 파일/폴더 경로 목록 검증 스키마 (유효하지 않은 항목만 제외하고 유효한 경로 보존)
- */
-export const pathListSchema = z
-  .unknown()
-  .transform((val): string[] => {
-    if (!Array.isArray(val)) return [];
-    return val
-      .map((item) => (typeof item === "string" ? item.trim() : ""))
-      .filter((p) => p.length > 0);
-  });
 
 /**
  * LocalStorage 불리언 문자열 플래그 안전 파싱 스키마 ('true' -> true, 그 외 -> false)

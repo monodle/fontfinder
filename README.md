@@ -8,7 +8,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#다운로드-및-설치)
-[![Release](https://img.shields.io/badge/Release-v0.9.3-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
 
 
 <br>
@@ -178,18 +178,18 @@
 
 ## 🛠️ 기술 스택
 
-| 영역                      | 기술 / 라이브러리                                         | 용도                                                       |
-| :------------------------ | :-------------------------------------------------------- | :--------------------------------------------------------- |
-| **Frontend**              | `React 19`, `TypeScript 5`, `Vite 6`                      | 모던 SPA 프론트엔드 아키텍처 및 빠른 HMR 빌드              |
-| **Styling**               | `Tailwind CSS v4`, `tailwind-merge`                       | 고성능 CSS 컴파일러 및 테마 스타일링                       |
-| **State / UI**            | `@tanstack/react-virtual`, `lucide-react`                 | 대용량 폰트 리스트 가상화 스크롤 및 UI 아이콘 시스템       |
-| **i18n**                  | `i18next`, `react-i18next`                                | 글로벌 8개 언어 다국어 지원                                |
-| **Desktop Core**          | `Tauri v2`, `Rust 2021 Edition`                           | 저메모리 고성능 크로스플랫폼 네이티브 셸                   |
-| **Font Engine**           | `ttf-parser`                                              | TTF / OTF / TTC / WOFF 폰트 테이블 파싱 및 메타데이터 추출 |
-| **Concurrency / IO**      | `rayon`, `tokio`, `walkdir`, `notify-debouncer-mini`      | 멀티스레드 병렬 디렉토리 스캔 및 실시간 파일 변경 감시     |
-| **Storage & Fingerprint** | `rusqlite` (Bundled SQLite), `xxhash-rust (XXH3)`, `sha2` | 로컬 폰트 메타데이터 캐싱 및 계층형 고속 핑거프린트 식별   |
-| **Window Effects**        | `window-vibrancy`, `tauri-plugin-window-state`            | macOS Vibrancy / Windows Mica 글래스 테마 및 창 상태 유지  |
-| **Native OS Font FFI**    | macOS `CoreText` / Windows `Win32 GDI (windows-sys)`      | 무설치 임시 활성화, 시스템 등록/해제 네이티브 바인딩       |
+| 영역                      | 기술 / 라이브러리                                         | 용도                                                      |
+| :------------------------ | :-------------------------------------------------------- | :-------------------------------------------------------- |
+| **Frontend**              | `React 19`, `TypeScript 5`, `Vite 6`                      | 모던 SPA 프론트엔드 아키텍처 및 빠른 HMR 빌드             |
+| **Styling**               | `Tailwind CSS v4`, `tailwind-merge`                       | 고성능 CSS 컴파일러 및 테마 스타일링                      |
+| **State / UI**            | `@tanstack/react-virtual`, `lucide-react`                 | 대용량 폰트 리스트 가상화 스크롤 및 UI 아이콘 시스템      |
+| **i18n**                  | `i18next`, `react-i18next`                                | 글로벌 8개 언어 다국어 지원                               |
+| **Desktop Core**          | `Tauri v2`, `Rust 2021 Edition`                           | 저메모리 고성능 크로스플랫폼 네이티브 셸                  |
+| **Font Engine**           | `ttf-parser`                                              | TTF / OTF / TTC 폰트 테이블 파싱 및 메타데이터 추출       |
+| **Concurrency / IO**      | `rayon`, `tokio`, `walkdir`, `notify-debouncer-mini`      | 멀티스레드 병렬 디렉토리 스캔 및 실시간 파일 변경 감시    |
+| **Storage & Fingerprint** | `rusqlite` (Bundled SQLite), `xxhash-rust (XXH3)`, `sha2` | 로컬 폰트 메타데이터 캐싱 및 계층형 고속 핑거프린트 식별  |
+| **Window Effects**        | `window-vibrancy`, `tauri-plugin-window-state`            | macOS Vibrancy / Windows Mica 글래스 테마 및 창 상태 유지 |
+| **Native OS Font FFI**    | macOS `CoreText` / Windows `Win32 GDI (windows-sys)`      | 무설치 임시 활성화, 시스템 등록/해제 네이티브 바인딩      |
 
 ---
 

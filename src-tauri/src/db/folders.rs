@@ -23,6 +23,16 @@ impl Database {
     Ok(folders)
   }
 
+  pub fn is_folder_exists(&self, path: &str) -> AppResult<bool> {
+    let conn = self.conn()?;
+    let count: i64 = conn.query_row(
+      "SELECT COUNT(*) FROM watched_folders WHERE path = ?1 COLLATE NOCASE",
+      params![path],
+      |row| row.get(0),
+    )?;
+    Ok(count > 0)
+  }
+
   pub fn add_folder(&self, path: &str, name: &str, color: Option<&str>, sort_order: Option<&str>) -> AppResult<DbFolder> {
     let conn = self.conn()?;
     let folder_color = color.unwrap_or("#0ea5e9");
@@ -188,11 +198,13 @@ impl Database {
         }
       }
 
-      for (id, new_font_path) in font_cache_updates {
-        tx.execute(
+      if !font_cache_updates.is_empty() {
+        let mut stmt = tx.prepare_cached(
           "UPDATE font_cache SET file_path = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
-          params![new_font_path, id],
         )?;
+        for (id, new_font_path) in font_cache_updates {
+          stmt.execute(params![new_font_path, id])?;
+        }
       }
 
       // 2. activated_fonts 대상 레코드들도 동일하게 안전 치환
@@ -237,11 +249,13 @@ impl Database {
         }
       }
 
-      for (font_id, new_font_path) in activated_updates {
-        tx.execute(
+      if !activated_updates.is_empty() {
+        let mut stmt = tx.prepare_cached(
           "UPDATE activated_fonts SET file_path = ?1 WHERE font_id = ?2",
-          params![new_font_path, font_id],
         )?;
+        for (font_id, new_font_path) in activated_updates {
+          stmt.execute(params![new_font_path, font_id])?;
+        }
       }
     }
     tx.commit()?;
@@ -268,12 +282,24 @@ impl Database {
   }
 
   pub fn remove_activated_fonts_by_paths(&self, paths: &[String]) -> AppResult<()> {
+    if paths.is_empty() {
+      return Ok(());
+    }
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     {
-      let mut stmt = tx.prepare_cached("DELETE FROM activated_fonts WHERE file_path COLLATE NOCASE = ?1")?;
-      for p in paths {
-        stmt.execute(params![p])?;
+      for chunk in paths.chunks(200) {
+        let placeholders = (1..=chunk.len())
+          .map(|i| format!("?{}", i))
+          .collect::<Vec<_>>()
+          .join(",");
+        let sql = format!(
+          "DELETE FROM activated_fonts WHERE file_path COLLATE NOCASE IN ({})",
+          placeholders
+        );
+        let mut stmt = tx.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+        stmt.execute(params.as_slice())?;
       }
     }
     tx.commit()?;

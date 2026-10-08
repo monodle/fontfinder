@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES } from "../../i18n";
 import { appConfig } from "../../config/appConfig";
 import {
   CREATORS,
@@ -129,8 +130,10 @@ export function AboutSection() {
               <span className="font-medium text-theme-text">Rust 2021 + SQLite</span>
             </div>
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
-              <span className="text-theme-text-muted block text-[10px]">{t("about.version_sync")}</span>
-              <span className="font-medium text-theme-accent font-mono">.env</span>
+              <span className="text-theme-text-muted block text-[10px]">{t("about.supported_languages")}</span>
+              <span className="font-medium text-theme-text">
+                {t("about.languages_count", { count: SUPPORTED_LANGUAGES.length })}
+              </span>
             </div>
             <div className="p-2 rounded-lg bg-theme-surface/50 border border-theme-border/50">
               <span className="text-theme-text-muted block text-[10px]">{t("about.license")}</span>

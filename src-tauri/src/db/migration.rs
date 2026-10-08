@@ -15,6 +15,11 @@ pub const MIGRATIONS: &[Migration] = &[
     name: "initial_schema",
     sql: include_str!("../../migrations/V1__initial_schema.sql"),
   },
+  Migration {
+    version: 2,
+    name: "optimize_indexes",
+    sql: include_str!("../../migrations/V2__optimize_indexes.sql"),
+  },
 ];
 
 /// SQLite PRAGMA user_version 기반 자동 순차 마이그레이션 실행기

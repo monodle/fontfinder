@@ -46,7 +46,7 @@ impl FontParser {
         };
 
         if !is_sfnt {
-            // TTC/WOFF 또는 일반 바이너리 Fallback: 읽어온 버퍼 전체 슬라이스 해싱
+            // TTC 또는 일반 바이너리 Fallback: 읽어온 버퍼 전체 슬라이스 해싱
             hasher.update(header_data);
         }
 
@@ -112,6 +112,30 @@ impl FontParser {
         Ok(s)
     }
 
+    /// 100% 바이트 단위 완전 무결성 지문 (Full SHA-256):
+    /// 스트리밍 버퍼(64KB) 방식으로 파일 전체 바이트를 읽어 SHA-256을 계산 (메모리 폭증 방지)
+    pub fn compute_full_sha256<P: AsRef<Path>>(path: P) -> AppResult<String> {
+        let mut file = File::open(path)?;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0u8; 65536];
+
+        loop {
+            let bytes_read = file.read(&mut buffer)?;
+            if bytes_read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..bytes_read]);
+        }
+
+        let result = hasher.finalize();
+        let mut s = String::with_capacity(64);
+        for b in result {
+            use std::fmt::Write;
+            let _ = write!(&mut s, "{:02x}", b);
+        }
+        Ok(s)
+    }
+
     /// 파일 앞 64~128KB 1회 순차 읽기만으로 1차 지문 + 메타데이터 추출 동시 종결
     pub fn parse_file_fast<P: AsRef<Path>>(path: P) -> AppResult<(Vec<FontMetadata>, String)> {
         let path_ref = path.as_ref();
@@ -149,8 +173,6 @@ impl FontParser {
             "ttf" => FontFormat::TrueType,
             "otf" => FontFormat::OpenType,
             "ttc" => FontFormat::TrueTypeCollection,
-            "woff" => FontFormat::Woff,
-            "woff2" => FontFormat::Woff2,
             _ => FontFormat::Unknown,
         };
 
@@ -652,8 +674,6 @@ impl FontParser {
             "ttf" => FontFormat::TrueType,
             "otf" => FontFormat::OpenType,
             "ttc" => FontFormat::TrueTypeCollection,
-            "woff" => FontFormat::Woff,
-            "woff2" => FontFormat::Woff2,
             _ => FontFormat::Unknown,
         };
 
@@ -920,23 +940,23 @@ impl FontParser {
 
     fn interpret_fs_type(fs_type: u16) -> String {
         if fs_type == 0 {
-            return "Installable Embedding (제한 없음)".to_string();
+            return "Installable Embedding".to_string();
         }
         let mut parts = Vec::new();
         if (fs_type & 0x0002) != 0 {
-            parts.push("Restricted License (임베딩 제한)");
+            parts.push("Restricted License");
         }
         if (fs_type & 0x0004) != 0 {
-            parts.push("Preview & Print (미리보기/인쇄 허용)");
+            parts.push("Preview & Print");
         }
         if (fs_type & 0x0008) != 0 {
-            parts.push("Editable (문서 내 편집 허용)");
+            parts.push("Editable");
         }
         if (fs_type & 0x0100) != 0 {
-            parts.push("No Subsetting (서브셋팅 금지)");
+            parts.push("No Subsetting");
         }
         if (fs_type & 0x0200) != 0 {
-            parts.push("Bitmap Only (비트맵 전용)");
+            parts.push("Bitmap Only");
         }
 
         if parts.is_empty() {
@@ -948,17 +968,17 @@ impl FontParser {
 
     fn interpret_family_class(class_id: i16, _subclass_id: i16) -> String {
         match class_id {
-            1 => "Oldstyle Serifs (옛날 명조/세리프)".to_string(),
-            2 => "Transitional Serifs (과도기 세리프)".to_string(),
-            3 => "Modern Serifs (모던 세리프)".to_string(),
-            4 => "Clarendon Serifs (클라렌던 세리프)".to_string(),
-            5 => "Slab Serifs (슬랩 세리프)".to_string(),
-            7 => "Freeform Serifs (자유형 세리프)".to_string(),
-            8 => "Sans-serif (고딕/산세리프)".to_string(),
-            9 => "Scripts (필기체/손글씨)".to_string(),
-            10 => "Decorative / Display (장식/디스플레이)".to_string(),
-            12 => "Symbolic (기호/심볼)".to_string(),
-            _ => "No Classification (미분류)".to_string(),
+            1 => "Oldstyle Serifs".to_string(),
+            2 => "Transitional Serifs".to_string(),
+            3 => "Modern Serifs".to_string(),
+            4 => "Clarendon Serifs".to_string(),
+            5 => "Slab Serifs".to_string(),
+            7 => "Freeform Serifs".to_string(),
+            8 => "Sans-serif".to_string(),
+            9 => "Scripts".to_string(),
+            10 => "Decorative / Display".to_string(),
+            12 => "Symbolic".to_string(),
+            _ => "No Classification".to_string(),
         }
     }
 
@@ -1224,11 +1244,11 @@ impl FontParser {
 
     fn axis_tag_to_name(tag: &str) -> String {
         match tag {
-            "wght" => "Weight (굵기)".to_string(),
-            "wdth" => "Width (폭/장평)".to_string(),
-            "slnt" => "Slant (기울기)".to_string(),
-            "ital" => "Italic (이탤릭)".to_string(),
-            "opsz" => "Optical Size (시각 크기)".to_string(),
+            "wght" => "Weight".to_string(),
+            "wdth" => "Width".to_string(),
+            "slnt" => "Slant".to_string(),
+            "ital" => "Italic".to_string(),
+            "opsz" => "Optical Size".to_string(),
             _ => tag.to_string(),
         }
     }
@@ -1486,14 +1506,10 @@ pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
                     if is_win_or_uni || !result.localized_names.contains_key(code) {
                         result.localized_names.insert(code.to_string(), text.clone());
                     }
-                    if code == "ko" {
-                        if is_win_or_uni || ko_family.is_none() {
-                            ko_family = Some(text.clone());
-                        }
-                    } else if code == "en" {
-                        if is_win_or_uni || en_family.is_none() {
-                            en_family = Some(text.clone());
-                        }
+                    if code == "ko" && (is_win_or_uni || ko_family.is_none()) {
+                        ko_family = Some(text.clone());
+                    } else if code == "en" && (is_win_or_uni || en_family.is_none()) {
+                        en_family = Some(text.clone());
                     }
                 } else if other_family.is_none() {
                     other_family = Some(text.clone());
@@ -1501,14 +1517,10 @@ pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
             }
             2 | 17 => {
                 if let Some(code) = lang_code {
-                    if code == "ko" {
-                        if is_win_or_uni || ko_subfamily.is_none() {
-                            ko_subfamily = Some(text.clone());
-                        }
-                    } else if code == "en" {
-                        if is_win_or_uni || en_subfamily.is_none() {
-                            en_subfamily = Some(text.clone());
-                        }
+                    if code == "ko" && (is_win_or_uni || ko_subfamily.is_none()) {
+                        ko_subfamily = Some(text.clone());
+                    } else if code == "en" && (is_win_or_uni || en_subfamily.is_none()) {
+                        en_subfamily = Some(text.clone());
                     }
                 } else if other_subfamily.is_none() {
                     other_subfamily = Some(text.clone());
@@ -1516,14 +1528,10 @@ pub fn parse_raw_name_table(name_data: &[u8]) -> ParsedNameTable {
             }
             4 => {
                 if let Some(code) = lang_code {
-                    if code == "ko" {
-                        if is_win_or_uni || ko_full_name.is_none() {
-                            ko_full_name = Some(text.clone());
-                        }
-                    } else if code == "en" {
-                        if is_win_or_uni || en_full_name.is_none() {
-                            en_full_name = Some(text.clone());
-                        }
+                    if code == "ko" && (is_win_or_uni || ko_full_name.is_none()) {
+                        ko_full_name = Some(text.clone());
+                    } else if code == "en" && (is_win_or_uni || en_full_name.is_none()) {
+                        en_full_name = Some(text.clone());
                     }
                 } else if other_full_name.is_none() {
                     other_full_name = Some(text.clone());
@@ -1631,5 +1639,27 @@ mod tests {
             assert!(font.family_name.contains("나눔스퀘어"), "Expected Korean name but got: {}", font.family_name);
         }
     }
+
+    #[test]
+    fn test_compute_full_sha256() {
+        use std::io::Write;
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join(format!("fontfinder_test_sha_{}.dat", std::process::id()));
+        {
+            let mut f = std::fs::File::create(&test_file).unwrap();
+            // 128KB 이상의 임의 데이터 작성
+            let chunk = [0x5au8; 4096];
+            for _ in 0..32 {
+                f.write_all(&chunk).unwrap();
+            }
+        }
+
+        let sha = FontParser::compute_full_sha256(&test_file).expect("compute_full_sha256 should succeed");
+        assert_eq!(sha.len(), 64, "SHA-256 string must be 64 characters long");
+
+        // 삭제
+        let _ = std::fs::remove_file(&test_file);
+    }
 }
+
 

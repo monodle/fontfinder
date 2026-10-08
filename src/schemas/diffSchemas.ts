@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { DiffMasterSettings, DiffSlotState } from "../types/diff";
 
-export const DIFF_BOUNDS = {
+const DIFF_BOUNDS = {
   fontSize: {
     min: 100,
     max: 500,
@@ -23,7 +23,7 @@ export const DIFF_BOUNDS = {
 /**
  * 글리프 비교 모달 전역 마스터 설정 검증 스키마 생성기
  */
-export const createDiffMasterSettingsSchema = (fallbackText: string = DIFF_BOUNDS.text.default) => {
+const createDiffMasterSettingsSchema = (fallbackText: string = DIFF_BOUNDS.text.default) => {
   const cleanFallback =
     Array.from((fallbackText || DIFF_BOUNDS.text.default).replace(/\s+/g, ""))
       .slice(0, DIFF_BOUNDS.text.maxChars)
@@ -54,12 +54,10 @@ export const createDiffMasterSettingsSchema = (fallbackText: string = DIFF_BOUND
   });
 };
 
-export const diffMasterSettingsSchema = createDiffMasterSettingsSchema();
-
 /**
  * 단일 슬롯 상태 검증 스키마 생성기
  */
-export const createDiffSlotStateSchema = (slotIndex: number) =>
+const createDiffSlotStateSchema = (slotIndex: number) =>
   z.object({
     slotIndex: z.literal(slotIndex).catch(slotIndex as any),
     font: z.any().nullable().catch(null),
@@ -83,30 +81,6 @@ export const createDiffSlotStateSchema = (slotIndex: number) =>
     isItalic: z.boolean().catch(false),
     renderMode: z.enum(["fill", "stroke"]).catch("fill"),
   });
-
-export const diffSlotStateSchema = z.object({
-  slotIndex: z.number().int().min(0).max(4).catch(0),
-  font: z.any().nullable().catch(null),
-  fontFamily: z.string().catch("var(--font-system)"),
-  visible: z.boolean().catch(true),
-  opacity: z
-    .number()
-    .catch(DIFF_BOUNDS.opacity.default)
-    .transform((val) =>
-      Math.max(DIFF_BOUNDS.opacity.min, Math.min(DIFF_BOUNDS.opacity.max, val))
-    ),
-  fontSize: z
-    .number()
-    .catch(DIFF_BOUNDS.fontSize.default)
-    .transform((val) =>
-      Math.max(DIFF_BOUNDS.fontSize.min, Math.min(DIFF_BOUNDS.fontSize.max, val))
-    ),
-  offsetX: z.number().catch(0),
-  offsetY: z.number().catch(0),
-  isBold: z.boolean().catch(false),
-  isItalic: z.boolean().catch(false),
-  renderMode: z.enum(["fill", "stroke"]).catch("fill"),
-});
 
 /**
  * 마스터 설정 정제 헬퍼 함수

@@ -20,7 +20,6 @@ export * from "./Toast";
 export * from "./ProgressBar";
 export * from "./Tooltip";
 export * from "./ColorDot";
-export * from "./Divider";
 export * from "./IconButton";
 export * from "./CopyButton";
 export * from "./SortableSidebarList";

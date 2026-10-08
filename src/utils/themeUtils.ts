@@ -2,7 +2,7 @@ import { AppTheme } from "../config/appConfig";
 import { fontService } from "../services/fontService";
 import { createThemeSchema } from "../schemas/settingsSchemas";
 
-export function isLightTheme(theme: AppTheme): boolean {
+function isLightTheme(theme: AppTheme): boolean {
   return theme === "light" || theme === "clean-white" || theme === "glass";
 }
 

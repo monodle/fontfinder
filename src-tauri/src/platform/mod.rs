@@ -184,14 +184,6 @@ impl Platform {
             return Err(format!("Font file not found: {:?}", path));
         }
 
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        if ext == "woff" || ext == "woff2" {
-            return Err("WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.".to_string());
-        }
 
         #[link(name = "CoreText", kind = "framework")]
         extern "C" {
@@ -289,17 +281,9 @@ impl Platform {
         use core_foundation::url::CFURL;
 
         if !src_path.exists() || !src_path.is_file() {
-            return Err(format!("Font file not found: {:?}", src_path));
+            return Err("ERR_FONT_NOT_FOUND".to_string());
         }
 
-        let ext = src_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        if ext == "woff" || ext == "woff2" {
-            return Err("WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.".to_string());
-        }
 
         let home = dirs_home().ok_or_else(|| "Failed to get home directory".to_string())?;
         let user_fonts_dir = home.join("Library/Fonts");
@@ -342,7 +326,7 @@ impl Platform {
 
         if let Err(e) = std::fs::copy(src_path, &temp_path) {
             let _ = std::fs::remove_file(&temp_path);
-            return Err(format!("폰트 파일 복사 실패: {}", e));
+            return Err(format!("ERR_FONT_COPY_FAILED: {}", e));
         }
 
         // 복사된 임시 파일에 표준 사용자 쓰기 권한(0644, rw-r--r--) 보장
@@ -360,7 +344,7 @@ impl Platform {
         // 임시 파일을 최종 목적지로 원자적 교체 (POSIX rename(2) 원자적 덮어쓰기 보장으로 기존 파일 유실 방지)
         if let Err(e) = std::fs::rename(&temp_path, &target_path) {
             let _ = std::fs::remove_file(&temp_path);
-            return Err(format!("폰트 파일 원자적 교체 실패: {}", e));
+            return Err(format!("ERR_FONT_REPLACE_FAILED: {}", e));
         }
 
         #[link(name = "CoreText", kind = "framework")]
@@ -385,27 +369,27 @@ impl Platform {
     }
 
     #[cfg(target_os = "macos")]
-    pub fn uninstall_font(font_path: &PathBuf) -> Result<(), String> {
+    pub fn uninstall_font(font_path: &Path) -> Result<(), String> {
         Self::uninstall_font_internal(font_path, true)
     }
 
     #[cfg(target_os = "macos")]
-    pub fn uninstall_font_internal(font_path: &PathBuf, _broadcast: bool) -> Result<(), String> {
+    pub fn uninstall_font_internal(font_path: &Path, _broadcast: bool) -> Result<(), String> {
         use core_foundation::base::TCFType;
         use core_foundation::url::CFURL;
 
         if !font_path.exists() && font_path.symlink_metadata().is_err() {
-            return Err("Font file does not exist".to_string());
+            return Err("ERR_FONT_NOT_FOUND".to_string());
         }
 
         // 1. 실제 물리 경로 정규화 (상대 경로, ../ 트래버설, 심볼릭 링크 완전 해소)
         let canonical_font = font_path
             .canonicalize()
-            .map_err(|e| format!("파일 경로를 확인할 수 없습니다: {}", e))?;
+            .map_err(|_| "ERR_FONT_NOT_FOUND".to_string())?;
 
         // 2. 디렉토리가 아닌 '파일'인지 엄격 검증 (디렉토리 자체 삭제 원천 차단)
         if !canonical_font.is_file() {
-            return Err("삭제 대상이 폰트 파일이 아닙니다.".to_string());
+            return Err("ERR_FONT_NOT_A_FILE".to_string());
         }
 
         let home = dirs_home().ok_or_else(|| "Failed to get home directory".to_string())?;
@@ -418,7 +402,7 @@ impl Platform {
             .map(|p| crate::protocol::is_same_or_subpath(p, &canonical_user_dir) && crate::protocol::is_same_or_subpath(&canonical_user_dir, p))
             .unwrap_or(false);
         if !parent_matches {
-            return Err("Cannot uninstall system-protected or external font".to_string());
+            return Err("ERR_PATH_PROTECTED_DIR".to_string());
         }
 
         #[link(name = "CoreText", kind = "framework")]
@@ -451,7 +435,7 @@ impl Platform {
                     CTFontManagerRegisterFontsForURL(cf_url.as_concrete_TypeRef(), 2, std::ptr::null_mut());
                 }
             }
-            return Err(format!("폰트 파일을 휴지통으로 이동하지 못했습니다: {}", e));
+            return Err(format!("ERR_FONT_TRASH_FAILED: {}", e));
         }
         Ok(())
     }
@@ -467,17 +451,9 @@ impl Platform {
         use windows_sys::Win32::Graphics::Gdi::{AddFontResourceExW, RemoveFontResourceExW, FR_PRIVATE};
 
         if !src_path.exists() || !src_path.is_file() {
-            return Err(format!("Font file not found: {:?}", src_path));
+            return Err("ERR_FONT_NOT_FOUND".to_string());
         }
 
-        let ext = src_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        if ext == "woff" || ext == "woff2" {
-            return Err("WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.".to_string());
-        }
 
         let local_app_data = std::env::var("LOCALAPPDATA")
             .map_err(|_| "Failed to get LOCALAPPDATA".to_string())?;
@@ -527,12 +503,9 @@ impl Platform {
             let raw_os_err = e.raw_os_error();
             // Win32 32: ERROR_SHARING_VIOLATION, 5: ERROR_ACCESS_DENIED
             if raw_os_err == Some(32) || raw_os_err == Some(5) {
-                return Err(format!(
-                    "폰트 파일이 다른 프로그램(Office, 웹 브라우저 등)에서 사용 중이어서 설치를 완료할 수 없습니다. 관련 프로그램을 종료한 후 다시 시도해주세요. ({})",
-                    e
-                ));
+                return Err(format!("ERR_FONT_IN_USE: {}", e));
             }
-            return Err(format!("폰트 파일 복사 실패: {}", e));
+            return Err(format!("ERR_FONT_COPY_FAILED: {}", e));
         }
 
         // 복사된 임시 파일의 읽기 전용 속성 해제 및 사용자 쓰기 권한 보장
@@ -586,7 +559,7 @@ impl Platform {
         if move_res == 0 {
             let err = std::io::Error::last_os_error();
             let _ = std::fs::remove_file(&temp_path);
-            return Err(format!("폰트 파일 원자적 교체 실패: {}", err));
+            return Err(format!("ERR_FONT_REPLACE_FAILED: {}", err));
         }
 
         let clean_target = crate::protocol::to_windows_native_path(&target_path);
@@ -656,16 +629,16 @@ impl Platform {
         use windows_sys::Win32::Graphics::Gdi::{AddFontResourceExW, RemoveFontResourceExW, FR_PRIVATE};
 
         if !font_path.exists() && font_path.symlink_metadata().is_err() {
-            return Err("Font file does not exist".to_string());
+            return Err("ERR_FONT_NOT_FOUND".to_string());
         }
 
         let clean_font = crate::protocol::strip_unc_prefix(font_path);
         let canonical_font = clean_font
             .canonicalize()
-            .map_err(|e| format!("파일 경로를 확인할 수 없습니다: {}", e))?;
+            .map_err(|_| "ERR_FONT_NOT_FOUND".to_string())?;
 
         if !canonical_font.is_file() {
-            return Err("삭제 대상이 폰트 파일이 아닙니다.".to_string());
+            return Err("ERR_FONT_NOT_A_FILE".to_string());
         }
 
         let local_app_data = std::env::var("LOCALAPPDATA")
@@ -693,7 +666,7 @@ impl Platform {
             .unwrap_or(false);
 
         if !in_user_dir && !in_win_dir {
-            return Err("Cannot uninstall system-protected font".to_string());
+            return Err("ERR_PATH_PROTECTED_DIR".to_string());
         }
 
         // C:\Windows\Fonts에 위치한 경우 순정 시스템 폰트인지 2중 방어 검증 (화이트리스트 또는 하드링크 > 1)
@@ -705,12 +678,12 @@ impl Platform {
                 .unwrap_or_default();
 
             if !file_name.is_empty() && WINDOWS_INBOX_FONTS.contains(file_name.as_str()) {
-                return Err("Cannot uninstall system-protected font".to_string());
+                return Err("ERR_PATH_PROTECTED_DIR".to_string());
             }
 
             if let Some(links) = get_file_hardlink_count(&canonical_font) {
                 if links > 1 {
-                    return Err("Cannot uninstall system-protected font".to_string());
+                    return Err("ERR_PATH_PROTECTED_DIR".to_string());
                 }
             }
         }
@@ -742,10 +715,7 @@ impl Platform {
                         AddFontResourceExW(wide.as_ptr(), 0, std::ptr::null_mut());
                     }
                 }
-                return Err(format!(
-                    "폰트 파일이 다른 프로그램(Office, 웹 브라우저 등)에서 사용 중이거나 잠겨 있어 휴지통으로 이동할 수 없습니다. 관련 프로그램을 종료한 후 다시 시도해주세요. ({})",
-                    err
-                ));
+                return Err(format!("ERR_FONT_IN_USE: {}", err));
             }
         }
 
@@ -788,17 +758,9 @@ impl Platform {
         use windows_sys::Win32::Graphics::Gdi::{AddFontResourceExW, FR_PRIVATE};
 
         if !path.exists() || !path.is_file() {
-            return Err(format!("Font file not found: {:?}", path));
+            return Err("ERR_FONT_NOT_FOUND".to_string());
         }
 
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        if ext == "woff" || ext == "woff2" {
-            return Err("WOFF/WOFF2 형식은 웹 전용 폰트로, OS 시스템 활성화 및 설치를 지원하지 않습니다.".to_string());
-        }
 
         let clean_path = crate::protocol::to_windows_native_path(path);
         let mut wide: Vec<u16> = clean_path.as_os_str().encode_wide().collect();

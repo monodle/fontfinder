@@ -56,7 +56,7 @@ impl Database {
     let conn = self.conn()?;
     if let Some(pid) = parent_id {
       if would_create_cycle(&conn, set_id, pid) {
-        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+        return Err(crate::error::AppError::Platform("Cannot set itself or descendants as parent set (circular reference prevented).".to_string()));
       }
     }
     conn.execute(
@@ -70,7 +70,7 @@ impl Database {
     let conn = self.conn()?;
     if let Some(pid) = parent_id {
       if would_create_cycle(&conn, set_id, pid) {
-        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+        return Err(crate::error::AppError::Platform("Cannot set itself or descendants as parent set (circular reference prevented).".to_string()));
       }
     }
     conn.execute(
@@ -84,7 +84,7 @@ impl Database {
     let conn = self.conn()?;
     if let Some(pid) = parent_id {
       if would_create_cycle(&conn, set_id, pid) {
-        return Err(crate::error::AppError::Platform("자신 또는 하위 세트를 부모 세트로 지정할 수 없습니다 (순환 참조 방지).".to_string()));
+        return Err(crate::error::AppError::Platform("Cannot set itself or descendants as parent set (circular reference prevented).".to_string()));
       }
     }
     conn.execute(
@@ -101,7 +101,7 @@ impl Database {
       SELECT s.id, s.name, s.color, COUNT(sf.font_id) as font_count, s.parent_id, s.sort_order
       FROM sets s
       LEFT JOIN set_fonts sf ON sf.set_id = s.id
-      GROUP BY s.id
+      GROUP BY s.sort_order, s.id
       ORDER BY s.sort_order ASC, s.id ASC
       ",
     )?;

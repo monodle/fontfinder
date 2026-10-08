@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -46,6 +47,8 @@ export function Toast({
   duration,
   className = "",
 }: ToastProps) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (!duration || !onClose) return;
 
@@ -78,7 +81,7 @@ export function Toast({
           type="button"
           onClick={onClose}
           className="ml-1 p-0.5 rounded-md text-theme-text-muted hover:text-theme-text hover:bg-theme-hover transition-colors cursor-pointer"
-          aria-label="닫기"
+          aria-label={t("common.close")}
         >
           <X className="w-3.5 h-3.5" />
         </button>

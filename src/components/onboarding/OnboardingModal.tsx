@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Sparkles, Globe, Palette, ArrowRight, Laptop, RefreshCw } from "lucide-react";
+import { Sparkles, Globe, Palette, ArrowRight, Laptop, RefreshCw, Cloud, Package, Check } from "lucide-react";
+import { cn } from "../../utils/cn";
 import {
   AppTheme,
   getDefaultPreviewText,
@@ -37,6 +38,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(
     initialSettings.theme || "glass"
   );
+  const [enableGoogleFonts, setEnableGoogleFonts] = useState<boolean>(() =>
+    Boolean(initialSettings.enableGoogleFonts)
+  );
+  const [enableFontsource, setEnableFontsource] = useState<boolean>(() =>
+    Boolean(initialSettings.enableFontsource)
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLanguageSelect = (code: string) => {
@@ -59,6 +66,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         ...initialSettings,
         language: selectedLanguage,
         theme: selectedTheme,
+        enableGoogleFonts,
+        enableFontsource,
         defaultPreviewText: getDefaultPreviewText(selectedLanguage),
       };
 
@@ -147,6 +156,93 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             onSelect={handleThemeSelect}
             columns={2}
           />
+        </section>
+
+        {/* 3. 온라인 폰트 라이브러리 연동 */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between pb-1 border-b border-theme-border-subtle">
+            <div className="flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-theme-accent" />
+              <h3 className="font-semibold text-xs text-theme-text">
+                {t("onboarding.online_providers_label")}
+              </h3>
+            </div>
+            <span className="text-[10px] text-theme-text-muted">
+              {t("onboarding.online_providers_desc")}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Google Fonts 카드 */}
+            <div
+              onClick={() => setEnableGoogleFonts((prev) => !prev)}
+              className={cn(
+                "flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                enableGoogleFonts
+                  ? "border-theme-accent bg-theme-active/30 text-theme-text shadow-2xs ring-1 ring-theme-accent/40"
+                  : "border-theme-border bg-theme-card text-theme-text-secondary hover:border-theme-border-card-hover"
+              )}
+            >
+              <div className="p-2 rounded-lg bg-sky-500/10 text-sky-500 shrink-0 mt-0.5">
+                <Globe className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-semibold text-xs text-theme-text">
+                    {t("onboarding.google_fonts_label")}
+                  </span>
+                  <div
+                    className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                      enableGoogleFonts
+                        ? "bg-theme-accent border-theme-accent text-theme-accent-text"
+                        : "border-theme-border bg-theme-surface"
+                    )}
+                  >
+                    {enableGoogleFonts && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                </div>
+                <p className="text-[11px] text-theme-text-muted mt-1 line-clamp-2 leading-relaxed">
+                  {t("onboarding.google_fonts_desc")}
+                </p>
+              </div>
+            </div>
+
+            {/* Font Source 카드 */}
+            <div
+              onClick={() => setEnableFontsource((prev) => !prev)}
+              className={cn(
+                "flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                enableFontsource
+                  ? "border-theme-accent bg-theme-active/30 text-theme-text shadow-2xs ring-1 ring-theme-accent/40"
+                  : "border-theme-border bg-theme-card text-theme-text-secondary hover:border-theme-border-card-hover"
+              )}
+            >
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 shrink-0 mt-0.5">
+                <Package className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-semibold text-xs text-theme-text">
+                    {t("onboarding.fontsource_label")}
+                  </span>
+                  <div
+                    className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                      enableFontsource
+                        ? "bg-theme-accent border-theme-accent text-theme-accent-text"
+                        : "border-theme-border bg-theme-surface"
+                    )}
+                  >
+                    {enableFontsource && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                </div>
+                <p className="text-[11px] text-theme-text-muted mt-1 line-clamp-2 leading-relaxed">
+                  {t("onboarding.fontsource_desc")}
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </ModalDialog>

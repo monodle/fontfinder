@@ -17,7 +17,7 @@ import {
   getRandomLibraryColor,
   isLightColor,
 } from "../../config/colorPresets";
-import { librarySetFormSchema, libraryFolderColorFormSchema } from "../../schemas";
+import { createLibrarySetFormSchema, createLibraryFolderColorFormSchema } from "../../schemas";
 
 type LibraryModalMode = "create_set" | "edit_set" | "edit_folder";
 
@@ -177,14 +177,16 @@ export function LibraryItemModal({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (mode === "edit_folder") {
-      const parsedColor = libraryFolderColorFormSchema.safeParse({ color: selectedColor });
+      const folderColorSchema = createLibraryFolderColorFormSchema(t);
+      const parsedColor = folderColorSchema.safeParse({ color: selectedColor });
       if (!parsedColor.success) return;
       onSubmitFolderColor?.(parsedColor.data.color);
       onClose();
       return;
     }
 
-    const validation = librarySetFormSchema.safeParse({
+    const setFormSchema = createLibrarySetFormSchema(t);
+    const validation = setFormSchema.safeParse({
       name,
       color: selectedColor,
       parentId,

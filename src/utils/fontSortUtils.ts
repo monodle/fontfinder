@@ -15,8 +15,6 @@ export interface FontSortContext {
   activatedFontIds: Set<number>;
 }
 
-export { isFavoriteCategoryFont as isFontFavorite };
-
 /**
  * 폰트의 상태 그룹(블록) 판별
  * - unplugged: 접근 불가 (언플러그드 / 바로가기 유실 / 삭제 보존)

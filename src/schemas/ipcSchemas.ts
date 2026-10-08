@@ -25,7 +25,7 @@ export type BatchUninstallResult = z.infer<typeof batchUninstallResultSchema>;
 /**
  * 폴더 존재 상태 확인 IPC 응답 스키마
  */
-export const folderStatusSchema = z.object({
+const folderStatusSchema = z.object({
   id: z.number().int(),
   path: z.string(),
   name: z.string(),
@@ -50,7 +50,7 @@ export const folderStatusListSchema: z.ZodType<FolderStatus[]> = z.preprocess(
 /**
  * 경로 타입(디렉터리/파일) 확인 IPC 응답 스키마
  */
-export const pathTypeInfoSchema = z.object({
+const pathTypeInfoSchema = z.object({
   path: z.string(),
   name: z.string(),
   is_dir: z.boolean(),
@@ -122,7 +122,7 @@ export const dbFolderListSchema: z.ZodType<DbFolder[]> = z.preprocess(
 /**
  * 활성화 폰트 레코드 IPC 응답 스키마
  */
-export const activatedFontRecordSchema = z.object({
+const activatedFontRecordSchema = z.object({
   font_id: z.number().int(),
   file_path: z.string(),
 });
@@ -143,7 +143,7 @@ export const activatedFontRecordListSchema: z.ZodType<ActivatedFontRecord[]> = z
 /**
  * 폰트 상세 정보 서브 레코드 스키마
  */
-export const fontNameRecordSchema = z.object({
+const fontNameRecordSchema = z.object({
   name_id: z.number().int().catch(0),
   name_key: z.string().catch(""),
   value: z.string().catch(""),
@@ -151,7 +151,7 @@ export const fontNameRecordSchema = z.object({
   language_tag: z.string().nullish().transform((v) => v ?? undefined),
 });
 
-export const fontMetricsRecordSchema = z.object({
+const fontMetricsRecordSchema = z.object({
   units_per_em: z.number().catch(1000),
   ascender: z.number().catch(800),
   descender: z.number().catch(-200),
@@ -170,7 +170,7 @@ export const fontMetricsRecordSchema = z.object({
   bbox_ymax: z.number().catch(0),
 });
 
-export const fontOs2RecordSchema = z.object({
+const fontOs2RecordSchema = z.object({
   version: z.number().catch(0),
   weight_class: z.number().catch(400),
   width_class: z.number().catch(5),
@@ -183,7 +183,7 @@ export const fontOs2RecordSchema = z.object({
   vendor_id: z.string().catch(""),
 });
 
-export const fontLanguageCoverageSchema = z.object({
+const fontLanguageCoverageSchema = z.object({
   total_glyph_count: z.number().catch(0),
   encoded_char_count: z.number().catch(0),
   has_latin_basic: z.boolean().catch(false),
@@ -202,7 +202,7 @@ export const fontLanguageCoverageSchema = z.object({
   supported_scripts: z.array(z.string()).catch([]),
 });
 
-export const fontVariableAxisSchema = z.object({
+const fontVariableAxisSchema = z.object({
   tag: z.string().catch(""),
   name: z.string().catch(""),
   min_value: z.number().catch(0),
@@ -210,7 +210,7 @@ export const fontVariableAxisSchema = z.object({
   max_value: z.number().catch(0),
 });
 
-export const fontVariableInfoSchema = z.object({
+const fontVariableInfoSchema = z.object({
   is_variable: z.boolean().catch(false),
   axes: z.array(fontVariableAxisSchema).catch([]),
 });
@@ -224,7 +224,7 @@ export const fontDetailedInfoSchema = z.object({
   file_name: z.string(),
   file_size: z.number().catch(0),
   font_index: z.number().catch(0),
-  format: z.enum(["TrueType", "OpenType", "TrueTypeCollection", "Woff", "Woff2", "Unknown"]).catch("Unknown"),
+  format: z.enum(["TrueType", "OpenType", "TrueTypeCollection", "Unknown"]).catch("Unknown"),
   style_classification: z.string().catch(""),
   created_timestamp: z.number().nullable().optional(),
   modified_timestamp: z.number().nullable().optional(),
@@ -267,7 +267,7 @@ export const folderPathEventPayloadSchema = z.string().trim().min(1);
 /**
  * 레거시 로컬스토리지 커스텀 폴더 마이그레이션 스키마
  */
-export const legacyCustomFolderSchema = z.object({
+const legacyCustomFolderSchema = z.object({
   path: z.string().min(1),
   name: z.string().min(1),
   color: z.string().optional(),
@@ -362,13 +362,4 @@ export const nativeDialogSinglePathSchema = z
   .min(1)
   .nullable()
   .catch(null);
-
-export const nativeDialogMultiplePathsSchema = z
-  .unknown()
-  .transform((val): string[] => {
-    if (!Array.isArray(val)) return [];
-    return val
-      .map((item) => (typeof item === "string" ? item.trim() : ""))
-      .filter((p) => p.length > 0);
-  });
 

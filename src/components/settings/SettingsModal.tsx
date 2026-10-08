@@ -16,7 +16,9 @@ import {
   Coffee,
   Info,
   ArrowDownAZ,
+  Package,
 } from "lucide-react";
+import { cn } from "../../utils/cn";
 import { ModalDialog, ConfirmModal, SettingSection, SettingRow, Tabs, TabItem } from "../common";
 import {
   CustomAppSettings,
@@ -312,6 +314,101 @@ export function SettingsModal({
                     columns={3}
                   />
                 </SettingSection>
+
+                {/* 3. 외부 폰트 서비스 (Online Providers) */}
+                <SettingSection
+                  icon={<Globe className="w-4 h-4" />}
+                  title={t("settings.online_providers_title")}
+                  subtitle={t("settings.online_providers_desc")}
+                >
+                  <div className="space-y-2">
+                    {/* Google Fonts 활성화 토글 */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-theme-card border border-theme-border hover:border-theme-border-card-hover transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-sky-500/10 text-sky-500 mt-0.5 shrink-0">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-theme-text">
+                            {t("settings.enable_google_fonts")}
+                          </span>
+                          <span className="text-[11px] text-theme-text-muted mt-0.5">
+                            {t("settings.enable_google_fonts_desc")}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={form.enableGoogleFonts ?? false}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            enableGoogleFonts: !(prev.enableGoogleFonts ?? false),
+                          }))
+                        }
+                        className={cn(
+                          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                          (form.enableGoogleFonts ?? false)
+                            ? "bg-theme-accent"
+                            : "bg-theme-border"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                            (form.enableGoogleFonts ?? false)
+                              ? "translate-x-4"
+                              : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Font Source 활성화 토글 */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-theme-card border border-theme-border hover:border-theme-border-card-hover transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 mt-0.5 shrink-0">
+                          <Package className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-theme-text">
+                            {t("settings.enable_fontsource")}
+                          </span>
+                          <span className="text-[11px] text-theme-text-muted mt-0.5">
+                            {t("settings.enable_fontsource_desc")}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={form.enableFontsource ?? false}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            enableFontsource: !(prev.enableFontsource ?? false),
+                          }))
+                        }
+                        className={cn(
+                          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                          (form.enableFontsource ?? false)
+                            ? "bg-theme-accent"
+                            : "bg-theme-border"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                            (form.enableFontsource ?? false)
+                              ? "translate-x-4"
+                              : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </SettingSection>
               </>
             )}
 
@@ -453,7 +550,7 @@ export function SettingsModal({
                       onClick={handleOpenExport}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text hover:bg-theme-hover hover:border-theme-border-hover transition-colors cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5 text-theme-accent" />
+                      <Upload className="w-3.5 h-3.5 text-theme-accent" />
                       <span>{t("settings.export_btn")}</span>
                     </button>
                     <button
@@ -461,7 +558,7 @@ export function SettingsModal({
                       onClick={handleStartImport}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-theme-border text-xs font-medium text-theme-text hover:bg-theme-hover hover:border-theme-border-hover transition-colors cursor-pointer"
                     >
-                      <Upload className="w-3.5 h-3.5 text-theme-accent" />
+                      <Download className="w-3.5 h-3.5 text-theme-accent" />
                       <span>{t("settings.import_btn")}</span>
                     </button>
                   </div>

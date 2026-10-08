@@ -22,6 +22,7 @@ export interface PrivacyPolicySection {
   points: string[];
 }
 
+// 개발팀 인원이 한국인이므로 고유명사/원문(한국어)을 유지하며, 향후에도 다국어(i18n) 번역을 적용하지 않습니다.
 export const CREATORS: CreatorInfo[] = [
   {
     id: "monodoro",
@@ -108,6 +109,20 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     url: "https://github.com/dcastil/tailwind-merge",
     category: "frontend",
   },
+  {
+    name: "Zod",
+    license: "MIT License",
+    description: "타입 안정성 보장 및 런타임 데이터 스키마 유효성 검증 라이브러리",
+    url: "https://github.com/colinhacks/zod",
+    category: "frontend",
+  },
+  {
+    name: "fractional-indexing",
+    license: "MIT License",
+    description: "폰트 세트 정렬 및 드래그 앤 드롭 순서 변경을 위한 분수 인덱싱 알고리즘",
+    url: "https://github.com/rocicorp/fractional-indexing",
+    category: "frontend",
+  },
 
   // Backend (Rust)
   {
@@ -139,6 +154,13 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     category: "backend",
   },
   {
+    name: "reqwest",
+    license: "Apache-2.0 / MIT",
+    description: "Google Fonts 및 Fontsource API 연동과 폰트 다운로드를 위한 비동기 HTTP 클라이언트",
+    url: "https://github.com/seanmonstar/reqwest",
+    category: "backend",
+  },
+  {
     name: "notify-debouncer-mini",
     license: "MIT / Apache-2.0",
     description: "운영체제 파일 시스템 변경 이벤트 감지 및 디바운스",
@@ -150,6 +172,13 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     license: "MIT / Apache-2.0",
     description: "macOS/Windows의 투명 아크릴 및 비브란시 네이티브 창 효과",
     url: "https://github.com/tauri-apps/window-vibrancy",
+    category: "backend",
+  },
+  {
+    name: "Tauri Official Plugins",
+    license: "MIT / Apache-2.0",
+    description: "네이티브 다이얼로그(dialog), 창 상태 기억(window-state), 중복 실행 방지(single-instance)",
+    url: "https://github.com/tauri-apps/plugins-workspace",
     category: "backend",
   },
   {
@@ -171,6 +200,48 @@ export const OPEN_SOURCE_LICENSES: OpenSourceLicense[] = [
     license: "MIT / Apache-2.0",
     description: "고성능 Rust 데이터 구조 직렬화 및 역직렬화 프레임워크",
     url: "https://github.com/serde-rs/serde",
+    category: "backend",
+  },
+  {
+    name: "trash",
+    license: "MIT License",
+    description: "폰트 파일을 영구 삭제 대신 OS 휴지통으로 안전하게 이동시키는 네이티브 라이브러리",
+    url: "https://github.com/Byron/trash-rs",
+    category: "backend",
+  },
+  {
+    name: "unicode-normalization",
+    license: "MIT / Apache-2.0",
+    description: "macOS NFD 한글 자모 분리 방지 및 파일 경로 NFC 유니코드 정규화",
+    url: "https://github.com/unicode-rs/unicode-normalization",
+    category: "backend",
+  },
+  {
+    name: "encoding_rs",
+    license: "Apache-2.0 / MIT",
+    description: "레거시 및 다국어 인코딩(EUC-KR, Shift_JIS 등) 폰트 이름 테이블 디코딩",
+    url: "https://github.com/hsivonen/encoding_rs",
+    category: "backend",
+  },
+  {
+    name: "sha2",
+    license: "MIT / Apache-2.0",
+    description: "폰트 파일 무결성 검증 및 고유 식별 해시(SHA-256) 생성 라이브러리",
+    url: "https://github.com/RustCrypto/hashes",
+    category: "backend",
+  },
+  {
+    name: "percent-encoding",
+    license: "MIT / Apache-2.0",
+    description: "커스텀 폰트 스트리밍 프로토콜(font://) URL 인코딩 및 디코딩",
+    url: "https://github.com/servo/rust-url",
+    category: "backend",
+  },
+  {
+    name: "thiserror",
+    license: "MIT / Apache-2.0",
+    description: "Rust 맞춤형 에러 열거형 및 오류 컨텍스트 관리 라이브러리",
+    url: "https://github.com/dtolnay/thiserror",
     category: "backend",
   },
 ];

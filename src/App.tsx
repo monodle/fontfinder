@@ -1,83 +1,57 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw, Sliders, AlertTriangle, FolderSync } from "lucide-react";
+import { RefreshCw, Sliders, AlertTriangle, FolderSync, WifiOff } from "lucide-react";
 import { normalizePath } from "./utils/pathUtils";
-import { FontMetadata, PreviewSettings, FontLibraryTag } from "./types/font";
+import { FontMetadata, FontLibraryTag } from "./types/font";
 import { fontService } from "./services/fontService";
 import { settingsService, CustomAppSettings } from "./services/settingsService";
 import {
   appConfig,
-  defaultPreviewSettings,
   getDefaultPreviewText,
   isDefaultPreviewText,
 } from "./config/appConfig";
-import { STORAGE_KEYS, DB_SETTINGS_KEYS } from "./config/storageKeys";
+import { DB_SETTINGS_KEYS } from "./config/storageKeys";
 import { changeLanguage } from "./i18n";
 import { sanitizePreviewSettings } from "./utils/settingsSanitizer";
-import { storageBooleanSchema } from "./schemas";
 
 import { useFontLibrary } from "./hooks/useFontLibrary";
 import { useFontSelection } from "./hooks/useFontSelection";
 import { useFontActions } from "./hooks/useFontActions";
 import { useTypeToSearch } from "./hooks/useTypeToSearch";
 import { useFolderDrop } from "./hooks/useFolderDrop";
+import { useAppToast } from "./hooks/useAppToast";
+import { usePreviewSettingsManager } from "./hooks/usePreviewSettingsManager";
+import { useAppHotkeys } from "./hooks/useAppHotkeys";
+import { useAppModals } from "./hooks/useAppModals";
+import { useGoogleFonts } from "./hooks/useGoogleFonts";
+import { useFontsource } from "./hooks/useFontsource";
 
 import { Sidebar } from "./components/layout/Sidebar";
 import { HeaderToolbar } from "./components/layout/HeaderToolbar";
 import { LocationBar } from "./components/layout/LocationBar";
 import { VirtualFontList } from "./components/font-list/VirtualFontList";
+import { GoogleFontFilterBar } from "./components/google-fonts/GoogleFontFilterBar";
+import { FontsourceFilterBar } from "./components/fontsource/FontsourceFilterBar";
 import { ContextMenu } from "./components/font-list/ContextMenu";
-import { PreviewTextModal } from "./components/preview/PreviewTextModal";
-import { SettingsModal, SettingsTab } from "./components/settings/SettingsModal";
-import { OnboardingModal } from "./components/onboarding/OnboardingModal";
-import { FolderDropOverlay } from "./components/font-list/FolderDropOverlay";
-import { GlyphDiffModal } from "./components/diff/GlyphDiffModal";
-import { FontInfoModal } from "./components/font-info/FontInfoModal";
-import { ConfirmModal, EmptyState, ProgressBar, Toast, ToastVariant } from "./components/common";
+import { EmptyState } from "./components/common";
+import { AppModalsContainer } from "./components/modals/AppModalsContainer";
+import { AppOverlaysContainer } from "./components/modals/AppOverlaysContainer";
 import { FontDetailMode } from "./components/font-card/types";
 import { FontSortSettings, DEFAULT_SORT_SETTINGS } from "./types/sort";
 
 export default function App() {
   const { t } = useTranslation();
 
-  // 1. 환경 설정 및 프리뷰 설정 상태 (단일 진실원천: appSettings)
+  // 1. 토스트 알림 훅
+  const { toastInfo, setToastInfo, showToast } = useAppToast();
+
+  // 2. 환경 설정 상태 (단일 진실원천: appSettings)
   const [appSettings, setAppSettings] = useState<CustomAppSettings>(() =>
     settingsService.getInitialSettings()
   );
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>("all");
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() =>
-    !settingsService.hasCompletedOnboarding()
-  );
-  const [isDiffModalOpen, setIsDiffModalOpen] = useState(false);
-  const [diffModalFonts, setDiffModalFonts] = useState<FontMetadata[]>([]);
 
-  const [previewSettings, setPreviewSettings] = useState<PreviewSettings>(() => {
-    try {
-      const initialApp = settingsService.getInitialSettings();
-      const saved = localStorage.getItem(STORAGE_KEYS.PREVIEW_SETTINGS);
-      const base: PreviewSettings = {
-        ...defaultPreviewSettings,
-        text: initialApp.defaultPreviewText,
-        fontSize: initialApp.defaultFontSize,
-        textAlign: initialApp.defaultTextAlign || "left",
-        lineHeight: initialApp.defaultLineHeight || 1.45,
-        letterSpacing: initialApp.defaultLetterSpacing ?? 0,
-        textColor: initialApp.defaultTextColor,
-        backgroundColor: initialApp.defaultBackgroundColor,
-        isBold: Boolean(initialApp.defaultIsBold),
-        isItalic: Boolean(initialApp.defaultIsItalic),
-        isUnderline: Boolean(initialApp.defaultIsUnderline),
-      };
-      if (saved) {
-        return sanitizePreviewSettings(JSON.parse(saved), base);
-      }
-      return base;
-    } catch {
-      return defaultPreviewSettings;
-    }
-  });
+  // 3. 프리뷰 설정 매니저 훅 (로컬스토리지 즉시, DB 300ms 디바운스 동기화)
+  const { previewSettings, setPreviewSettings } = usePreviewSettingsManager();
 
   // 뷰 모드, 디테일 모드, 그리드 열 및 정렬 설정 (appSettings 단일 진실원천으로부터 파생)
   const viewMode: "list" | "grid" = appSettings.defaultViewMode;
@@ -85,182 +59,119 @@ export default function App() {
   const gridColumns: number = appSettings.defaultGridColumns;
   const sortSettings: FontSortSettings = appSettings.fontSortSettings || DEFAULT_SORT_SETTINGS;
 
-  // 사이드바 접기/펼치기 상태
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
-    try {
-      return storageBooleanSchema.parse(localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED));
-    } catch {
-      return false;
-    }
-  });
-
-  const handleToggleSidebar = useCallback(() => {
-    setIsSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(next));
-      } catch (err) {
-        console.error("사이드바 상태 저장 실패:", err);
-      }
-      return next;
-    });
-  }, []);
-
-  // 컨텍스트 메뉴 및 토스트 상태
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    font: FontMetadata;
-  } | null>(null);
-  const [toastInfo, setToastInfo] = useState<{
-    message: string;
-    variant?: ToastVariant;
-  } | null>(null);
-
-  // 확인 모달 상태 (시스템 글꼴 제거 / 서재 세트에서 제거 / 임시 활성화 해제)
-  const [uninstallConfirmFonts, setUninstallConfirmFonts] = useState<FontMetadata[] | null>(null);
-  const [deactivateConfirmFonts, setDeactivateConfirmFonts] = useState<FontMetadata[] | null>(null);
-  const [removeFromSetConfirm, setRemoveFromSetConfirm] = useState<{
-    setId: number;
-    setName: string;
-    fonts: FontMetadata[];
-  } | null>(null);
-
-  // 폰트 정보 보기 모달 상태
-  const [fontInfoState, setFontInfoState] = useState<{
-    isOpen: boolean;
-    fonts: FontMetadata[];
-    initialFont?: FontMetadata | null;
-  }>({
-    isOpen: false,
-    fonts: [],
-  });
-
-  const handleOpenFontInfo = useCallback((fonts: FontMetadata[]) => {
-    if (!fonts || fonts.length === 0) return;
-    setFontInfoState({
-      isOpen: true,
-      fonts,
-      initialFont: fonts[0],
-    });
-  }, []);
-
-  const showToast = useCallback(
-    (msg: string | { message: string; variant?: ToastVariant }) => {
-      if (typeof msg === "string") {
-        const isError = /실패|오류|failed|error/i.test(msg);
-        setToastInfo({ message: msg, variant: isError ? "error" : "success" });
-      } else {
-        setToastInfo(msg);
-      }
-    },
-    []
-  );
-
-  // 2. 도메인 계층 커스텀 훅: 폰트 라이브러리 및 DB 동기화
+  // 4. 도메인 계층 커스텀 훅: 폰트 라이브러리 및 DB 동기화
   const library = useFontLibrary({
     defaultCategory: appSettings.defaultCategory,
     sortSettings,
     onToast: showToast,
   });
+  const { core, setLibrary, folderLibrary, filterAndSort, syncEvents } = library;
 
-  // 3. 인터랙션 계층 커스텀 훅: 선택 상태 및 키보드 단축키
+  // 5. 인터랙션 계층 커스텀 훅: 선택 상태 및 키보드 단축키
   const selection = useFontSelection({
-    filteredFonts: library.filteredFonts,
-    activeCategory: library.activeCategory,
+    filteredFonts: filterAndSort.filteredFonts,
+    activeCategory: filterAndSort.activeCategory,
   });
 
-  // 4. 비즈니스 액션 계층 커스텀 훅: 활성화/설치/제거/세트/폴더 조작
+  // 6. 비즈니스 액션 계층 커스텀 훅: 활성화/설치/제거/세트/폴더 조작
   const actions = useFontActions({
-    fonts: library.fonts,
-    setFonts: library.setFonts,
-    filteredFonts: library.filteredFonts,
+    core,
+    setLibrary,
+    folderLibrary,
+    filterAndSort,
+    syncEvents,
     selectedFontIds: selection.selectedFontIds,
-    favoriteIds: library.favoriteIds,
-    setFavoriteIds: library.setFavoriteIds,
-    activatedFontIds: library.activatedFontIds,
-    setActivatedFontIds: library.setActivatedFontIds,
-    sets: library.sets,
-    setSets: library.setSets,
-    customFolders: library.customFolders,
-    setCustomFolders: library.setCustomFolders,
-    customFoldersRef: library.customFoldersRef,
-    activeCategory: library.activeCategory,
-    setActiveCategory: library.setActiveCategory,
-    setIsLoading: library.setIsLoading,
-    loadSystemFonts: library.loadSystemFonts,
-    loadDbState: library.loadDbState,
-    refreshSets: library.refreshSets,
-    refreshSetCount: library.refreshSetCount,
-    refreshList: library.refreshList,
     handleClearSelection: selection.handleClearSelection,
     showToast,
   });
 
-  // 전문가용 글리프 Diff 모달 오픈 핸들러
-  const handleOpenDiffModal = useCallback(
-    (fontsToDiff?: FontMetadata[]) => {
-      let targetFonts = fontsToDiff;
+  // 7. 모달 상태 관리 훅
+  const modals = useAppModals({
+    selectedFontIds: selection.selectedFontIds,
+    filteredFonts: filterAndSort.filteredFonts,
+    sets: setLibrary.sets,
+    showToast,
+  });
 
-      if (!targetFonts || targetFonts.length === 0) {
-        if (selection.selectedFontIds.size > 0) {
-          targetFonts = library.filteredFonts.filter((f) =>
-            selection.selectedFontIds.has(f.id)
-          );
-        } else {
-          targetFonts = [];
-        }
-      }
+  const currentSetId = filterAndSort.activeCategory.startsWith("set:")
+    ? Number(filterAndSort.activeCategory.replace("set:", ""))
+    : null;
 
-      if (targetFonts.length > 5) {
-        showToast(
-          t("diff.top5_sliced_notice")
-        );
-        setDiffModalFonts(targetFonts.slice(0, 5));
-      } else {
-        setDiffModalFonts(targetFonts);
-      }
-      setIsDiffModalOpen(true);
-    },
-    [selection.selectedFontIds, library.filteredFonts, showToast, t]
-  );
+  // 8. 전역 단축키 및 사이드바 토글 훅
+  const { isSidebarCollapsed, handleToggleSidebar } = useAppHotkeys({
+    currentSetId,
+    selectedFontIds: selection.selectedFontIds,
+    filteredFonts: filterAndSort.filteredFonts,
+    onRequestRemoveFromSet: modals.handleRequestRemoveFromSet,
+  });
 
-  // 5. 검색창 DOM 참조 및 즉시 검색 (Type-to-Search) 연동 훅
+  const isGoogleFonts = filterAndSort.activeCategory === "google_fonts";
+  const isFontsource = filterAndSort.activeCategory === "fontsource";
+
+  // 9. Google Fonts 공급자 훅 (글로벌 검색어, 정렬 설정, 로컬 설치 폰트 실시간 연동)
+  const googleFonts = useGoogleFonts({
+    enabled: Boolean(appSettings.enableGoogleFonts),
+    externalSearchQuery: isGoogleFonts ? filterAndSort.searchQuery : "",
+    sortSettings,
+    installedFonts: core.fonts,
+  });
+
+  // 10. Font Source (Fontsource) 공급자 훅
+  const fontsource = useFontsource({
+    enabled: Boolean(appSettings.enableFontsource),
+    externalSearchQuery: isFontsource ? filterAndSort.searchQuery : "",
+    sortSettings,
+    installedFonts: core.fonts,
+  });
+
+  // 외부 폰트 제공자 비활성화 시 안전 카테고리 폴백
+  useEffect(() => {
+    if (isGoogleFonts && !appSettings.enableGoogleFonts) {
+      filterAndSort.setActiveCategory(appSettings.defaultCategory || "all");
+    }
+  }, [isGoogleFonts, appSettings.enableGoogleFonts, appSettings.defaultCategory, filterAndSort]);
+
+  useEffect(() => {
+    if (isFontsource && !appSettings.enableFontsource) {
+      filterAndSort.setActiveCategory(appSettings.defaultCategory || "all");
+    }
+  }, [isFontsource, appSettings.enableFontsource, appSettings.defaultCategory, filterAndSort]);
+
+  // 선택된 구글 폰트 메타데이터 목록 (드래그/클릭 다중 선택과 실시간 동기화)
+  const selectedGoogleFonts = useMemo(() => {
+    if (!isGoogleFonts) return [];
+    const set = selection.selectedFontIds;
+    return googleFonts.filteredMetadataFonts.filter((f) => set.has(f.id));
+  }, [isGoogleFonts, selection.selectedFontIds, googleFonts.filteredMetadataFonts]);
+
+  // 선택된 Font Source 메타데이터 목록
+  const selectedFontsourceFonts = useMemo(() => {
+    if (!isFontsource) return [];
+    const set = selection.selectedFontIds;
+    return fontsource.filteredMetadataFonts.filter((f) => set.has(f.id));
+  }, [isFontsource, selection.selectedFontIds, fontsource.filteredMetadataFonts]);
+
+  // 컨텍스트 메뉴 상태
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    font: FontMetadata;
+  } | null>(null);
+
+  // 9. 검색창 DOM 참조 및 즉시 검색 (Type-to-Search) 연동 훅
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const isAnyModalOpen =
-    isSettingsModalOpen ||
-    isPreviewModalOpen ||
-    isOnboardingOpen ||
-    isDiffModalOpen ||
-    contextMenu !== null;
-
   useTypeToSearch({
     searchInputRef,
-    isModalOpen: isAnyModalOpen,
+    isModalOpen: modals.isAnyModalOpen || contextMenu !== null,
     hasSelection: selection.selectedFontIds.size > 0,
     onClearSelection: selection.handleClearSelection,
   });
 
-  // 6. 파인더/탐색기 폴더 드래그앤드롭 전체 화면 감지 훅
+  // 10. 파인더/탐색기 폴더 드래그앤드롭 전체 화면 감지 훅
   const { isDraggingOver } = useFolderDrop({
     onDropPaths: actions.handleAddFoldersByPaths,
-    enabled: !isOnboardingOpen && !isDiffModalOpen,
+    enabled: !modals.isOnboardingOpen && !modals.isDiffModalOpen,
   });
-
-  // 프리뷰 설정 동기화 (로컬스토리지 즉시, DB 300ms 디바운스 저장)
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PREVIEW_SETTINGS, JSON.stringify(previewSettings));
-    } catch (e) {
-      console.error("previewSettings 로컬 저장 실패:", e);
-    }
-
-    const timer = setTimeout(() => {
-      void fontService.setSetting(DB_SETTINGS_KEYS.PREVIEW_SETTINGS, JSON.stringify(previewSettings));
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [previewSettings]);
 
   // DB 사용자 환경설정 및 프리뷰 설정 로드, 온보딩 상태 확인
   useEffect(() => {
@@ -274,7 +185,6 @@ export default function App() {
           changeLanguage(loaded.language);
         }
 
-        // DB에 저장된 preview_settings 파싱하여 상태 복원
         if (dbPreviewStr) {
           try {
             const parsed = JSON.parse(dbPreviewStr);
@@ -299,20 +209,9 @@ export default function App() {
 
     void settingsService.checkOnboardingStatus().then((completed) => {
       if (completed) {
-        setIsOnboardingOpen(false);
+        modals.setIsOnboardingOpen(false);
       }
     });
-  }, []);
-
-  // 전역 브라우저 기본 우클릭 차단
-  useEffect(() => {
-    const handleContextMenuGlobal = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener("contextmenu", handleContextMenuGlobal);
-    return () => {
-      window.removeEventListener("contextmenu", handleContextMenuGlobal);
-    };
   }, []);
 
   // 폰트 카드 우클릭 핸들러
@@ -323,15 +222,13 @@ export default function App() {
       const isDisconnected =
         font.isMissing || font.install_status === "unplugged" || font.install_status === "deleted";
 
-      // 기존 선택된 폰트들이 있는 상태에서, 선택되지 않은 비활성화(언플러그드/삭제됨) 폰트를 우클릭한 경우:
-      // 기존 선택 목록을 해제하지 않고 안전하게 유지하며, 기존 선택 폰트들을 대상으로 컨텍스트 메뉴를 엽니다.
       if (
         selection.selectedFontIds.size > 0 &&
         isDisconnected &&
         !selection.selectedFontIds.has(font.id)
       ) {
         const firstSelectedFont =
-          library.filteredFonts.find((f) => selection.selectedFontIds.has(f.id)) || font;
+          filterAndSort.filteredFonts.find((f) => selection.selectedFontIds.has(f.id)) || font;
         setContextMenu({
           x: e.clientX,
           y: e.clientY,
@@ -351,53 +248,19 @@ export default function App() {
         font,
       });
     },
-    [selection, library.filteredFonts]
+    [selection, filterAndSort.filteredFonts]
   );
 
   // 서재 아바타 칩 클릭 핸들러 (해당 세트/폴더로 이동)
   const handleSelectLibraryTag = useCallback(
     (tag: FontLibraryTag) => {
       if (tag.type === "set") {
-        library.handleSelectSet(Number(tag.id));
+        setLibrary.handleSelectSet(Number(tag.id));
       } else {
-        library.setActiveCategory(`folder:${tag.id}`);
+        filterAndSort.setActiveCategory(`folder:${tag.id}`);
       }
     },
-    [library]
-  );
-
-  const currentSetId = library.activeCategory.startsWith("set:")
-    ? Number(library.activeCategory.replace("set:", ""))
-    : null;
-
-
-
-
-  // 시스템 글꼴 제거 요청 (확인 모달 표시)
-  const handleRequestUninstall = useCallback((fontsToUninstall: FontMetadata[]) => {
-    const userFonts = fontsToUninstall.filter((f) => f.source === "user");
-    if (userFonts.length === 0) return;
-    setUninstallConfirmFonts(userFonts);
-  }, []);
-
-  // 임시 활성화 해제 요청 (확인 모달 표시)
-  const handleRequestDeactivate = useCallback((fontsToDeactivate: FontMetadata[]) => {
-    if (fontsToDeactivate.length === 0) return;
-    setDeactivateConfirmFonts(fontsToDeactivate);
-  }, []);
-
-  // 서재 세트에서 폰트 제거 요청 (확인 모달 표시)
-  const handleRequestRemoveFromSet = useCallback(
-    (setId: number, targetFonts: FontMetadata[]) => {
-      if (targetFonts.length === 0) return;
-      const currentSet = library.sets.find((s) => s.id === setId);
-      setRemoveFromSetConfirm({
-        setId,
-        setName: currentSet?.name || "",
-        fonts: targetFonts,
-      });
-    },
-    [library.sets]
+    [setLibrary, filterAndSort]
   );
 
   const handleOpenFolder = useCallback(
@@ -411,60 +274,25 @@ export default function App() {
   );
 
   const activeScanningFolder = useMemo(() => {
-    if (library.activeCategory.startsWith("folder:")) {
-      const folderPath = library.activeCategory.replace("folder:", "");
-      return library.customFolders.find(
+    if (filterAndSort.activeCategory.startsWith("folder:")) {
+      const folderPath = filterAndSort.activeCategory.replace("folder:", "");
+      return folderLibrary.customFolders.find(
         (f) => normalizePath(f.path) === normalizePath(folderPath) && f.isScanning
       );
     }
     return null;
-  }, [library.activeCategory, library.customFolders]);
+  }, [filterAndSort.activeCategory, folderLibrary.customFolders]);
 
   const activeMissingFolder = useMemo(() => {
-    if (library.activeCategory.startsWith("folder:")) {
-      const folderPath = library.activeCategory.replace("folder:", "");
-      return library.customFolders.find(
+    if (filterAndSort.activeCategory.startsWith("folder:")) {
+      const folderPath = filterAndSort.activeCategory.replace("folder:", "");
+      return folderLibrary.customFolders.find(
         (f) => f.isMissing && normalizePath(f.path) === normalizePath(folderPath)
       );
     }
     return null;
-  }, [library.activeCategory, library.customFolders]);
+  }, [filterAndSort.activeCategory, folderLibrary.customFolders]);
 
-  // 서재 세트 화면에서 Delete / Backspace 키 단축키로 서재에서 선택 폰트 제거 (확인 모달 트리거)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeTag = (document.activeElement?.tagName || "").toLowerCase();
-      if (activeTag === "input" || activeTag === "textarea") return;
-
-      // 단축키: Ctrl+B / Cmd+B 로 좌측 메뉴 접기/펼치기
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
-        e.preventDefault();
-        handleToggleSidebar();
-        return;
-      }
-
-      if (
-        (e.key === "Delete" || e.key === "Backspace") &&
-        currentSetId !== null &&
-        selection.selectedFontIds.size > 0
-      ) {
-        e.preventDefault();
-        const selectedFonts = library.filteredFonts.filter((f) =>
-          selection.selectedFontIds.has(f.id)
-        );
-        if (selectedFonts.length > 0) {
-          handleRequestRemoveFromSet(currentSetId, selectedFonts);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [currentSetId, selection.selectedFontIds, library.filteredFonts, handleRequestRemoveFromSet, handleToggleSidebar]);
-
-  // 정렬 설정 빠른 변경 핸들러 (LocationBar 정렬 토글)
   const handleSortSettingsChange = useCallback((newSortSettings: FontSortSettings) => {
     setAppSettings((prev) => {
       const next = { ...prev, fontSortSettings: newSortSettings };
@@ -473,7 +301,6 @@ export default function App() {
     });
   }, []);
 
-  // 뷰 모드(리스트/그리드) 변경 핸들러 (환경설정 DB 동기화)
   const handleViewModeChange = useCallback((mode: "list" | "grid") => {
     setAppSettings((prev) => {
       const next = { ...prev, defaultViewMode: mode };
@@ -482,7 +309,6 @@ export default function App() {
     });
   }, []);
 
-  // 그리드 기본 열 수 변경 핸들러 (환경설정 DB 동기화)
   const handleGridColumnsChange = useCallback((cols: number) => {
     setAppSettings((prev) => {
       const next = { ...prev, defaultGridColumns: cols };
@@ -491,7 +317,6 @@ export default function App() {
     });
   }, []);
 
-  // 카드 상세 수준 변경 핸들러 (환경설정 DB 동기화)
   const handleDetailModeChange = useCallback((mode: FontDetailMode) => {
     setAppSettings((prev) => {
       const next = { ...prev, defaultFontDetailMode: mode };
@@ -500,7 +325,6 @@ export default function App() {
     });
   }, []);
 
-  // 환경 설정 저장 핸들러 (단일 진실원천: appSettings)
   const handleSaveSettings = async (newSettings: CustomAppSettings) => {
     try {
       await settingsService.saveSettings(newSettings);
@@ -512,7 +336,6 @@ export default function App() {
     }
   };
 
-  // 온보딩 완료 핸들러
   const handleOnboardingComplete = (savedSettings: CustomAppSettings) => {
     setAppSettings(savedSettings);
     if (savedSettings.language) {
@@ -531,7 +354,7 @@ export default function App() {
       isItalic: Boolean(savedSettings.defaultIsItalic),
       isUnderline: Boolean(savedSettings.defaultIsUnderline),
     }));
-    setIsOnboardingOpen(false);
+    modals.setIsOnboardingOpen(false);
     showToast(t("toast.settings_saved"));
   };
 
@@ -541,44 +364,52 @@ export default function App() {
       <Sidebar
         appName={appConfig.app.name}
         appVersion={appConfig.app.version}
-        activeCategory={library.activeCategory}
-        counts={library.categoryCounts}
-        customFolders={library.customFolders}
-        sets={library.sets}
+        activeCategory={filterAndSort.activeCategory}
+        counts={filterAndSort.categoryCounts}
+        customFolders={folderLibrary.customFolders}
+        sets={setLibrary.sets}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
-        isLoading={library.isLoading}
-        onRefresh={() => void library.refreshList()}
+        isLoading={core.isLoading}
+        onRefresh={() => void syncEvents.refreshList()}
         onOpenSettings={(tab) => {
-          setSettingsInitialTab(tab || "all");
-          setIsSettingsModalOpen(true);
+          modals.setSettingsInitialTab(tab || "all");
+          modals.setIsSettingsModalOpen(true);
         }}
-        onSelectCategory={library.setActiveCategory}
+        onSelectCategory={filterAndSort.setActiveCategory}
         onSelectFolder={actions.handleSelectFolder}
         onAddFolder={actions.handleAddFolder}
         onRemoveFolder={actions.handleRemoveFolder}
         onRelinkFolder={actions.handleRelinkFolder}
         onReorderFolders={(nextFolders) => {
-          library.setCustomFolders(nextFolders);
+          folderLibrary.setCustomFolders(nextFolders);
         }}
-        onSelectSet={library.handleSelectSet}
+        onSelectSet={setLibrary.handleSelectSet}
         onCreateSet={actions.handleCreateSet}
         onDeleteSet={actions.handleDeleteSet}
         onReorderSets={(nextSets) => {
-          library.setSets(nextSets);
+          setLibrary.setSets(nextSets);
         }}
-        onUpdateSet={library.handleUpdateSet}
-        onUpdateSetParent={library.handleUpdateSetParent}
-        onUpdateSetColor={library.handleUpdateSetColor}
-        onUpdateFolderColor={library.handleUpdateFolderColor}
+        onUpdateSet={setLibrary.handleUpdateSet}
+        onUpdateSetParent={setLibrary.handleUpdateSetParent}
+        onUpdateSetColor={setLibrary.handleUpdateSetColor}
+        onUpdateFolderColor={folderLibrary.handleUpdateFolderColor}
+        googleFontsCount={googleFonts.totalCount}
+        isGoogleFontsOnline={googleFonts.isOnline}
+        isGoogleFontsLoading={googleFonts.isLoading}
+        fontsourceCount={fontsource.totalCount}
+        isFontsourceOnline={fontsource.isOnline}
+        isFontsourceLoading={fontsource.isLoading}
+        enableGoogleFonts={Boolean(appSettings.enableGoogleFonts)}
+        enableFontsource={Boolean(appSettings.enableFontsource)}
       />
 
       {/* 2. Main Content Canvas */}
       <main className="flex-1 flex flex-col min-w-0 bg-theme-app">
         <HeaderToolbar
           searchInputRef={searchInputRef}
-          searchQuery={library.searchQuery}
-          onSearchChange={library.setSearchQuery}
+          searchQuery={filterAndSort.searchQuery}
+          onSearchChange={filterAndSort.setSearchQuery}
           previewSettings={previewSettings}
           onFontSizeChange={(fontSize) => setPreviewSettings((prev) => ({ ...prev, fontSize }))}
           onBoldChange={(isBold) => setPreviewSettings((prev) => ({ ...prev, isBold }))}
@@ -593,14 +424,24 @@ export default function App() {
           onViewModeChange={handleViewModeChange}
           gridColumns={gridColumns}
           onGridColumnsChange={handleGridColumnsChange}
-          onOpenStyleModal={() => setIsPreviewModalOpen(true)}
+          onOpenStyleModal={() => modals.setIsPreviewModalOpen(true)}
+          isGoogleFontsActive={isGoogleFonts}
+          selectedGoogleFonts={selectedGoogleFonts}
+          isFontsourceActive={isFontsource}
+          selectedFontsourceFonts={selectedFontsourceFonts}
         />
 
         <LocationBar
-          activeCategory={library.activeCategory}
-          customFolders={library.customFolders}
-          sets={library.sets}
-          fontsCount={library.filteredFonts.length}
+          activeCategory={filterAndSort.activeCategory}
+          customFolders={folderLibrary.customFolders}
+          sets={setLibrary.sets}
+          fontsCount={
+            isGoogleFonts
+              ? googleFonts.filteredMetadataFonts.length
+              : isFontsource
+              ? fontsource.filteredMetadataFonts.length
+              : filterAndSort.filteredFonts.length
+          }
           selectedCount={selection.selectedFontIds.size}
           detailMode={detailMode}
           onDetailModeChange={handleDetailModeChange}
@@ -610,8 +451,166 @@ export default function App() {
           onRelinkFolder={actions.handleRelinkFolder}
         />
 
+        {/* 3. Google Fonts 전용 서브 필터 툴바 */}
+        {isGoogleFonts && (
+          <GoogleFontFilterBar
+            selectedCategory={googleFonts.selectedCategory}
+            onSelectCategory={googleFonts.setSelectedCategory}
+            selectedSubset={googleFonts.selectedSubset}
+            onSelectSubset={googleFonts.setSelectedSubset}
+            onlyVariable={googleFonts.onlyVariable}
+            onToggleVariable={() => googleFonts.setOnlyVariable((prev) => !prev)}
+            onlyInstalled={googleFonts.onlyInstalled}
+            onToggleInstalled={() => googleFonts.setOnlyInstalled((prev) => !prev)}
+            filteredCount={googleFonts.filteredMetadataFonts.length}
+            totalCount={googleFonts.totalCount}
+          />
+        )}
+
+        {/* 4. Font Source 전용 서브 필터 툴바 */}
+        {isFontsource && (
+          <FontsourceFilterBar
+            selectedCategory={fontsource.selectedCategory}
+            onSelectCategory={fontsource.setSelectedCategory}
+            selectedSubset={fontsource.selectedSubset}
+            onSelectSubset={fontsource.setSelectedSubset}
+            onlyVariable={fontsource.onlyVariable}
+            onToggleVariable={() => fontsource.setOnlyVariable((prev) => !prev)}
+            onlyInstalled={fontsource.onlyInstalled}
+            onToggleInstalled={() => fontsource.setOnlyInstalled((prev) => !prev)}
+            filteredCount={fontsource.filteredMetadataFonts.length}
+            totalCount={fontsource.totalCount}
+          />
+        )}
+
         <div className="flex-1 min-w-0 overflow-hidden">
-          {activeScanningFolder ? (
+          {isGoogleFonts ? (
+            !googleFonts.isOnline ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <WifiOff className="w-10 h-10 text-amber-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  {t("sidebar.google_fonts_offline", "인터넷 연결이 필요합니다")}
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  네트워크가 연결되지 않았거나 외부 인터넷에 접속할 수 없습니다. 연결 상태를 확인해주세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={googleFonts.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : googleFonts.error && googleFonts.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <AlertTriangle className="w-10 h-10 text-rose-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  Google Fonts를 불러올 수 없습니다
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  {googleFonts.error || "Google Fonts 카탈로그를 가져오는 중 오류가 발생했습니다."}
+                </p>
+                <button
+                  type="button"
+                  onClick={googleFonts.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : googleFonts.isLoading && googleFonts.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted">
+                <RefreshCw className="w-8 h-8 animate-spin text-theme-accent mb-3" />
+                <p className="text-sm font-semibold text-theme-text mb-1">Google Fonts 카탈로그 로드 중...</p>
+                <p className="text-xs text-theme-text-muted">1,900개 이상의 구글 폰트 메타데이터를 불러오고 있습니다.</p>
+              </div>
+            ) : googleFonts.filteredMetadataFonts.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <EmptyState
+                  icon={<Sliders className="w-6 h-6" />}
+                  title={t("empty.no_fonts_title")}
+                  description={t("empty.no_fonts_desc")}
+                />
+              </div>
+            ) : (
+              <VirtualFontList
+                fonts={googleFonts.filteredMetadataFonts}
+                previewSettings={previewSettings}
+                viewMode={viewMode}
+                detailMode={detailMode}
+                gridColumns={gridColumns}
+                selectedFontIds={selection.selectedFontIds}
+                onSelectFont={selection.handleSelectFont}
+                onSelectionChange={selection.handleSelectionChange}
+              />
+            )
+          ) : isFontsource ? (
+            !fontsource.isOnline ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <WifiOff className="w-10 h-10 text-amber-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  {t("sidebar.fontsource_offline", "인터넷 연결이 필요합니다")}
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  네트워크가 연결되지 않았거나 외부 인터넷에 접속할 수 없습니다. 연결 상태를 확인해주세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={fontsource.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : fontsource.error && fontsource.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <AlertTriangle className="w-10 h-10 text-rose-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  Font Source를 불러올 수 없습니다
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  {fontsource.error || "Font Source 카탈로그를 가져오는 중 오류가 발생했습니다."}
+                </p>
+                <button
+                  type="button"
+                  onClick={fontsource.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : fontsource.isLoading && fontsource.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted">
+                <RefreshCw className="w-8 h-8 animate-spin text-theme-accent mb-3" />
+                <p className="text-sm font-semibold text-theme-text mb-1">Font Source 카탈로그 로드 중...</p>
+                <p className="text-xs text-theme-text-muted">2,100개 이상의 오픈소스 폰트 메타데이터를 불러오고 있습니다.</p>
+              </div>
+            ) : fontsource.filteredMetadataFonts.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <EmptyState
+                  icon={<Sliders className="w-6 h-6" />}
+                  title={t("empty.no_fonts_title")}
+                  description={t("empty.no_fonts_desc")}
+                />
+              </div>
+            ) : (
+              <VirtualFontList
+                fonts={fontsource.filteredMetadataFonts}
+                previewSettings={previewSettings}
+                viewMode={viewMode}
+                detailMode={detailMode}
+                gridColumns={gridColumns}
+                selectedFontIds={selection.selectedFontIds}
+                onSelectFont={selection.handleSelectFont}
+                onSelectionChange={selection.handleSelectionChange}
+              />
+            )
+          ) : activeScanningFolder ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted p-6">
               <RefreshCw className="w-8 h-8 animate-spin text-theme-accent mb-3" />
               <p className="text-sm font-semibold text-theme-text mb-1">
@@ -643,12 +642,12 @@ export default function App() {
                 }
               />
             </div>
-          ) : library.isLoading && library.fonts.length === 0 ? (
+          ) : core.isLoading && core.fonts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted">
               <RefreshCw className="w-6 h-6 animate-spin text-theme-accent mb-2" />
               <p className="text-xs">{t("empty.scanning")}</p>
             </div>
-          ) : library.filteredFonts.length === 0 ? (
+          ) : filterAndSort.filteredFonts.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <EmptyState
                 icon={<Sliders className="w-6 h-6" />}
@@ -658,15 +657,15 @@ export default function App() {
             </div>
           ) : (
             <VirtualFontList
-              fonts={library.filteredFonts}
-              sections={library.fontSections}
+              fonts={filterAndSort.filteredFonts}
+              sections={filterAndSort.fontSections}
               previewSettings={previewSettings}
               viewMode={viewMode}
               detailMode={detailMode}
               gridColumns={gridColumns}
               selectedFontIds={selection.selectedFontIds}
-              favoriteIds={library.favoriteIds}
-              activatedFontIds={library.activatedFontIds}
+              favoriteIds={core.favoriteIds}
+              activatedFontIds={core.activatedFontIds}
               onSelectFont={selection.handleSelectFont}
               onSelectionChange={selection.handleSelectionChange}
               onToggleFavorite={actions.handleToggleFavorite}
@@ -685,14 +684,14 @@ export default function App() {
           y={contextMenu.y}
           fonts={
             selection.selectedFontIds.has(contextMenu.font.id)
-              ? library.filteredFonts.filter((f) => selection.selectedFontIds.has(f.id))
+              ? filterAndSort.filteredFonts.filter((f) => selection.selectedFontIds.has(f.id))
               : [contextMenu.font]
           }
-          sets={library.sets}
-          favoriteIds={library.favoriteIds}
-          activatedFontIds={library.activatedFontIds}
+          sets={setLibrary.sets}
+          favoriteIds={core.favoriteIds}
+          activatedFontIds={core.activatedFontIds}
           currentSetId={currentSetId}
-          setMap={library.setMap}
+          setMap={setLibrary.setMap}
           onClose={() => setContextMenu(null)}
           onToggleFavorite={actions.handleToggleFavorite}
           onToggleActivate={actions.handleToggleActivate}
@@ -702,266 +701,42 @@ export default function App() {
           onBulkFavorite={actions.handleBulkFavorite}
           onBulkAddToSet={actions.handleBulkAddToSet}
           onBulkRemoveFromSet={actions.handleBulkRemoveFromSet}
-          onRequestUninstall={handleRequestUninstall}
-          onRequestDeactivate={handleRequestDeactivate}
-          onRequestRemoveFromSet={handleRequestRemoveFromSet}
-          onRefreshList={() => void library.refreshList()}
+          onRequestUninstall={modals.handleRequestUninstall}
+          onRequestDeactivate={modals.handleRequestDeactivate}
+          onRequestRemoveFromSet={modals.handleRequestRemoveFromSet}
+          onRefreshList={() => void syncEvents.refreshList()}
           onActionFeedback={showToast}
           onClearSelection={selection.handleClearSelection}
-          onOpenDiff={handleOpenDiffModal}
-          onOpenFontInfo={handleOpenFontInfo}
+          onOpenDiff={modals.handleOpenDiffModal}
+          onOpenFontInfo={modals.handleOpenFontInfo}
         />
       )}
 
-      {/* 5. Modals */}
-      {/* 5-1. 시스템 글꼴 영구 제거 확인 모달 */}
-      {uninstallConfirmFonts && uninstallConfirmFonts.length > 0 && (
-        <ConfirmModal
-          isOpen={true}
-          onClose={() => setUninstallConfirmFonts(null)}
-          onConfirm={async () => {
-            const fontsToDelete = [...uninstallConfirmFonts];
-            setUninstallConfirmFonts(null);
-            await actions.handleBulkUninstall(fontsToDelete);
-          }}
-          title={
-            uninstallConfirmFonts.length === 1
-              ? t("confirm.uninstall_font_title")
-              : t("confirm.bulk_uninstall_title")
-          }
-          itemName={
-            uninstallConfirmFonts.length === 1
-              ? (uninstallConfirmFonts[0].full_name || uninstallConfirmFonts[0].family_name)
-              : t("confirm.bulk_uninstall_item", {
-                count: uninstallConfirmFonts.length,
-              })
-          }
-          description={
-            <div className="space-y-3">
-              <p>
-                {uninstallConfirmFonts.length === 1
-                  ? t("confirm.uninstall_font_desc")
-                  : t("confirm.bulk_uninstall_desc", {
-                    count: uninstallConfirmFonts.length,
-                  })}
-              </p>
-              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
-                <span className="text-sm shrink-0">🗑️</span>
-                <span>{t("confirm.uninstall_warning")}</span>
-              </div>
-            </div>
-          }
-          confirmText={t("confirm.uninstall_btn")}
-          cancelText={t("common.cancel")}
-          isDanger={true}
-        />
-      )}
-
-      {/* 5-2. 서재 세트에서 글꼴 제거 확인 모달 */}
-      {removeFromSetConfirm && removeFromSetConfirm.fonts.length > 0 && (
-        <ConfirmModal
-          isOpen={true}
-          onClose={() => setRemoveFromSetConfirm(null)}
-          onConfirm={async () => {
-            const { setId, fonts } = removeFromSetConfirm;
-            setRemoveFromSetConfirm(null);
-            if (fonts.length === 1) {
-              await actions.handleRemoveFromSet(setId, fonts[0].id);
-            } else {
-              await actions.handleBulkRemoveFromSet(setId, fonts.map((f) => f.id));
-            }
-          }}
-          title={
-            removeFromSetConfirm.fonts.length === 1
-              ? t("confirm.remove_from_set_title")
-              : t("confirm.bulk_remove_from_set_title")
-          }
-          itemName={
-            removeFromSetConfirm.fonts.length === 1
-              ? (removeFromSetConfirm.fonts[0].full_name || removeFromSetConfirm.fonts[0].family_name)
-              : t("confirm.bulk_remove_from_set_item", {
-                count: removeFromSetConfirm.fonts.length,
-              })
-          }
-          description={
-            <div className="space-y-1.5 text-center">
-              <p>
-                {removeFromSetConfirm.fonts.length === 1
-                  ? t("confirm.remove_from_set_desc", {
-                    setName: removeFromSetConfirm.setName,
-                  })
-                  : t("confirm.bulk_remove_from_set_desc", {
-                    setName: removeFromSetConfirm.setName,
-                    count: removeFromSetConfirm.fonts.length,
-                  })}
-              </p>
-              <p className="text-[11px] text-theme-text-muted">
-                {t("confirm.remove_from_set_notice")}
-              </p>
-            </div>
-          }
-          confirmText={t("confirm.remove_btn")}
-          cancelText={t("common.cancel")}
-          isDanger={true}
-        />
-      )}
-
-      {/* 5-3. 임시 활성화 해제 확인 모달 */}
-      {deactivateConfirmFonts && deactivateConfirmFonts.length > 0 && (
-        <ConfirmModal
-          isOpen={true}
-          onClose={() => setDeactivateConfirmFonts(null)}
-          onConfirm={async () => {
-            const fontsToDeact = [...deactivateConfirmFonts];
-            setDeactivateConfirmFonts(null);
-            if (fontsToDeact.length === 1) {
-              await actions.handleToggleActivate(fontsToDeact[0]);
-            } else {
-              await actions.handleBulkActivate(
-                fontsToDeact.map((f) => f.id),
-                false
-              );
-            }
-          }}
-          title={
-            deactivateConfirmFonts.length === 1
-              ? t("confirm.deactivate_font_title")
-              : t("confirm.bulk_deactivate_title")
-          }
-          itemName={
-            deactivateConfirmFonts.length === 1
-              ? (deactivateConfirmFonts[0].full_name || deactivateConfirmFonts[0].family_name)
-              : t("confirm.bulk_deactivate_item", {
-                  count: deactivateConfirmFonts.length,
-                })
-          }
-          description={
-            <div className="space-y-3">
-              <p>
-                {deactivateConfirmFonts.length === 1
-                  ? t("confirm.deactivate_font_desc")
-                  : t("confirm.bulk_deactivate_desc", {
-                      count: deactivateConfirmFonts.length,
-                    })}
-              </p>
-              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-medium text-xs leading-relaxed text-left flex items-start gap-2">
-                <span className="text-sm shrink-0">⚠️</span>
-                <span>
-                  {t(
-                    "confirm.deactivate_warning"
-                  )}
-                </span>
-              </div>
-            </div>
-          }
-          confirmText={t("confirm.deactivate_btn")}
-          cancelText={t("common.cancel")}
-          isDanger={true}
-        />
-      )}
-
-      <GlyphDiffModal
-        isOpen={isDiffModalOpen}
-        onClose={() => setIsDiffModalOpen(false)}
-        initialFonts={diffModalFonts}
-        allFonts={library.fonts}
-        fallbackText={
-          previewSettings.text?.trim() ||
-          appSettings.defaultPreviewText?.trim() ||
-          "R g h e"
-        }
+      {/* 4. Modals Container */}
+      <AppModalsContainer
+        modals={modals}
+        previewSettings={previewSettings}
+        setPreviewSettings={setPreviewSettings}
+        appSettings={appSettings}
+        handleSaveSettings={handleSaveSettings}
+        handleOnboardingComplete={handleOnboardingComplete}
+        actions={actions}
+        allFonts={core.fonts}
+        scanProgress={core.scanProgress}
+        showToast={showToast}
       />
 
-      <FontInfoModal
-        isOpen={fontInfoState.isOpen}
-        fonts={fontInfoState.fonts}
-        initialFont={fontInfoState.initialFont}
-        initialPreviewText={
-          previewSettings.text?.trim() ||
-          appSettings.defaultPreviewText?.trim() ||
-          undefined
-        }
-        onClose={() => setFontInfoState((prev) => ({ ...prev, isOpen: false }))}
+      {/* 5. Overlays and Toast Container */}
+      <AppOverlaysContainer
+        isLoading={core.isLoading}
+        hasNoFonts={core.fonts.length === 0}
+        isOnboardingOpen={modals.isOnboardingOpen}
+        isDiffModalOpen={modals.isDiffModalOpen}
+        scanProgress={core.scanProgress}
+        isDraggingOver={isDraggingOver}
+        toastInfo={toastInfo}
+        onCloseToast={() => setToastInfo(null)}
       />
-
-      <PreviewTextModal
-        isOpen={isPreviewModalOpen}
-        settings={previewSettings}
-        minFontSize={appSettings.minFontSize}
-        maxFontSize={appSettings.maxFontSize}
-        defaultText={appSettings.defaultPreviewText}
-        onClose={() => setIsPreviewModalOpen(false)}
-        onApply={(newSettings) => setPreviewSettings(newSettings)}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        settings={appSettings}
-        initialTab={settingsInitialTab}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onSave={handleSaveSettings}
-        onNotify={showToast}
-      />
-
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        initialSettings={appSettings}
-        onComplete={handleOnboardingComplete}
-        scanProgress={library.scanProgress}
-      />
-
-      {/* 전체 화면 스캔 진행률 블러 오버레이 (초기 로딩 시 다른 메뉴 접근 완전 차단) */}
-      {library.isLoading && library.fonts.length === 0 && !isOnboardingOpen && (
-        <div className="fixed inset-0 z-40 bg-theme-bg/80 backdrop-blur-xl flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-300">
-          <div className="max-w-md w-full p-8 rounded-3xl bg-theme-card/90 border border-theme-border/80 shadow-2xl backdrop-blur-2xl flex flex-col items-center text-center relative overflow-hidden">
-            {/* 배경 은은한 액센트 글로우 */}
-            <div className="absolute -top-12 -left-12 w-32 h-32 bg-theme-accent/15 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-theme-accent/10 rounded-full blur-2xl pointer-events-none" />
-
-            {/* 회전 아이콘 */}
-            <div className="w-14 h-14 rounded-2xl bg-theme-accent-subtle/70 border border-theme-accent/30 flex items-center justify-center mb-5 text-theme-accent shadow-inner">
-              <RefreshCw className="w-7 h-7 animate-spin" />
-            </div>
-
-            {/* 제목 및 설명 */}
-            <h3 className="text-base font-semibold text-theme-text tracking-tight mb-1.5">
-              {t("empty.scanning")}
-            </h3>
-            <p className="text-xs text-theme-text-muted leading-relaxed mb-6 max-w-xs">
-              {t(
-                "empty.scanning_desc"
-              )}
-            </p>
-
-            {/* 실시간 프로그레스 바 영역 */}
-            <ProgressBar
-              value={library.scanProgress?.current ?? 0}
-              max={library.scanProgress?.total ?? 100}
-              size="md"
-              showLabel
-              label={
-                library.scanProgress && library.scanProgress.total > 0
-                  ? `${library.scanProgress.current.toLocaleString()} / ${library.scanProgress.total.toLocaleString()}${t("common.count_unit")}`
-                  : t("common.loading")
-              }
-              className="w-full"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 6. 폴더 드래그앤드롭 전체 화면 오버레이 */}
-      <FolderDropOverlay isVisible={isDraggingOver && !isDiffModalOpen} />
-
-      {/* 7. Toast Notification */}
-      {toastInfo && (
-        <Toast
-          message={toastInfo.message}
-          variant={toastInfo.variant}
-          duration={appConfig.ui.toastDurationMs}
-          onClose={() => setToastInfo(null)}
-        />
-      )}
     </div>
   );
 }

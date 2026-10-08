@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -34,10 +35,11 @@ export function Spinner({
   className = "",
   overlay = false,
 }: SpinnerProps) {
+  const { t } = useTranslation();
   const content = (
     <div
       role="status"
-      aria-label={label || "로딩 중"}
+      aria-label={label || t("common.loading")}
       className={cn(
         "inline-flex flex-col items-center justify-center gap-2",
         className

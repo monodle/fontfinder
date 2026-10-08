@@ -1,9 +1,6 @@
 import i18n from "../../i18n";
 import { sanitizeSettings as sanitizeAppSettings } from "../../utils/settingsSanitizer";
 import {
-  HEX_COLOR_REGEX,
-  createHexColorSchema,
-  createSafeStringSchema,
   backupFolderItemSchema,
   backupSetItemSchema,
   backupFontHashRefSchema,
@@ -19,24 +16,8 @@ import type {
 } from "../../types/backup";
 
 export const MAX_JSON_STRING_LENGTH = 10 * 1024 * 1024; // 10MB 최대 크기 제한
-export const MAX_COLLECTION_ITEMS = 99999; // 폴더 및 서재 세트 최대 개수 제한
-export const MAX_FONTS_PER_SET = 99999; // 세트당 최대 폰트 ID 개수 제한
-
-export { HEX_COLOR_REGEX };
-
-/**
- * 16진수 색상 코드 검증 및 정제 (CSS/HTML 주입 방어)
- */
-export function sanitizeColor(val: unknown, fallback: string): string {
-  return createHexColorSchema(fallback).parse(typeof val === "string" ? val : "");
-}
-
-/**
- * 안전한 텍스트 정제 (길이 제한 및 제어 문자 차단)
- */
-export function sanitizeString(val: unknown, maxLen = 255): string {
-  return createSafeStringSchema(maxLen).parse(val);
-}
+const MAX_COLLECTION_ITEMS = 99999; // 폴더 및 서재 세트 최대 개수 제한
+const MAX_FONTS_PER_SET = 99999; // 세트당 최대 폰트 ID 개수 제한
 
 /**
  * Prototype Pollution 방어 기능을 포함한 안전한 JSON 파서
@@ -58,7 +39,7 @@ export function safeJsonParse(content: string): unknown {
 /**
  * 외부 입력 설정값(settings) 엄격 검증 및 화이트리스트 정제 (SSOT: settingsService.sanitizeSettings)
  */
-export function sanitizeSettings(raw: unknown): CustomAppSettings | undefined {
+function sanitizeSettings(raw: unknown): CustomAppSettings | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   return sanitizeAppSettings(raw);
 }
@@ -66,7 +47,7 @@ export function sanitizeSettings(raw: unknown): CustomAppSettings | undefined {
 /**
  * 외부 입력 폴더(folders) 엄격 검증 및 정제 (하이브리드: 아이템별 Zod safeParse)
  */
-export function sanitizeFolders(raw: unknown): BackupFolder[] {
+function sanitizeFolders(raw: unknown): BackupFolder[] {
   if (!Array.isArray(raw)) return [];
   const validFolders: BackupFolder[] = [];
 
@@ -84,7 +65,7 @@ export function sanitizeFolders(raw: unknown): BackupFolder[] {
 /**
  * 외부 입력 서재 세트(sets) 엄격 검증 및 정제 (하이브리드: 메타데이터 Zod + 대용량 폰트 배열 고속 수동 루프)
  */
-export function sanitizeSets(raw: unknown): BackupSet[] {
+function sanitizeSets(raw: unknown): BackupSet[] {
   if (!Array.isArray(raw)) return [];
   const validSets: BackupSet[] = [];
 

@@ -1,6 +1,6 @@
 [package]
 name = "fontfinder"
-version = "0.9.3"
+version = "1.0.0"
 description = "Font Finder - Modern Cross-platform Font Manager"
 authors = ["Font Finder"]
 edition = "2021"
@@ -10,45 +10,50 @@ name = "fontfinder_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.2", features = [] }
+tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
-tauri = { version = "2.2", features = ["macos-private-api"] }
-tauri-plugin-dialog = "2.2"
+tauri = { version = "=2.11.6", features = ["macos-private-api"] }
+tauri-plugin-dialog = "=2.7.3"
 
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-ttf-parser = "0.25"
-rusqlite = { version = "0.33", features = ["bundled"] }
-tokio = { version = "1.43", features = ["full"] }
-rayon = "1.10"
-thiserror = "2.0"
-walkdir = "2.5"
-percent-encoding = "2.3"
-notify-debouncer-mini = "0.7.0"
-tauri-plugin-window-state = "2.4.1"
-tauri-plugin-single-instance = "2"
-sha2 = "0.10"
-xxhash-rust = { version = "0.8", features = ["xxh3"] }
-window-vibrancy = "0.6"
-trash = "5.2"
-unicode-normalization = "0.1"
-encoding_rs = "0.8"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls", "json", "gzip"] }
+ttf-parser = "=0.25.1"
+rusqlite = { version = "=0.33.0", features = ["bundled"] }
+tokio = { version = "=1.53.1", features = ["full"] }
+rayon = "=1.12.0"
+thiserror = "=2.0.20"
+walkdir = "=2.5.0"
+percent-encoding = "=2.3.2"
+notify-debouncer-mini = "=0.7.0"
+tauri-plugin-window-state = "=2.4.1"
+tauri-plugin-single-instance = "=2.4.5"
+sha2 = "=0.10.9"
+xxhash-rust = { version = "=0.8.19", features = ["xxh3"] }
+window-vibrancy = "=0.6.0"
+trash = "=5.2.9"
+unicode-normalization = "=0.1.25"
+encoding_rs = "=0.8.42"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation = "0.10"
-core-text = "20.1"
+core-foundation = "=0.10.1"
+core-text = "=20.1.0"
+system-configuration = "=0.6.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "=0.59.0", features = [
     "Win32_Graphics_Gdi",
     "Win32_Foundation",
     "Win32_Security",
     "Win32_System_Registry",
     "Win32_System_Com",
+    "Win32_System_Threading",
+    "Win32_System_IO",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
     "Win32_Storage_FileSystem",
+    "Win32_NetworkManagement_IpHelper",
 ] }
 
 [profile.release]

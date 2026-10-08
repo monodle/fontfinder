@@ -2,8 +2,6 @@ export type FontFormat =
   | "TrueType"
   | "OpenType"
   | "TrueTypeCollection"
-  | "Woff"
-  | "Woff2"
   | "Unknown";
 
 type FontSource = "system" | "user" | "external";

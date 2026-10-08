@@ -17,6 +17,8 @@ pub struct FontCacheEntry {
   pub has_localized: bool,
 }
 
+pub const MAX_METADATA_JSON_SIZE: usize = 512 * 1024;
+
 impl Database {
   pub fn is_font_path_cached(&self, path: &str) -> AppResult<bool> {
     let conn = self.conn()?;
@@ -44,6 +46,9 @@ impl Database {
 
     for row in rows {
       let (id, file_path, fast_hash, deep_hash, json_str) = row?;
+      if json_str.len() > MAX_METADATA_JSON_SIZE {
+        continue;
+      }
       if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json_str) {
         meta.id = id;
         meta.file_path = file_path;
@@ -163,6 +168,96 @@ impl Database {
     Ok(map)
   }
 
+  /// 스캔 동기화 작업(신규/수정 UPSERT, 딥 해시 갱신, 삭제 파일 제거)을 단일 트랜잭션으로 원자적 실행
+  pub fn apply_font_cache_sync(
+    &self,
+    save_items: &[(FontMetadata, i64)],
+    deep_hash_updates: &[(i64, String)],
+    delete_ids: &[i64],
+  ) -> AppResult<()> {
+    if save_items.is_empty() && deep_hash_updates.is_empty() && delete_ids.is_empty() {
+      return Ok(());
+    }
+
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+
+    // 1. 신규/수정 폰트 UPSERT (fast_hash 변경 시 이전 deep_hash 안전하게 무효화)
+    if !save_items.is_empty() {
+      let mut stmt = tx.prepare_cached(
+        "
+        INSERT INTO font_cache (
+          file_path, font_index, file_size, mtime, family_name, source,
+          fast_hash, deep_hash, file_hash, metadata_json, updated_at
+        )
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, CURRENT_TIMESTAMP)
+        ON CONFLICT(file_path, font_index) DO UPDATE SET
+          file_size = excluded.file_size,
+          mtime = excluded.mtime,
+          family_name = excluded.family_name,
+          source = excluded.source,
+          fast_hash = excluded.fast_hash,
+          deep_hash = CASE
+            WHEN excluded.deep_hash IS NOT NULL THEN excluded.deep_hash
+            WHEN excluded.fast_hash != font_cache.fast_hash THEN NULL
+            ELSE font_cache.deep_hash
+          END,
+          file_hash = CASE
+            WHEN excluded.deep_hash IS NOT NULL THEN excluded.deep_hash
+            WHEN excluded.fast_hash != font_cache.fast_hash THEN excluded.fast_hash
+            ELSE COALESCE(font_cache.deep_hash, excluded.fast_hash)
+          END,
+          metadata_json = excluded.metadata_json,
+          updated_at = CURRENT_TIMESTAMP
+        ",
+      )?;
+
+      for (meta, mtime) in save_items {
+        let json = serde_json::to_string(meta).unwrap_or_default();
+        let source_str = format!("{:?}", meta.source).to_lowercase();
+        stmt.execute(params![
+          meta.file_path,
+          meta.font_index,
+          meta.file_size as i64,
+          mtime,
+          meta.family_name,
+          source_str,
+          meta.fast_hash,
+          meta.deep_hash,
+          meta.file_hash,
+          json
+        ])?;
+      }
+    }
+
+    // 2. 딥 해시 갱신
+    if !deep_hash_updates.is_empty() {
+      let mut stmt = tx.prepare_cached(
+        "UPDATE font_cache SET deep_hash = ?1, file_hash = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+      )?;
+      for (id, deep_hash) in deep_hash_updates {
+        stmt.execute(params![deep_hash, id])?;
+      }
+    }
+
+    // 3. 삭제 대상 ID 제거 (200개 청크 단위)
+    if !delete_ids.is_empty() {
+      for chunk in delete_ids.chunks(200) {
+        let placeholders = (1..=chunk.len())
+          .map(|i| format!("?{}", i))
+          .collect::<Vec<_>>()
+          .join(",");
+        let sql = format!("DELETE FROM font_cache WHERE id IN ({})", placeholders);
+        let mut stmt = tx.prepare(&sql)?;
+        let params: Vec<&dyn rusqlite::ToSql> = chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        stmt.execute(params.as_slice())?;
+      }
+    }
+
+    tx.commit()?;
+    Ok(())
+  }
+
   pub fn save_cached_fonts(&self, items: &[(FontMetadata, i64)]) -> AppResult<()> {
     if items.is_empty() {
       return Ok(());
@@ -183,8 +278,16 @@ impl Database {
           family_name = excluded.family_name,
           source = excluded.source,
           fast_hash = excluded.fast_hash,
-          deep_hash = COALESCE(excluded.deep_hash, font_cache.deep_hash),
-          file_hash = excluded.file_hash,
+          deep_hash = CASE
+            WHEN excluded.deep_hash IS NOT NULL THEN excluded.deep_hash
+            WHEN excluded.fast_hash != font_cache.fast_hash THEN NULL
+            ELSE font_cache.deep_hash
+          END,
+          file_hash = CASE
+            WHEN excluded.deep_hash IS NOT NULL THEN excluded.deep_hash
+            WHEN excluded.fast_hash != font_cache.fast_hash THEN excluded.fast_hash
+            ELSE COALESCE(font_cache.deep_hash, excluded.fast_hash)
+          END,
           metadata_json = excluded.metadata_json,
           updated_at = CURRENT_TIMESTAMP
         ",
@@ -269,6 +372,9 @@ impl Database {
 
       for row in rows {
         let (id, file_path, fast_hash, deep_hash, json) = row?;
+        if json.len() > MAX_METADATA_JSON_SIZE {
+          continue;
+        }
         if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json) {
           meta.id = id;
           meta.file_path = file_path;
@@ -313,6 +419,9 @@ impl Database {
       for row in rows {
         let (id, file_path, fast_hash, deep_hash, json) = row?;
         if seen_ids.insert(id) {
+          if json.len() > MAX_METADATA_JSON_SIZE {
+            continue;
+          }
           if let Ok(mut meta) = serde_json::from_str::<FontMetadata>(&json) {
             meta.id = id;
             meta.file_path = file_path;

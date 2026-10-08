@@ -18,13 +18,11 @@ import { storageBooleanSchema } from "../schemas";
 // 하위 호환성을 위한 re-export
 export type { CustomAppSettings } from "../types/settings";
 export {
-  defaultSettings,
   getDefaultSettings,
   sanitizeSettings,
   sanitizeLanguage,
-  sanitizeFontSortSettings,
 } from "../utils/settingsSanitizer";
-export { applyTheme, isLightTheme, getInitialThemeByOS, sanitizeTheme } from "../utils/themeUtils";
+export { applyTheme } from "../utils/themeUtils";
 
 const DB_SETTINGS_KEY = DB_SETTINGS_KEYS.USER_SETTINGS;
 const DB_ONBOARDING_KEY = DB_SETTINGS_KEYS.ONBOARDING_COMPLETED;

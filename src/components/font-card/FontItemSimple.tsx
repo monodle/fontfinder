@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { FontDuplicateBadge } from "./FontBadge";
+import { FontDuplicateBadge, FontInstallStatusBadge } from "./FontBadge";
 import { getFontFamilyName } from "../../utils/fontLocalization";
 import { FontCardRenderProps } from "./types";
 
@@ -72,7 +72,10 @@ export function FontItemSimple({
           </span>
         </div>
 
-        <FontDuplicateBadge count={font.duplicate_count} compact={isCompact} />
+        <div className="flex items-center gap-1 shrink-0">
+          <FontDuplicateBadge count={font.duplicate_count} compact={isCompact} />
+          <FontInstallStatusBadge status={font.install_status} compact={isCompact} />
+        </div>
       </div>
 
       {/* 2. 문구 미리보기 영역 (하단 푸터 없이 최대 면적으로 시원하게 렌더링 - 상단 정렬) */}

@@ -47,7 +47,7 @@ fn test_schema_initialization() {
   assert_eq!(count, 3);
 
   let user_version: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-  assert_eq!(user_version, 1);
+  assert_eq!(user_version, 2);
 }
 
 #[test]
@@ -449,3 +449,522 @@ fn test_like_pattern_escaping() {
   assert_eq!(remaining.len(), 1, "Only target font should be deleted; sibling must remain intact");
   assert_eq!(remaining[0].file_path, "/Fonts/Type-A/sibling.ttf");
 }
+
+#[test]
+fn test_update_folder_path_and_bulk_delete_performance() {
+  let db = Database::new_in_memory().unwrap();
+
+  // 1. 초기 폴더 등록
+  let old_folder = "/Volumes/External/Fonts";
+  let new_folder = "/Volumes/External/NewFonts";
+  db.add_folder(old_folder, "Fonts", None, None).unwrap();
+
+  // 2. 1,000개의 대량 폰트 및 활성화 폰트 레코드 생성
+  let count = 1000;
+  let mut dummy_fonts = Vec::with_capacity(count);
+  for i in 1..=count {
+    let path = format!("{}/font_{}.ttf", old_folder, i);
+    let hash = format!("hash_{}", i);
+    let f = create_dummy_font(i as i64, &path, &format!("Family {}", i), FontSource::External, &hash);
+    dummy_fonts.push((f, 1000 + i as i64));
+  }
+  db.save_cached_fonts(&dummy_fonts).unwrap();
+
+  let mut activated_items = Vec::with_capacity(count);
+  for i in 1..=count {
+    let path = format!("{}/font_{}.ttf", old_folder, i);
+    activated_items.push((i as i64, path));
+  }
+  db.record_activated_fonts(&activated_items).unwrap();
+
+  // 3. update_folder_path 일괄 실행 (prepare_cached 검증)
+  let start = std::time::Instant::now();
+  db.update_folder_path(old_folder, new_folder, "NewFonts").unwrap();
+  let elapsed = start.elapsed();
+  assert!(elapsed.as_millis() < 500, "1,000 items update should finish well within 500ms");
+
+  // 4. 경로 변경 무결성 검증
+  let updated_fonts = db.get_all_cached_fonts().unwrap();
+  assert_eq!(updated_fonts.len(), count);
+  for f in &updated_fonts {
+    assert!(f.file_path.starts_with(new_folder), "All paths should start with new folder prefix");
+  }
+
+  let updated_act = db.get_activated_fonts().unwrap();
+  assert_eq!(updated_act.len(), count);
+  for r in &updated_act {
+    assert!(r.file_path.starts_with(new_folder), "All activated paths should start with new folder prefix");
+  }
+
+  // 5. remove_activated_fonts_by_paths 청크(200) 일괄 삭제 검증
+  let paths_to_remove: Vec<String> = (1..=500)
+    .map(|i| format!("{}/font_{}.ttf", new_folder, i))
+    .collect();
+  db.remove_activated_fonts_by_paths(&paths_to_remove).unwrap();
+
+  let remaining_act = db.get_activated_fonts().unwrap();
+  assert_eq!(remaining_act.len(), count - 500, "500 activated records should be deleted via chunks");
+}
+
+#[test]
+fn test_v2_indexes_and_explain_plans() {
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+  let conn = db.conn().unwrap();
+
+  // 1. 제거된 인덱스가 더 이상 존재하지 않는지 확인
+  let dropped_indexes = ["idx_sets_parent_id", "idx_font_cache_source", "idx_activated_fonts_activated_at"];
+  for idx in &dropped_indexes {
+    let exists: bool = conn
+      .query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?1)",
+        rusqlite::params![idx],
+        |r| r.get(0),
+      )
+      .unwrap();
+    assert!(!exists, "Index {} should be dropped in V2", idx);
+  }
+
+  // 2. 신규 최적화 인덱스가 존재하는지 확인
+  let new_indexes = ["idx_sets_sort_order", "idx_activated_fonts_covering"];
+  for idx in &new_indexes {
+    let exists: bool = conn
+      .query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?1)",
+        rusqlite::params![idx],
+        |r| r.get(0),
+      )
+      .unwrap();
+    assert!(exists, "Index {} should exist in V2", idx);
+  }
+
+  // 3. sets 정렬 쿼리 실행 계획(EXPLAIN QUERY PLAN) 검증 (Temp B-Tree 제거 확인)
+  let sets_plan: String = conn
+    .query_row(
+      "EXPLAIN QUERY PLAN SELECT s.id, s.name, s.color, COUNT(sf.font_id) as font_count, s.parent_id, s.sort_order
+       FROM sets s
+       LEFT JOIN set_fonts sf ON sf.set_id = s.id
+       GROUP BY s.sort_order, s.id
+       ORDER BY s.sort_order ASC, s.id ASC",
+      [],
+      |r| r.get(3),
+    )
+    .unwrap();
+  assert!(
+    sets_plan.contains("idx_sets_sort_order"),
+    "sets query should utilize idx_sets_sort_order: got {}",
+    sets_plan
+  );
+  assert!(
+    !sets_plan.contains("USE TEMP B-TREE"),
+    "sets query should eliminate temp b-tree filesort: got {}",
+    sets_plan
+  );
+
+  // 4. activated_fonts 커버링 인덱스(EXPLAIN QUERY PLAN) 검증
+  let act_plan: String = conn
+    .query_row(
+      "EXPLAIN QUERY PLAN SELECT font_id, file_path FROM activated_fonts ORDER BY activated_at ASC",
+      [],
+      |r| r.get(3),
+    )
+    .unwrap();
+  assert!(
+    act_plan.contains("idx_activated_fonts_covering"),
+    "activated_fonts query should utilize idx_activated_fonts_covering: got {}",
+    act_plan
+  );
+  assert!(
+    act_plan.contains("COVERING INDEX"),
+    "activated_fonts query should utilize COVERING INDEX: got {}",
+    act_plan
+  );
+
+  // 5. activated_fonts 대소문자 무시 경로 삭제 인덱스 탐색(SEARCH) 검증 (SCAN 풀스캔 방지)
+  let act_del_plan: String = conn
+    .query_row(
+      "EXPLAIN QUERY PLAN DELETE FROM activated_fonts WHERE file_path COLLATE NOCASE IN ('/test/font.ttf')",
+      [],
+      |r| r.get(3),
+    )
+    .unwrap();
+  assert!(
+    act_del_plan.contains("idx_activated_fonts_path"),
+    "activated_fonts delete query should utilize idx_activated_fonts_path: got {}",
+    act_del_plan
+  );
+  assert!(
+    !act_del_plan.contains("SCAN activated_fonts"),
+    "activated_fonts delete query should not perform table scan: got {}",
+    act_del_plan
+  );
+}
+
+#[test]
+fn test_apply_font_cache_sync_atomic_operations() {
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+
+  // 1. 초기 폰트 등록
+  let font1 = create_dummy_font(0, "/fonts/A.ttf", "Font A", FontSource::User, "hash_a1");
+  let font2 = create_dummy_font(0, "/fonts/B.ttf", "Font B", FontSource::User, "hash_b1");
+
+  db.apply_font_cache_sync(
+    &[(font1, 1_700_000_000_100), (font2, 1_700_000_000_200)],
+    &[],
+    &[],
+  ).expect("Initial sync should succeed");
+
+  let full_entries = db.get_font_cache_full_entries().unwrap();
+  assert_eq!(full_entries.len(), 2);
+  let id_a = full_entries.get(&("/fonts/A.ttf".to_string(), 0)).unwrap().id;
+  let id_b = full_entries.get(&("/fonts/B.ttf".to_string(), 0)).unwrap().id;
+
+  // 2. 단일 트랜잭션으로 복합 작업 실행:
+  // - font3 신규 추가
+  // - font1 딥해시 갱신
+  // - font2 삭제
+  let font3 = create_dummy_font(0, "/fonts/C.ttf", "Font C", FontSource::User, "hash_c1");
+
+  db.apply_font_cache_sync(
+    &[(font3, 1_700_000_000_300)],
+    &[(id_a, "deep_hash_a1".to_string())],
+    &[id_b],
+  ).expect("Atomic composite sync should succeed");
+
+  // 3. 상태 검증
+  let updated_entries = db.get_font_cache_full_entries().unwrap();
+  assert_eq!(updated_entries.len(), 2); // font2 삭제, font3 추가되어 총 2개
+
+  // font1: 딥해시 갱신 확인
+  let entry_a = updated_entries.get(&("/fonts/A.ttf".to_string(), 0)).unwrap();
+  assert_eq!(entry_a.deep_hash.as_deref(), Some("deep_hash_a1"));
+
+  // font2: 삭제 확인
+  assert!(!updated_entries.contains_key(&("/fonts/B.ttf".to_string(), 0)));
+
+  // font3: 신규 등록 확인
+  assert!(updated_entries.contains_key(&("/fonts/C.ttf".to_string(), 0)));
+}
+
+#[test]
+fn test_apply_font_cache_sync_empty_calls() {
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+  // 빈 슬라이스 전달 시 오류 없이 즉시 Ok(()) 반환
+  let res = db.apply_font_cache_sync(&[], &[], &[]);
+  assert!(res.is_ok());
+}
+
+#[test]
+fn test_mtime_millisecond_precision() {
+  let unique_name = format!("test_font_{}.ttf", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+  let file_path = std::env::temp_dir().join(unique_name);
+  std::fs::write(&file_path, b"dummy font content").unwrap();
+
+  let mtime = crate::font::scanner::FontScanner::get_file_mtime(&file_path);
+  let _ = std::fs::remove_file(&file_path);
+  // 밀리초 정밀도이므로 10자리(초 단위)보다 훨씬 큰 13자리 수준 정수여야 함
+  assert!(mtime > 100_000_000_000, "mtime should be in milliseconds: got {}", mtime);
+}
+
+#[test]
+fn test_apply_font_cache_sync_transaction_rollback() {
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+
+  // 1. 초기 폰트 등록
+  let font_orig = create_dummy_font(0, "/fonts/Original.ttf", "Original", FontSource::User, "hash_orig");
+  db.apply_font_cache_sync(
+    &[(font_orig, 1_700_000_000_000)],
+    &[],
+    &[],
+  ).expect("Initial sync should succeed");
+
+  let orig_entries = db.get_font_cache_full_entries().unwrap();
+  assert_eq!(orig_entries.len(), 1);
+  let orig_id = orig_entries.get(&("/fonts/Original.ttf".to_string(), 0)).unwrap().id;
+
+  // 2. 삭제 시 강제 에러를 발생시키는 트리거 생성 (원자성 롤백 검증용)
+  {
+    let conn = db.conn().unwrap();
+    conn.execute(
+      "CREATE TRIGGER test_force_abort BEFORE DELETE ON font_cache BEGIN SELECT RAISE(ABORT, 'forced test rollback'); END;",
+      [],
+    ).unwrap();
+  }
+
+  // 3. 신규 폰트 추가 + 기존 폰트 삭제를 단일 트랜잭션으로 요청
+  // DELETE 단계에서 트리거로 에러가 발생하므로 전체 트랜잭션이 롤백되어야 함
+  let font_new = create_dummy_font(0, "/fonts/NewFail.ttf", "NewFail", FontSource::User, "hash_new");
+  let sync_result = db.apply_font_cache_sync(
+    &[(font_new, 1_700_000_000_500)],
+    &[],
+    &[orig_id],
+  );
+
+  assert!(sync_result.is_err(), "Sync should fail and return error when delete is aborted");
+
+  // 4. 롤백 검증: 신규 폰트는 들어가지 않았고, 기존 폰트는 삭제되지 않고 온전히 남아있어야 함
+  let entries_after_rollback = db.get_font_cache_full_entries().unwrap();
+  assert_eq!(entries_after_rollback.len(), 1, "Database should rollback completely to previous state");
+  assert!(entries_after_rollback.contains_key(&("/fonts/Original.ttf".to_string(), 0)));
+  assert!(!entries_after_rollback.contains_key(&("/fonts/NewFail.ttf".to_string(), 0)));
+}
+
+#[test]
+fn test_stale_deep_hash_invalidation_on_fast_hash_change() {
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+
+  // 1. 초기 폰트 등록 후 충돌로 인해 deep_hash가 부여된 상태
+  let mut font = create_dummy_font(0, "/fonts/Changing.ttf", "Changing Font", FontSource::User, "fast_v1");
+  font.deep_hash = Some("deep_v1".to_string());
+  font.file_hash = "deep_v1".to_string();
+
+  db.apply_font_cache_sync(&[(font.clone(), 1_700_000_000_000)], &[], &[]).unwrap();
+
+  let entry = db.get_font_cache_full_entries().unwrap().get(&("/fonts/Changing.ttf".to_string(), 0)).unwrap().clone();
+  assert_eq!(entry.fast_hash, "fast_v1");
+  assert_eq!(entry.deep_hash.as_deref(), Some("deep_v1"));
+
+  // 2. 파일 내용이 바뀌어 fast_hash가 달라졌고, 단독 폰트가 되어 deep_hash가 None인 새 메타데이터 저장
+  let mut changed_font = create_dummy_font(0, "/fonts/Changing.ttf", "Changing Font", FontSource::User, "fast_v2");
+  changed_font.deep_hash = None;
+  changed_font.file_hash = "fast_v2".to_string();
+
+  db.apply_font_cache_sync(&[(changed_font, 1_700_000_001_000)], &[], &[]).unwrap();
+
+  // 3. fast_hash가 바뀌었으므로 이전 낡은 deep_hash가 반드시 NULL로 무효화되어야 함
+  let updated = db.get_font_cache_full_entries().unwrap().get(&("/fonts/Changing.ttf".to_string(), 0)).unwrap().clone();
+  assert_eq!(updated.fast_hash, "fast_v2");
+  assert_eq!(updated.deep_hash, None, "Old deep_hash must be invalidated to None when fast_hash changes");
+
+  // 4. fast_hash가 같은 상태에서 단순 mtime/메타데이터만 갱신될 때는 기존 deep_hash 보존 확인
+  // 먼저 deep_hash를 다시 부여
+  db.apply_font_cache_sync(&[], &[(updated.id, "deep_v2".to_string())], &[]).unwrap();
+  let with_deep = db.get_font_cache_full_entries().unwrap().get(&("/fonts/Changing.ttf".to_string(), 0)).unwrap().clone();
+  assert_eq!(with_deep.deep_hash.as_deref(), Some("deep_v2"));
+
+  // 동일 fast_v2 상태로 deep_hash가 None인 엔트리를 UPSERT해도 기존 deep_v2가 보존됨
+  let mut same_content_font = create_dummy_font(0, "/fonts/Changing.ttf", "Changing Font Updated Family", FontSource::User, "fast_v2");
+  same_content_font.deep_hash = None;
+  db.apply_font_cache_sync(&[(same_content_font, 1_700_000_002_000)], &[], &[]).unwrap();
+
+  let preserved = db.get_font_cache_full_entries().unwrap().get(&("/fonts/Changing.ttf".to_string(), 0)).unwrap().clone();
+  assert_eq!(preserved.deep_hash.as_deref(), Some("deep_v2"), "deep_hash should be preserved when fast_hash is unchanged");
+}
+
+#[test]
+fn test_sync_directories_removes_unparseable_or_invalid_cached_font() {
+  use std::io::Write;
+  use crate::font::FontScanner;
+
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+  let temp_base = std::env::temp_dir();
+  let test_dir = temp_base.join(format!("ff_sync_test_{}", std::process::id()));
+  std::fs::create_dir_all(&test_dir).unwrap();
+
+  let corrupted_file = test_dir.join("corrupted.ttf");
+  let empty_file = test_dir.join("empty.ttf");
+
+  // 1. 디스크에 파일 작성: 하나는 0바이트, 하나는 깨진 폰트 바이너리
+  std::fs::File::create(&empty_file).unwrap();
+  {
+    let mut f = std::fs::File::create(&corrupted_file).unwrap();
+    f.write_all(b"INVALID_FONT_HEADER_DATA_1234567890").unwrap();
+  }
+
+  let corrupted_posix = crate::protocol::to_posix_normalized_path(&corrupted_file)
+    .to_string_lossy()
+    .to_string();
+  let empty_posix = crate::protocol::to_posix_normalized_path(&empty_file)
+    .to_string_lossy()
+    .to_string();
+
+  // 2. 과거 정상 상태였던 것처럼 DB에 두 파일의 캐시를 사전 등록
+  let corrupted_meta = create_dummy_font(0, &corrupted_posix, "Corrupted Font", FontSource::External, "hash_c1");
+  let empty_meta = create_dummy_font(0, &empty_posix, "Empty Font", FontSource::External, "hash_e1");
+
+  db.apply_font_cache_sync(
+    &[
+      (corrupted_meta, 1_000_000), // mtime 차이 유발하여 to_parse 대상이 되도록
+      (empty_meta, 1_000_000),
+    ],
+    &[],
+    &[],
+  ).unwrap();
+
+  let initial_cache = db.get_font_cache_full_entries().unwrap();
+  assert_eq!(initial_cache.len(), 2, "Both fonts should be in initial cache");
+
+  // 3. sync_directories_with_options 동기화 실행 (force_rescan = true)
+  let sync_res = FontScanner::sync_directories_with_options(
+    &[test_dir.clone()],
+    &db,
+    false,
+    true,
+    None,
+  );
+  assert!(sync_res.is_ok(), "Sync should succeed: {:?}", sync_res.err());
+
+  // 4. 검증: 0바이트 파일(empty.ttf)과 파싱 실패 파일(corrupted.ttf) 모두 DB 캐시에서 깔끔히 제거되어야 함!
+  let remaining_cache = db.get_font_cache_full_entries().unwrap();
+  assert!(
+    !remaining_cache.contains_key(&(corrupted_posix, 0)),
+    "Corrupted font must be removed from cache after parse error"
+  );
+  assert!(
+    !remaining_cache.contains_key(&(empty_posix, 0)),
+    "Empty 0-byte font must be removed from cache"
+  );
+  assert_eq!(remaining_cache.len(), 0, "No invalid font should remain in cache");
+
+  // 정리
+  let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+fn test_sync_directories_preserves_valid_font_cache_on_scan_omission() {
+  use std::io::Write;
+  use crate::font::FontScanner;
+
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+  let temp_base = std::env::temp_dir();
+  let test_dir = temp_base.join(format!("ff_preserve_test_{}", std::process::id()));
+  std::fs::create_dir_all(&test_dir).unwrap();
+
+  // 점(.)으로 시작하는 숨김 폰트 파일: WalkDir에서는 건너뛰어지지만 디스크에는 실존하며 크기/확장자가 정상
+  let hidden_font = test_dir.join(".hidden_valid.ttf");
+  {
+    let mut f = std::fs::File::create(&hidden_font).unwrap();
+    f.write_all(&[0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]).unwrap();
+  }
+
+  let hidden_posix = crate::protocol::to_posix_normalized_path(&hidden_font)
+    .to_string_lossy()
+    .to_string();
+
+  // DB에 기존 캐시로 등록
+  let valid_meta = create_dummy_font(0, &hidden_posix, "Hidden Valid Font", FontSource::External, "hash_h1");
+  db.apply_font_cache_sync(
+    &[(valid_meta, 1_000_000)],
+    &[],
+    &[],
+  ).unwrap();
+
+  assert_eq!(db.get_font_cache_full_entries().unwrap().len(), 1);
+
+  // sync_directories_with_options 실행:
+  // WalkDir는 '.'으로 시작하는 파일을 건너뛰므로 current_paths에는 들어가지 않음.
+  // 그러나 파일이 실존하고 정상 크기/확장자이므로 방어적 정책에 의해 캐시가 삭제되지 않고 보존되어야 함!
+  let sync_res = FontScanner::sync_directories_with_options(
+    &[test_dir.clone()],
+    &db,
+    false,
+    false,
+    None,
+  );
+  assert!(sync_res.is_ok());
+
+  let cache_after_sync = db.get_font_cache_full_entries().unwrap();
+  assert!(
+    cache_after_sync.contains_key(&(hidden_posix, 0)),
+    "Valid font file must be preserved in cache even if omitted during directory walk"
+  );
+
+  let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(unix)]
+fn test_sync_directories_preserves_cache_on_temporary_io_error() {
+  use std::io::Write;
+  use std::os::unix::fs::PermissionsExt;
+  use crate::font::FontScanner;
+
+  let db = Database::new_in_memory().expect("Failed to initialize in-memory DB");
+  let temp_base = std::env::temp_dir();
+  let test_dir = temp_base.join(format!("ff_io_err_test_{}", std::process::id()));
+  std::fs::create_dir_all(&test_dir).unwrap();
+
+  let locked_font = test_dir.join("locked.ttf");
+  {
+    let mut f = std::fs::File::create(&locked_font).unwrap();
+    f.write_all(b"SOME_RAW_FONT_BYTES_FOR_LOCK_TEST").unwrap();
+  }
+
+  let locked_posix = crate::protocol::to_posix_normalized_path(&locked_font)
+    .to_string_lossy()
+    .to_string();
+
+  // 기존 캐시 등록
+  let locked_meta = create_dummy_font(0, &locked_posix, "Locked Font", FontSource::External, "hash_lock1");
+  db.apply_font_cache_sync(
+    &[(locked_meta, 1_000_000)],
+    &[],
+    &[],
+  ).unwrap();
+
+  assert_eq!(db.get_font_cache_full_entries().unwrap().len(), 1);
+
+  // 파일 권한을 0o000(읽기 금지)으로 변경하여 File::open 시 AppError::Io(PermissionDenied) 유발
+  let _ = std::fs::set_permissions(&locked_font, std::fs::Permissions::from_mode(0o000));
+
+  // 강제 재스캔 실행 (to_parse 대상 진입)
+  let sync_res = FontScanner::sync_directories_with_options(
+    &[test_dir.clone()],
+    &db,
+    false,
+    true,
+    None,
+  );
+  assert!(sync_res.is_ok());
+
+  // AppError::Io 오류이므로 파싱 실패와 달리 캐시가 삭제되지 않고 안전하게 보존되어야 함!
+  let cache_after_sync = db.get_font_cache_full_entries().unwrap();
+  assert!(
+    cache_after_sync.contains_key(&(locked_posix, 0)),
+    "Temporary I/O error (PermissionDenied) must preserve existing font cache"
+  );
+
+  // 권한 복원 및 정리
+  let _ = std::fs::set_permissions(&locked_font, std::fs::Permissions::from_mode(0o644));
+  let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+fn test_is_folder_exists() {
+  let db = Database::new_in_memory().unwrap();
+  assert!(!db.is_folder_exists("/Users/test/Fonts").unwrap());
+
+  db.add_folder("/Users/test/Fonts", "Fonts", None, None).unwrap();
+  assert!(db.is_folder_exists("/Users/test/Fonts").unwrap());
+  // 대소문자 무시(COLLATE NOCASE) 검증
+  assert!(db.is_folder_exists("/USERS/TEST/FONTS").unwrap());
+  assert!(!db.is_folder_exists("/Users/test/Other").unwrap());
+}
+
+#[test]
+fn test_oversized_metadata_json_guard() {
+  let db = Database::new_in_memory().unwrap();
+
+  // 정상 폰트 삽입
+  let normal_font = create_dummy_font(1, "/path/normal.ttf", "Normal", FontSource::External, "hash1");
+  db.save_cached_fonts(&[(normal_font, 1000)]).unwrap();
+
+  // 비정상적으로 거대한 JSON (600KB) 직접 삽입 (OOM 공격 시나리오 시뮬레이션)
+  {
+    let conn = db.conn().unwrap();
+    let huge_json = "x".repeat(600 * 1024);
+    conn.execute(
+      "INSERT INTO font_cache (file_path, font_index, file_size, mtime, family_name, source, fast_hash, metadata_json)
+       VALUES ('/path/huge.ttf', 0, 1000, 1000, 'Huge', 'external', 'hash_huge', ?1)",
+      rusqlite::params![huge_json],
+    ).unwrap();
+  }
+
+  // get_all_cached_fonts는 512KB 초과 항목을 건너뛰고 정상 폰트만 안전하게 반환해야 함
+  let fonts = db.get_all_cached_fonts().unwrap();
+  assert_eq!(fonts.len(), 1);
+  assert_eq!(fonts[0].file_path, "/path/normal.ttf");
+}
+
+
+
+

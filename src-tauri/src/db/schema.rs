@@ -16,6 +16,15 @@ pub fn initialize_schema(conn: &mut Connection) -> AppResult<()> {
     ",
   )?;
 
+  // 1-1. DB 파일 B-Tree 구조 선제 무결성 진단 (B-Tree 손상 선제 감지 및 자동 복구 연계)
+  let check_result: String = conn.query_row("PRAGMA quick_check(10)", [], |row| row.get(0))?;
+  if check_result != "ok" {
+    return Err(crate::error::AppError::Database(rusqlite::Error::SqliteFailure(
+      rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CORRUPT),
+      Some(format!("Database integrity check failed: {}", check_result)),
+    )));
+  }
+
   // 2. migrations/ 디렉터리 기반 자동 순차 마이그레이션 실행
   super::migration::run_migrations(conn)?;
 

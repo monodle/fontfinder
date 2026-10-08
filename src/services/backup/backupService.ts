@@ -11,7 +11,6 @@ import type {
 import { saveBackupToFile, selectAndReadBackupFile } from "./backupIO";
 
 export { summarizeBackupData } from "./backupValidator";
-export { saveBackupToFile, selectAndReadBackupFile } from "./backupIO";
 
 const EMPTY_SET_FONTS: Record<number, number[]> = {};
 const EMPTY_FONT_SETS: FontSet[] = [];

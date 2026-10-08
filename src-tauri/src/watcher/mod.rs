@@ -89,7 +89,7 @@ impl FontFolderWatcher {
                     let is_font = path
                         .extension()
                         .and_then(|s| s.to_str())
-                        .map(|ext| matches!(ext.to_lowercase().as_str(), "ttf" | "otf" | "ttc" | "woff" | "woff2"))
+                        .map(|ext| matches!(ext.to_lowercase().as_str(), "ttf" | "otf" | "ttc"))
                         .unwrap_or(false);
 
                     // 디스크에 존재하는 디렉토리이거나, 삭제 이벤트로 이미 존재하지 않지만 확장자가 없는 경로(하위 폴더 삭제)도 디렉토리로 판별

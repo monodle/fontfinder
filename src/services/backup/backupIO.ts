@@ -13,7 +13,7 @@ import {
 /**
  * 날짜 기반 백업 파일명 생성: {VITE_APP_NAME}-YYMMDD-HHIISS.json
  */
-export function getBackupFileName(): string {
+function getBackupFileName(): string {
   const appName = (appConfig.app.name || "fontfinder")
     .toLowerCase()
     .replace(/[^a-z0-9_-]/gi, "");

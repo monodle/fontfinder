@@ -100,7 +100,6 @@ export function ContextMenu({
   const isFontUsable = (f: FontMetadata) =>
     !f.isMissing && f.install_status !== "unplugged" && f.install_status !== "deleted";
 
-  const isWoffFont = (f: { format: string }) => f.format === "Woff" || f.format === "Woff2";
 
   // 사용 가능한 폰트 필터링
   const usableFonts = useMemo(() => fonts.filter(isFontUsable), [fonts]);
@@ -117,7 +116,7 @@ export function ContextMenu({
 
   // 2. 임시 활성화 상태 분류 (외부 폰트만 해당)
   const activatableFonts = useMemo(
-    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)),
+    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user"),
     [usableFonts]
   );
   const inactiveActivatableFonts = useMemo(
@@ -131,7 +130,7 @@ export function ContextMenu({
 
   // 3. 시스템 설치 / 제거 / 보호 분류
   const installableFonts = useMemo(
-    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user" && !isWoffFont(f)),
+    () => usableFonts.filter((f) => f.source !== "system" && f.source !== "user"),
     [usableFonts]
   );
   const uninstallableFonts = useMemo(

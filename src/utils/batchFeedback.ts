@@ -120,15 +120,20 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
   }
 
   const message = err instanceof Error ? err.message : String(err);
+
+  // 1. Rust 백엔드 표준 에러 코드(ERR_*) 정밀 감지 및 다국어 매핑
+  const errorCodeMatch = message.match(/\b(ERR_[A-Z0-9_]+)\b/);
+  if (errorCodeMatch) {
+    const code = errorCodeMatch[1];
+    const key = `backend_error.${code}`;
+    const translated = t(key);
+    if (translated && translated !== key) {
+      return translated;
+    }
+  }
+
   const lower = message.toLowerCase();
 
-  if (
-    lower.includes("woff") ||
-    lower.includes("웹 전용") ||
-    lower.includes("web-only")
-  ) {
-    return t("toast.woff_activate_unsupported");
-  }
 
   if (
     lower.includes("사용 중") ||
@@ -163,6 +168,14 @@ export function formatErrorMessage(err: unknown, t: TranslateFn): string {
     lower.includes("존재하지 않")
   ) {
     return t("toast.error_reason_not_found");
+  }
+
+  if (
+    lower.includes("circular reference") ||
+    lower.includes("descendants as parent") ||
+    lower.includes("순환 참조")
+  ) {
+    return t("toast.set_cycle_prevented");
   }
 
   return message.replace(/^Error:\s*/i, "");

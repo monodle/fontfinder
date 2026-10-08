@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Sliders, Folder, BookOpen } from "lucide-react";
+import { Upload, Sliders, Folder, BookOpen } from "lucide-react";
 import { ModalDialog, Button, Alert, CheckboxCard } from "../common";
 import { backupService } from "../../services/backup";
 import type { BackupCategorySelection, BackupSummary } from "../../types/backup";
@@ -66,7 +66,7 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="md"
-      icon={<Download className="w-4 h-4 text-theme-accent" />}
+      icon={<Upload className="w-4 h-4 text-theme-accent" />}
       title={t("settings.export_modal_title")}
       subtitle={t("settings.export_modal_subtitle")}
       footer={
@@ -98,7 +98,7 @@ export function ExportModal({ isOpen, onClose, onSuccess }: ExportModalProps) {
               disabled={isNoneSelected}
               isLoading={isExporting}
               loadingText={t("common.loading")}
-              leftIcon={<Download className="w-3.5 h-3.5" />}
+              leftIcon={<Upload className="w-3.5 h-3.5" />}
             >
               {t("settings.export_btn_confirm")}
             </Button>

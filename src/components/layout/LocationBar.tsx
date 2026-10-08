@@ -13,6 +13,8 @@ import {
   Zap,
   Heart,
   Loader2,
+  Globe,
+  Package,
 } from "lucide-react";
 import { CustomFolder, FontSet } from "../../types/font";
 import { FontDetailMode } from "../font-card/types";
@@ -241,6 +243,14 @@ export function LocationBar({
     icon = <Copy className="w-3.5 h-3.5 text-rose-500" />;
     title = t("sidebar.category_duplicates");
     description = t("sidebar.duplicates_desc");
+  } else if (activeCategory === "google_fonts") {
+    icon = <Globe className="w-3.5 h-3.5 text-sky-500" />;
+    title = "Google Fonts";
+    description = t("sidebar.google_fonts_desc", "Google Fonts 온라인 카탈로그");
+  } else if (activeCategory === "fontsource") {
+    icon = <Package className="w-3.5 h-3.5 text-amber-500" />;
+    title = "Font Source";
+    description = t("sidebar.fontsource_desc", "Fontsource 오픈소스 웹폰트 카탈로그");
   }
 
   return (

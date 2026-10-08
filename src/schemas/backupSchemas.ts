@@ -34,7 +34,7 @@ export const backupFolderItemSchema = z
 /**
  * 단일 서재 세트 메타데이터 검증 스키마
  */
-export const backupSetMetaSchema = z.object({
+const backupSetMetaSchema = z.object({
   id: z.number().int().positive().optional().catch(undefined),
   name: createSafeStringSchema(100),
   color: createHexColorSchema(DEFAULT_SET_COLOR),
@@ -63,19 +63,7 @@ export const backupFontHashRefSchema = z
   });
 
 export type BackupFolderItem = z.infer<typeof backupFolderItemSchema>;
-export type BackupSetMeta = z.infer<typeof backupSetMetaSchema>;
 export type BackupFontHashRefItem = z.infer<typeof backupFontHashRefSchema>;
-
-/**
- * 백업 카테고리 선택(설정, 폴더, 서재 세트) 검증 스키마
- */
-export const backupCategorySelectionSchema = z.object({
-  settings: z.boolean(),
-  folders: z.boolean(),
-  sets: z.boolean(),
-});
-
-export type BackupCategorySelectionInput = z.infer<typeof backupCategorySelectionSchema>;
 
 /**
  * 단일 서재 세트 전체(메타데이터 + fontHashes/fontIds 원시 필드 포함) 검증 스키마

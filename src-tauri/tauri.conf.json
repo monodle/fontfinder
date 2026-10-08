@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Font Finder",
-  "version": "0.9.3",
+  "version": "1.0.0",
   "identifier": "com.fontfinder.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -33,7 +33,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://font.localhost https://font.localhost; font-src 'self' font: data: http://font.localhost https://font.localhost; img-src 'self' asset: https://github.com https://avatars.githubusercontent.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';",
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://font.localhost https://font.localhost; font-src 'self' font: data: http://font.localhost https://font.localhost; img-src 'self' asset: https://github.com https://avatars.githubusercontent.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self';",
       "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://font.localhost https://font.localhost http://localhost:1420 ws://localhost:1420; font-src 'self' font: data: http://font.localhost https://font.localhost; img-src 'self' asset: https://github.com https://avatars.githubusercontent.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';",
       "capabilities": [
         "default"

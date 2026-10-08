@@ -5,6 +5,7 @@ import {
   useRef,
   useImperativeHandle,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -18,6 +19,7 @@ export interface InputProps
   prefixIcon?: ReactNode;
   suffixIcon?: ReactNode;
   clearable?: boolean;
+  clearAriaLabel?: string;
   onClear?: () => void;
   size?: InputSize;
   fullWidth?: boolean;
@@ -32,6 +34,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     prefixIcon,
     suffixIcon,
     clearable = false,
+    clearAriaLabel,
     onClear,
     size = "md",
     fullWidth = true,
@@ -45,6 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   },
   ref
 ) {
+  const { t } = useTranslation();
   const innerRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => innerRef.current as HTMLInputElement);
 
@@ -134,7 +138,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             onClick={handleClear}
             className="p-1 mr-2 rounded-md text-theme-text-muted hover:text-theme-text hover:bg-theme-hover transition-colors cursor-pointer shrink-0"
             tabIndex={-1}
-            aria-label="입력 내용 지우기"
+            aria-label={clearAriaLabel || t("common.clear")}
           >
             <X className={currentSize.icon} />
           </button>
