@@ -1,0 +1,25 @@
+# FontFinder (폰트파인더)
+
+> Windows와 macOS를 위한 가장 가볍고 감각적인 통합 폰트 관리 프로그램
+
+## 프로젝트 개요
+- **이름**: FontFinder (폰트파인더)
+- **개발자/조직**: monodle
+- **라이선스**: GNU General Public License v3.0 (GPL-3.0, 100% 완전 무료 & 오픈소스)
+- **지원 운영체제**: macOS (Apple Silicon M1/M2/M3/M4), Windows (x64 64-bit)
+- **지원 포맷**: TrueType (.ttf), OpenType (.otf), TrueType Collection (.ttc)
+- **기술 스택**: Tauri v2, Rust 2021 Edition, React 19, TypeScript 5, SQLite
+- **웹사이트**: https://monodle.github.io/fontfinder/
+- **릴리즈 및 다운로드**: https://github.com/monodle/fontfinder/releases/tag/latest
+
+## 핵심 특징 및 기능
+1. **설치 없는 실시간 미리보기**
+   - 시스템 폰트 디렉터리에 설치하지 않고도 로컬 및 외장 드라이브의 .ttf, .otf, .ttc 파일을 즉시 불러와 원하는 문장으로 렌더링.
+2. **가변 폰트(Variable Font) 실시간 제어**
+   - Weight, Width, Slant 등 가변 폰트 축을 슬라이더로 조절하여 디테일한 글꼴 형태 확인.
+3. **폰트 겹쳐보기 & 정밀 비교**
+   - 둘 이상의 폰트를 투명도로 겹치거나 외곽선 대조를 통해 글리프 디테일 검수.
+4. **원클릭 임시 활성화**
+   - 그래픽 작업 중에만 폰트를 켜고 작업 후 해제하여 시스템 폰트 목록 과부하 방지.
+5. **초경량 네이티브 퍼포먼스**
+   - Tauri v2 + Rust 기반으로 Electron 대비 메모리 점유율을 대폭 절감하고 대규모 폰트 라이브러리 가상화 스크롤 지원.
