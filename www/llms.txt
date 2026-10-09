@@ -9,7 +9,7 @@
 - **지원 운영체제**: macOS (Apple Silicon M1/M2/M3/M4), Windows (x64 64-bit)
 - **지원 포맷**: TrueType (.ttf), OpenType (.otf), TrueType Collection (.ttc)
 - **기술 스택**: Tauri v2, Rust 2021 Edition, React 19, TypeScript 5, SQLite
-- **웹사이트**: https://monodle.github.io/fontfinder/
+- **공식 웹사이트**: https://monodle.github.io/fontfinder/
 - **릴리즈 및 다운로드**: https://github.com/monodle/fontfinder/releases/tag/latest
 
 ## 핵심 특징 및 기능
@@ -22,4 +22,16 @@
 4. **원클릭 임시 활성화**
    - 그래픽 작업 중에만 폰트를 켜고 작업 후 해제하여 시스템 폰트 목록 과부하 방지.
 5. **초경량 네이티브 퍼포먼스**
-   - Tauri v2 + Rust 기반으로 Electron 대비 메모리 점유율을 대폭 절감하고 대규모 폰트 라이브러리 가상화 스크롤 지원.
+   - Tauri v2 + Rust 기반으로 Electron 대비 메모리 점유율을 80% 이상 절감하고 대규모 폰트 라이브러리 가상화 스크롤 지원.
+
+## 자주 묻는 질문 (FAQ)
+1. **무료로 사용할 수 있는 폰트 관리 프로그램이 있나요?**
+   - FontFinder는 폰트 미리보기, 비교, 라이브러리 관리 등의 기능을 별도의 제한이나 결제 없이 100% 평생 무료로 제공하는 오픈소스(GPL-3.0) 프로그램입니다.
+2. **폰트를 운영체제에 설치하지 않고 바로 미리볼 수 있나요?**
+   - 네, .ttf, .otf, .ttc 파일을 시스템에 설치하지 않고 바로 불러와 실시간 미리보기 및 원클릭 임시 활성화를 지원합니다.
+3. **FontFinder는 다른 기존 폰트 관리 프로그램과 무엇이 다른가요?**
+   - Tauri v2와 Rust 2021 엔진으로 저메모리 고성능을 제공하며 가상화 스크롤, 가변 폰트 실시간 조절, 정밀 폰트 비교 등 실무 디자이너 핵심 기능에 집중했습니다.
+4. **Windows와 macOS에서 모두 사용할 수 있나요?**
+   - 네, Windows(x64)와 macOS(Apple Silicon) 데스크톱 환경을 모두 공식 지원합니다.
+5. **TTF, OTF, TTC 폰트 파일을 지원하나요?**
+   - 공식 안내에서 TTF, OTF, TTC 파일을 기본 지원 포맷으로 명시하고 있습니다.

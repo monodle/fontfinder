@@ -34,7 +34,9 @@
 }
 
 /* Base Reset & Box Sizing */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -62,7 +64,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-img, svg, picture, video {
+img,
+svg,
+picture,
+video {
   max-width: 100%;
   height: auto;
 }
@@ -255,9 +260,20 @@ img, svg, picture, video {
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  50% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.7; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
 }
 
 .hero-title {
@@ -271,6 +287,7 @@ img, svg, picture, video {
 
 .gradient-text {
   background: var(--accent-gradient);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
@@ -471,9 +488,17 @@ img, svg, picture, video {
   border-radius: 50%;
 }
 
-.dot-close { background-color: #ef4444; }
-.dot-minimize { background-color: #f59e0b; }
-.dot-maximize { background-color: #10b981; }
+.dot-close {
+  background-color: #ef4444;
+}
+
+.dot-minimize {
+  background-color: #f59e0b;
+}
+
+.dot-maximize {
+  background-color: #10b981;
+}
 
 .frame-title {
   position: absolute;
@@ -971,7 +996,9 @@ img, svg, picture, video {
 
 /* Responsive Media Queries (Mobile & Tablet) */
 @media (max-width: 768px) {
-  html, body {
+
+  html,
+  body {
     width: 100vw;
     max-width: 100vw;
     overflow-x: hidden;
@@ -1314,4 +1341,3 @@ img, svg, picture, video {
     transform: translateY(120px);
   }
 }
-

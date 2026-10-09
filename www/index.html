@@ -25,92 +25,122 @@
   <meta name="twitter:description" content="가장 가볍고 빠른 크로스플랫폼 폰트 관리 프로그램" />
   <meta name="twitter:image" content="./assets/preview.png" />
 
-  <!-- AEO & SEO Structured Data (JSON-LD) -->
+  <!-- Structured Data: SoftwareApplication (Google Rich Results & AEO) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@graph": [
+    "@type": "SoftwareApplication",
+    "@id": "https://monodle.github.io/fontfinder/#software",
+    "name": "FontFinder",
+    "alternateName": ["폰트파인더", "Font Finder"],
+    "applicationCategory": "DesignApplication",
+    "applicationSubCategory": "Font Management Software",
+    "operatingSystem": "macOS 11+, Windows 10, Windows 11",
+    "softwareVersion": "1.0.0",
+    "description": "Windows와 macOS를 위한 가장 가볍고 감각적인 통합 폰트 관리 프로그램. 시스템 부담 없이 폰트를 즉시 로딩하고 실시간 가변 폰트 제어 및 정밀 비교를 제공합니다.",
+    "url": "https://monodle.github.io/fontfinder/",
+    "downloadUrl": "https://github.com/monodle/fontfinder/releases/tag/latest",
+    "installUrl": "https://github.com/monodle/fontfinder/releases",
+    "image": "https://monodle.github.io/fontfinder/assets/preview.png",
+    "screenshot": "https://monodle.github.io/fontfinder/assets/preview.png",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "KRW",
+      "availability": "https://schema.org/InStock"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "monodle",
+      "url": "https://github.com/monodle"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "monodle",
+      "url": "https://github.com/monodle"
+    },
+    "inLanguage": [
+      "ko", "en", "ja", "zh-CN", "es", "fr", "de", "ru"
+    ],
+    "fileSize": "15MB",
+    "softwareRequirements": "macOS 11.0 (Big Sur) 이상 또는 Windows 10 / Windows 11 64-bit",
+    "memoryRequirements": "50MB RAM",
+    "featureList": [
+      "Rust & Tauri v2 기반 초경량 퍼포먼스 및 가상화 스크롤 탐색",
+      "시스템 폰트 폴더 설치 없는 .ttf, .otf, .ttc 즉각 미리보기",
+      "가변 폰트(Variable Font) 세부 축(Weight, Width, Slant 등) 실시간 제어",
+      "반투명 오버레이 폰트 겹쳐보기 및 1:1 정밀 시각 비교",
+      "작업 시 임시 폰트 원클릭 활성화 및 자동 해제",
+      "서재 및 즐겨찾기, 스마트 태그 분류 시스템",
+      "다크/글래스모피즘 포함 6종 테마 및 8개 글로벌 언어 지원"
+    ]
+  }
+  </script>
+
+  <!-- Structured Data: FAQPage (Google Rich Results & AEO) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": "https://monodle.github.io/fontfinder/#faq",
+    "mainEntity": [
       {
-        "@type": "SoftwareApplication",
-        "@id": "https://monodle.github.io/fontfinder/#software",
-        "name": "FontFinder",
-        "alternateName": "폰트파인더",
-        "applicationCategory": "DesignApplication",
-        "operatingSystem": "macOS, Windows",
-        "softwareVersion": "1.0.0",
-        "description": "Windows와 macOS를 위한 가장 가볍고 감각적인 통합 폰트 관리 프로그램. 시스템 부담 없이 폰트를 즉시 로딩하고 실시간 가변 폰트 제어 및 정밀 비교를 제공합니다.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "KRW"
-        },
-        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
-        "url": "https://monodle.github.io/fontfinder/",
-        "downloadUrl": "https://github.com/monodle/fontfinder/releases/tag/latest",
-        "featureList": [
-          "빠른 로딩과 즉각적인 적용",
-          "설치 없이 바로 미리보기 (.ttf, .otf, .ttc)",
-          "방대한 양의 폰트도 부드럽게 탐색",
-          "가변 폰트(Variable Font) 실시간 조절",
-          "폰트 겹쳐보기 및 정밀 비교",
-          "원클릭 폰트 활성화",
-          "자유로운 서재와 즐겨찾기",
-          "8개 언어 및 다채로운 테마 지원"
-        ]
+        "@type": "Question",
+        "name": "무료로 사용할 수 있는 폰트 관리 프로그램이 있나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "FontFinder(폰트파인더)는 폰트 미리보기, 비교, 라이브러리 관리 등의 기능을 별도의 제한이나 결제 없이 100% 평생 무료로 제공하는 오픈소스(GNU GPL-3.0) 데스크톱 폰트 관리 프로그램입니다. 개인 디자이너부터 크리에이터, 상업적 프로젝트까지 누구나 자유롭게 사용할 수 있습니다."
+        }
       },
       {
-        "@type": "FAQPage",
-        "@id": "https://monodle.github.io/fontfinder/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "FontFinder는 어떤 프로그램인가요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "FontFinder(폰트파인더)는 디자이너와 크리에이터를 위해 빠른 속도와 쾌적한 사용성을 중심으로 설계된 통합 폰트 관리 솔루션입니다. Tauri v2와 Rust 기반으로 제작되어 시스템 메모리 부담이 적고, 폰트를 시스템에 설치하지 않고도 즉시 미리보기, 가변 폰트 조절, 정밀 비교 등을 지원합니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "FontFinder는 무료로 사용할 수 있나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "네, FontFinder는 모든 기능을 별도의 제한이나 결제 없이 100% 평생 무료로 제공하며, GNU General Public License v3.0 (GPL-3.0)을 따르는 오픈소스 소프트웨어입니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "어떤 운영체제와 폰트 포맷을 지원하나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "운영체제는 macOS(Apple Silicon)와 Windows(x64)를 모두 지원하며, 폰트 포맷은 .ttf(TrueType), .otf(OpenType), .ttc(TrueType Collection)를 완벽하게 지원합니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "가변 폰트(Variable Font) 세부 조절이 가능한가요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "네, Variable Font의 두께(Weight), 너비(Width), 기울기(Slant) 등 다양한 축을 슬라이더로 조절하며 실시간으로 형태를 확인할 수 있습니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "시스템에 폰트를 설치하지 않아도 미리볼 수 있나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "네, 시스템에 폰트 파일을 직접 설치하지 않고도 로컬이나 외장 드라이브의 .ttf, .otf, .ttc 파일을 즉시 불러와 원하는 문장으로 미리볼 수 있습니다. 필요할 때는 원클릭 임시 활성화 기능을 통해 작업 시에만 켤 수도 있습니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "첫 실행 시 미확인 개발자 또는 SmartScreen 경고가 나타나면 어떻게 하나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "오픈소스 미서명 설치 파일의 정상적인 보안 안내입니다. macOS에서는 터미널에서 'xattr -cr /Applications/FontFinder.app'을 실행하시거나 시스템 설정 보안 탭에서 '확인 없이 열기'를 누르시면 되며, Windows에서는 SmartScreen 창에서 [추가 정보] 클릭 후 [실행]을 누르면 바로 사용하실 수 있습니다."
-            }
-          }
-        ]
+        "@type": "Question",
+        "name": "폰트를 운영체제에 설치하지 않고 바로 미리볼 수 있나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "네, 가능합니다. FontFinder는 로컬 및 외장 드라이브에 있는 .ttf, .otf, .ttc 폰트 파일을 시스템 폰트 폴더에 영구 설치하지 않고도 즉시 불러와 원하는 문장으로 실시간 렌더링할 수 있습니다. 또한 작업 시에만 폰트를 켜고 완료 후 자동/수동 해제하는 '원클릭 임시 활성화' 기능도 지원합니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "FontFinder는 다른 기존 폰트 관리 프로그램과 무엇이 다른가요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "FontFinder는 일반적인 무거운 웹 래퍼(Electron) 기반 도구와 달리, Rust 2021 엔진과 Tauri v2를 채택하여 메모리 점유율을 80% 이상 절감한 초경량 네이티브 퍼포먼스를 제공합니다. 수만 개의 폰트도 가상화 스크롤로 버벅임 없이 탐색하며, 설치 없는 즉각 미리보기, 가변 폰트(Variable Font) 세부 축 조절, 반투명 오버레이를 활용한 정밀 폰트 비교 등 실무 디자이너에게 꼭 필요한 핵심 기능에 집중했습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Windows와 macOS에서 모두 사용할 수 있나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "네, FontFinder는 Windows(x64 64-bit)와 macOS(Apple Silicon M1/M2/M3/M4) 데스크톱 환경을 모두 공식 지원합니다. 두 운영체제 모두에서 동일한 고성능과 세련된 다크/글래스 UI를 제공하며, 본인의 OS와 프로세서에 맞는 설치 파일을 선택해 바로 다운로드할 수 있습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "TTF, OTF, TTC 폰트 파일을 지원하나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "공식 안내에서 가장 널리 쓰이는 TrueType(.ttf), OpenType(.otf), 그리고 단일 파일 내 복수 패밀리가 포함된 TrueType Collection(.ttc) 포맷을 기본 지원 포맷으로 명시하고 있습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "가변 폰트(Variable Font) 세부 조절이 가능한가요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "네, Variable Font의 두께(Weight), 너비(Width), 기울기(Slant) 등 다양한 축을 슬라이더로 조절하며 실시간으로 형태를 확인할 수 있어, 디테일한 타이포그래피 작업에 최적화되어 있습니다."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "첫 실행 시 macOS 미확인 개발자 또는 Windows SmartScreen 경고가 나타나면 어떻게 하나요?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "오픈소스 미서명 배포본 특성상 나타나는 정상적인 OS 보안 안내입니다. macOS에서는 터미널을 열고 'xattr -cr /Applications/FontFinder.app'을 실행하시거나 시스템 설정 보안 탭에서 '확인 없이 열기'를 누르시면 되며, Windows에서는 SmartScreen 창에서 [추가 정보] 클릭 후 [실행]을 누르면 즉시 정상 실행됩니다."
+        }
       }
     ]
   }
@@ -545,42 +575,60 @@
         <div class="faq-accordion">
           <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question" open>
             <summary class="faq-question" itemprop="name">
-              <span>FontFinder(폰트파인더)는 어떤 프로그램인가요?</span>
+              <span>무료로 사용할 수 있는 폰트 관리 프로그램이 있나요?</span>
               <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
             </summary>
             <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
               <p itemprop="text">
-                FontFinder는 디자이너와 크리에이터를 위해 빠른 속도와 쾌적한 사용성을 중심으로 설계된 통합 폰트 관리 솔루션입니다.
-                Tauri v2와 Rust 기반으로 제작되어 일반 웹 래퍼 대비 메모리 점유율을 80% 이상 절감하며,
-                시스템에 폰트를 설치하지 않고도 즉시 미리보기, 가변 폰트(Variable Font) 실시간 조절, 정밀 비교, 원클릭 임시 활성화 등의 기능을 제공합니다.
+                <strong>FontFinder(폰트파인더)</strong>는 폰트 미리보기, 비교, 라이브러리 관리 등의 핵심 기능을 별도의 제한이나 결제 없이 <strong>100% 평생 무료</strong>로 제공하는 오픈소스(GNU GPL-3.0) 데스크톱 폰트 관리 프로그램입니다. 개인 디자이너부터 크리에이터, 상업적 프로젝트까지 누구나 자유롭게 활용할 수 있습니다.
               </p>
             </div>
           </details>
 
           <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
             <summary class="faq-question" itemprop="name">
-              <span>FontFinder는 무료인가요? 상업적 프로젝트에도 사용할 수 있나요?</span>
+              <span>폰트를 운영체제에 설치하지 않고 바로 미리볼 수 있나요?</span>
               <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
             </summary>
             <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
               <p itemprop="text">
-                네, FontFinder는 모든 기능을 별도의 제한이나 결제 없이 100% 평생 무료로 제공합니다.
-                GNU General Public License v3.0 (GPL-3.0)을 따르는 오픈소스 소프트웨어로,
-                디자이너, 크리에이터, 폰트 제작자 누구나 제한 없이 자유롭게 업무에 활용하실 수 있습니다.
+                네, 가능합니다. FontFinder는 로컬 드라이브나 외장 HDD/SSD에 있는 <code>.ttf</code>, <code>.otf</code>, <code>.ttc</code> 폰트 파일을 시스템 폰트 폴더에 영구 설치하지 않고도 즉시 불러와 원하는 문장으로 실시간 렌더링할 수 있습니다. 또한 작업 시에만 폰트를 켜고 완료 후 자동/수동 해제하는 <strong>'원클릭 임시 활성화'</strong> 기능도 함께 지원합니다.
               </p>
             </div>
           </details>
 
           <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
             <summary class="faq-question" itemprop="name">
-              <span>어떤 운영체제와 폰트 포맷을 지원하나요?</span>
+              <span>FontFinder는 다른 기존 폰트 관리 프로그램과 무엇이 다른가요?</span>
               <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
             </summary>
             <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
               <p itemprop="text">
-                운영체제는 macOS(Apple Silicon M1/M2/M3/M4)와 Windows(x64 64-bit)를 모두 공식 지원합니다.
-                지원하는 폰트 확장자는 <code>.ttf</code>(TrueType Font), <code>.otf</code>(OpenType Font),
-                <code>.ttc</code>(TrueType Collection 단일 파일 내 복수 패밀리)입니다.
+                FontFinder는 일반적인 무거운 웹 래퍼(Electron) 기반 도구와 달리, <strong>Rust 2021 엔진과 Tauri v2</strong>를 채택하여 메모리 점유율을 80% 이상 절감한 초경량 네이티브 퍼포먼스를 제공합니다. 수만 개의 폰트도 가상화 스크롤로 버벅임 없이 탐색하며, 설치 없는 즉각 미리보기, 가변 폰트(Variable Font) 세부 축 조절, 반투명 오버레이를 활용한 정밀 폰트 비교 등 실무 디자이너에게 꼭 필요한 핵심 기능에 집중했습니다.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+            <summary class="faq-question" itemprop="name">
+              <span>Windows와 macOS에서 모두 사용할 수 있나요?</span>
+              <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
+            </summary>
+            <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+              <p itemprop="text">
+                네, FontFinder는 Windows(x64 64-bit)와 macOS(Apple Silicon M1/M2/M3/M4) 데스크톱 환경을 모두 공식 지원합니다. 두 운영체제 모두에서 동일한 고성능과 세련된 다크/글래스 UI를 제공하며, 본인의 OS와 프로세서에 맞는 설치 파일을 선택해 바로 다운로드할 수 있습니다.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+            <summary class="faq-question" itemprop="name">
+              <span>TTF, OTF, TTC 폰트 파일을 지원하나요?</span>
+              <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
+            </summary>
+            <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+              <p itemprop="text">
+                공식 안내에서 가장 널리 쓰이는 TrueType(<code>.ttf</code>), OpenType(<code>.otf</code>), 그리고 단일 파일 내 복수 패밀리가 포함된 TrueType Collection(<code>.ttc</code>) 포맷을 기본 지원 포맷으로 명시하고 있습니다.
               </p>
             </div>
           </details>
@@ -592,21 +640,7 @@
             </summary>
             <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
               <p itemprop="text">
-                네, Variable Font가 제공하는 굵기(Weight), 너비(Width), 기울기(Slant) 등 다양한 축을 슬라이더로 조절하며 원하는 형태를 실시간으로 확인할 수 있습니다.
-                미세한 디자인 조정 작업에 최적화되어 있습니다.
-              </p>
-            </div>
-          </details>
-
-          <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-            <summary class="faq-question" itemprop="name">
-              <span>시스템에 폰트를 설치하지 않아도 미리보고 사용할 수 있나요?</span>
-              <span class="faq-chevron" aria-hidden="true">&#x25BC;</span>
-            </summary>
-            <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-              <p itemprop="text">
-                네, 시스템 폰트 폴더에 폰트를 직접 등록하지 않고도 로컬 드라이브나 외장 HDD/SSD의 폰트 파일을 바로 불러와 원하는 문장으로 실시간 렌더링할 수 있습니다.
-                또한 원클릭 임시 활성화를 통해 포토샵, 피그마 등의 그래픽 작업 중에만 폰트를 켜고 작업 완료 후 깔끔하게 해제할 수 있어 시스템 성능 저하를 방지합니다.
+                네, Variable Font의 두께(Weight), 너비(Width), 기울기(Slant) 등 다양한 축을 슬라이더로 조절하며 실시간으로 형태를 확인할 수 있어, 디테일한 타이포그래피 작업에 최적화되어 있습니다.
               </p>
             </div>
           </details>
@@ -618,10 +652,7 @@
             </summary>
             <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
               <p itemprop="text">
-                오픈소스 미서명 바이너리 배포 특성상 운영체제에서 나타나는 정상적인 보안 안내입니다.
-                macOS에서는 터미널을 열고 <code>xattr -cr /Applications/FontFinder.app</code>을 실행하시거나 시스템 설정 &gt; 보안 탭에서 '확인 없이
-                열기'를 클릭하시면 됩니다.
-                Windows에서는 파란색 SmartScreen 창의 [추가 정보] 링크를 누른 후 하단의 [실행] 버튼을 클릭하시면 즉시 정상 구동됩니다.
+                오픈소스 미서명 배포본 특성상 나타나는 정상적인 OS 보안 안내입니다. macOS에서는 터미널을 열고 <code>xattr -cr /Applications/FontFinder.app</code>을 실행하시거나 시스템 설정 &gt; 보안 탭에서 '확인 없이 열기'를 클릭하시면 되며, Windows에서는 SmartScreen 창에서 [추가 정보] 클릭 후 [실행]을 누르면 즉시 정상 구동됩니다.
               </p>
             </div>
           </details>
