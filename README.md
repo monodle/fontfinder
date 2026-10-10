@@ -28,7 +28,7 @@
 [![Download for Windows](https://img.shields.io/badge/Windows%20(x64)-Download%20.msi%20%2F%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_x64-setup.exe)
 
 <p align="center">
-  <sub>* 위 버튼 클릭 시 최신 릴리즈 다운로드 링크로 연결됩니다.</sub>
+  <sub>* 위 버튼 클릭 시 최신 릴리즈 다운로드 링크로 연결됩니다. </sub>
 </p>
 
 </div>
