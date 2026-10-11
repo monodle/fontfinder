@@ -131,7 +131,7 @@ function syncReadme(version, releaseDate) {
       `$1${version}$2${releaseDate.dash}$3`
     );
 
-    // 6. 다운로드 URL (download/latest/Font.Finder_${version}_...)
+    // 6. 다운로드 URL은 latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
     content = content.replace(
       /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
       `$1${version}$2`
@@ -202,7 +202,7 @@ function syncWebIndex(version, releaseDate) {
       `$1${version}$2`
     );
 
-    // 6. 다운로드 링크 (download/latest/Font.Finder_${version}_...)
+    // 6. 다운로드 링크: latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
     content = content.replace(
       /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
       `$1${version}$2`
@@ -212,7 +212,7 @@ function syncWebIndex(version, releaseDate) {
       `$1${version}$2`
     );
 
-    // 7. 가이드 본문 코드 블록 내 파일명
+    // 7. 가이드 본문 코드 블록 내 파일명 동기화
     content = content.replace(
       /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg<\/code>)/g,
       `$1${version}$2`
