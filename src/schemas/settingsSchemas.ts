@@ -212,6 +212,7 @@ export const createAppSettingsSchema = (fallback: CustomAppSettings) =>
       fontSortSettings: createFontSortSettingsSchema(fallback.fontSortSettings),
       language: createLanguageSchema(fallback.language),
       theme: createThemeSchema(fallback.theme),
+      enableCuratedFonts: z.coerce.boolean().catch(fallback.enableCuratedFonts ?? true),
       enableGoogleFonts: z.coerce.boolean().catch(fallback.enableGoogleFonts ?? false),
       enableFontsource: z.coerce.boolean().catch(fallback.enableFontsource ?? false),
     })

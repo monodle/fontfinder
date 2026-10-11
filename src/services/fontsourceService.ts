@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { FontsourceItem } from "../types/fontsource";
 import { networkManager } from "./networkManager";
+import { openExternalUrl, buildGoogleSearchUrl } from "../utils/url";
 
 const CACHE_KEY = "fontfinder_fontsource_metadata_v1";
 
@@ -78,25 +79,23 @@ class FontsourceService {
   }
 
   /**
-   * Fontsource 공식 상세 페이지 URL 생성
+   * Fontsource 공식 상세 페이지 URL 생성 (비어있으면 구글 검색 URL로 폴백)
    */
-  public getSpecimenUrl(id: string): string {
-    return `https://fontsource.org/fonts/${encodeURIComponent(id)}`;
+  public getSpecimenUrl(id: string, familyName?: string): string {
+    const cleanId = id ? id.trim() : "";
+    if (!cleanId) {
+      const query = familyName ? `${familyName.trim()} fontsource` : "Fontsource";
+      return buildGoogleSearchUrl(query);
+    }
+    return `https://fontsource.org/fonts/${encodeURIComponent(cleanId)}`;
   }
 
   /**
    * 기본 브라우저에서 Fontsource 상세 페이지 열기
    */
-  public async openSpecimenPage(id: string): Promise<void> {
-    const url = this.getSpecimenUrl(id);
-    try {
-      await invoke("open_external_url", { url });
-    } catch {
-      // Fallback
-      if (typeof window !== "undefined") {
-        window.open(url, "_blank");
-      }
-    }
+  public async openSpecimenPage(id: string, familyName?: string): Promise<void> {
+    const url = this.getSpecimenUrl(id, familyName);
+    await openExternalUrl(url);
   }
 
   /**

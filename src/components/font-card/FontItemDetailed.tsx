@@ -29,7 +29,10 @@ export function FontItemDetailed({
 }: FontCardRenderProps) {
   const { t, i18n } = useTranslation();
   const displayName = getFontFamilyName(font, i18n.language);
-  const isOnlineProviderFont = font.file_path.startsWith("google:") || font.file_path.startsWith("fontsource:");
+  const isOnlineProviderFont =
+    font.file_path.startsWith("google:") ||
+    font.file_path.startsWith("fontsource:") ||
+    font.file_path.startsWith("curated:");
 
   return (
     <div

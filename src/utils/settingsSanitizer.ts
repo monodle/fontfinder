@@ -67,6 +67,7 @@ function createDefaultSettings(lang?: SupportedLanguageCode, theme?: AppTheme): 
     fontSortSettings: { ...DEFAULT_SORT_SETTINGS, customPriority: [...DEFAULT_SORT_BLOCK_ORDER] },
     language: resolvedLang,
     theme: resolvedTheme,
+    enableCuratedFonts: true,
     enableGoogleFonts: false,
     enableFontsource: false,
   };

@@ -24,6 +24,7 @@ export interface CustomAppSettings {
   fontSortSettings?: FontSortSettings;
   language: SupportedLanguageCode;
   theme: AppTheme;
+  enableCuratedFonts?: boolean;
   enableGoogleFonts?: boolean;
   enableFontsource?: boolean;
 }

@@ -38,6 +38,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(
     initialSettings.theme || "glass"
   );
+  const [enableCuratedFonts, setEnableCuratedFonts] = useState<boolean>(() =>
+    initialSettings.enableCuratedFonts !== false
+  );
   const [enableGoogleFonts, setEnableGoogleFonts] = useState<boolean>(() =>
     Boolean(initialSettings.enableGoogleFonts)
   );
@@ -66,6 +69,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         ...initialSettings,
         language: selectedLanguage,
         theme: selectedTheme,
+        enableCuratedFonts,
         enableGoogleFonts,
         enableFontsource,
         defaultPreviewText: getDefaultPreviewText(selectedLanguage),
@@ -172,7 +176,42 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* 추천 무료 폰트 (엄선) 카드 */}
+            <div
+              onClick={() => setEnableCuratedFonts((prev) => !prev)}
+              className={cn(
+                "flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                enableCuratedFonts
+                  ? "border-theme-accent bg-theme-active/30 text-theme-text shadow-2xs ring-1 ring-theme-accent/40"
+                  : "border-theme-border bg-theme-card text-theme-text-secondary hover:border-theme-border-card-hover"
+              )}
+            >
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 shrink-0 mt-0.5">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-semibold text-xs text-theme-text">
+                    {t("onboarding.curated_fonts_label", "추천 무료 폰트")}
+                  </span>
+                  <div
+                    className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                      enableCuratedFonts
+                        ? "bg-theme-accent border-theme-accent text-theme-accent-text"
+                        : "border-theme-border bg-theme-surface"
+                    )}
+                  >
+                    {enableCuratedFonts && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                </div>
+                <p className="text-[11px] text-theme-text-muted mt-1 line-clamp-2 leading-relaxed">
+                  {t("onboarding.curated_fonts_desc", "엄선된 고품질 무료 한글 폰트")}
+                </p>
+              </div>
+            </div>
+
             {/* Google Fonts 카드 */}
             <div
               onClick={() => setEnableGoogleFonts((prev) => !prev)}

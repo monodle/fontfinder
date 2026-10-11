@@ -23,6 +23,7 @@ const LIBRARY_CATEGORIES = [
   "activated",
   "favorites",
   "duplicates",
+  "curated_fonts",
   "google_fonts",
   "fontsource",
 ] as const;

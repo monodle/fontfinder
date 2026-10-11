@@ -73,6 +73,10 @@ interface SidebarProps {
   onUpdateSetParent?: (setId: number, parentId: number | null) => void;
   onUpdateSetColor?: (setId: number, color: string) => void;
   onUpdateFolderColor?: (folderId: number, color: string) => void;
+  curatedFontsCount?: number;
+  isCuratedFontsOnline?: boolean;
+  isCuratedFontsLoading?: boolean;
+  enableCuratedFonts?: boolean;
   googleFontsCount?: number;
   isGoogleFontsOnline?: boolean;
   isGoogleFontsLoading?: boolean;
@@ -92,6 +96,10 @@ export function Sidebar({
   sets,
   isCollapsed = false,
   isLoading = false,
+  curatedFontsCount = 0,
+  isCuratedFontsOnline = true,
+  isCuratedFontsLoading = false,
+  enableCuratedFonts = true,
   googleFontsCount = 0,
   isGoogleFontsOnline = true,
   isGoogleFontsLoading = false,
@@ -532,6 +540,66 @@ export function Sidebar({
                 </button>
               );
             })}
+
+            {/* 추천 무료 폰트 메뉴 (중복 폰트 바로 아래) */}
+            {enableCuratedFonts && (() => {
+              const isCuratedActive = activeCategory === "curated_fonts";
+              const titleText = !isCuratedFontsOnline
+                ? t("sidebar.curated_fonts_offline", "인터넷 연결이 필요합니다")
+                : `${t("sidebar.category_curated_fonts", "추천 무료 폰트")} (${curatedFontsCount.toLocaleString()})`;
+
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isCuratedFontsOnline) {
+                      onSelectCategory("curated_fonts");
+                    }
+                  }}
+                  disabled={!isCuratedFontsOnline}
+                  title={titleText}
+                  className={`w-full flex items-center rounded-lg font-medium transition-colors ${
+                    isCollapsed
+                      ? "w-9 h-9 mx-auto justify-center px-0 py-0"
+                      : "justify-between px-2.5 py-2"
+                  } ${
+                    !isCuratedFontsOnline
+                      ? "opacity-40 cursor-not-allowed text-theme-text-muted hover:bg-transparent"
+                      : isCuratedActive
+                      ? "bg-theme-active text-theme-accent shadow-2xs font-semibold cursor-pointer"
+                      : "text-theme-text-secondary hover:bg-theme-hover hover:text-theme-text cursor-pointer"
+                  }`}
+                >
+                  <span
+                    className={`flex items-center gap-2 ${
+                      isCollapsed ? "justify-center" : ""
+                    }`}
+                  >
+                    {!isCuratedFontsOnline ? (
+                      <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    )}
+                    {!isCollapsed && (
+                      <span className="truncate">
+                        {t("sidebar.category_curated_fonts", "추천 무료 폰트")}
+                      </span>
+                    )}
+                  </span>
+                  {!isCollapsed && (
+                    <span className="text-[11px] font-mono opacity-80">
+                      {!isCuratedFontsOnline
+                        ? "오프라인"
+                        : isCuratedFontsLoading && curatedFontsCount === 0
+                        ? "..."
+                        : curatedFontsCount > 0
+                        ? curatedFontsCount.toLocaleString()
+                        : "-"}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* Google Fonts 메뉴 (중복 폰트 바로 아래) */}
             {enableGoogleFonts && (() => {

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { GoogleFontFamily, GoogleFontsMetadataResponse } from "../types/googleFont";
 import { networkManager } from "./networkManager";
+import { openExternalUrl, buildGoogleSearchUrl } from "../utils/url";
 
 const CACHE_KEY = "fontfinder_google_fonts_metadata_v1";
 
@@ -79,10 +80,14 @@ class GoogleFontService {
   }
 
   /**
-   * Google Fonts 공식 상세/다운로드 페이지 URL 생성
+   * Google Fonts 공식 상세/다운로드 페이지 URL 생성 (비어있으면 구글 검색 URL로 폴백)
    */
   public getSpecimenUrl(family: string): string {
-    const slug = encodeURIComponent(family.replace(/ /g, "+"));
+    const cleanFamily = family ? family.trim() : "";
+    if (!cleanFamily) {
+      return buildGoogleSearchUrl("Google Fonts");
+    }
+    const slug = encodeURIComponent(cleanFamily.replace(/ /g, "+"));
     return `https://fonts.google.com/specimen/${slug}`;
   }
 
@@ -91,14 +96,7 @@ class GoogleFontService {
    */
   public async openSpecimenPage(family: string): Promise<void> {
     const url = this.getSpecimenUrl(family);
-    try {
-      await invoke("open_external_url", { url });
-    } catch {
-      // Fallback
-      if (typeof window !== "undefined") {
-        window.open(url, "_blank");
-      }
-    }
+    await openExternalUrl(url);
   }
 
   /**

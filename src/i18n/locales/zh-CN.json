@@ -22,7 +22,8 @@
     "clear": "清除",
     "copy": "复制",
     "close_esc": "关闭 (Esc)",
-    "copy_success": "已复制到剪贴板。"
+    "copy_success": "已复制到剪贴板。",
+    "external_license_disclaimer": "This service only provides links to official distribution sources. License terms may change at any time according to the publisher's policy, so please be sure to check the latest license terms on the official page before downloading."
   },
   "confirm": {
     "uninstall_font_title": "从系统卸载字体",

@@ -58,6 +58,9 @@ export const appConfig = {
   performance: {
     virtualScrollOverscan: parsedEnv.VITE_VIRTUAL_SCROLL_OVERSCAN,
   },
+  curatedFonts: {
+    url: parsedEnv.VITE_CURATED_FONTS_URL,
+  },
   ui: {
     toastDurationMs: parsedEnv.VITE_TOAST_DURATION_MS,
   },

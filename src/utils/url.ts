@@ -6,7 +6,7 @@ import { webUrlSchema } from "../schemas";
  * @param url 검증할 URL 문자열
  * @returns 정규화된 URL 문자열 또는 검증 실패 시 null
  */
-function validateWebUrl(url: unknown): string | null {
+export function validateWebUrl(url: unknown): string | null {
   const result = webUrlSchema.safeParse(url);
   if (!result.success) {
     if (typeof url === "string" && url.trim().length > 0) {
@@ -15,6 +15,15 @@ function validateWebUrl(url: unknown): string | null {
     return null;
   }
   return result.data;
+}
+
+/**
+ * 구글 검색 URL을 생성합니다.
+ * @param query 검색할 질의어
+ */
+export function buildGoogleSearchUrl(query: string): string {
+  const cleanQuery = query.trim();
+  return `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`;
 }
 
 /**

@@ -22,7 +22,8 @@
     "clear": "지우기",
     "copy": "복사",
     "close_esc": "닫기 (Esc)",
-    "copy_success": "클립보드에 복사되었습니다."
+    "copy_success": "클립보드에 복사되었습니다.",
+    "external_license_disclaimer": "본 서비스는 공식 배포처 이동 링크만 제공합니다. 라이선스 범위는 제작사 정책에 따라 수시로 변경될 수 있으므로, 다운로드 전 공식 페이지의 최신 라이선스 약관을 반드시 확인하세요."
   },
   "dialog": {
     "cancel": "취소",
@@ -66,6 +67,10 @@
     "category_activated": "임시 활성화",
     "category_favorites": "즐겨찾는 폰트",
     "category_duplicates": "중복 폰트",
+    "category_curated_fonts": "추천 무료 폰트",
+    "curated_fonts_desc": "폰트파인더가 엄선한 무료 폰트 카탈로그",
+    "curated_fonts_offline": "인터넷 연결이 필요합니다",
+    "curated_fonts_view_specimen": "공식 사이트에서 보기",
     "category_google_fonts": "Google Fonts",
     "google_fonts_offline": "인터넷 연결이 필요합니다",
     "google_fonts_view_specimen": "Google Fonts에서 보기",
@@ -562,6 +567,8 @@
     "variable_weight_label": "기본 두께 (Default Weight)",
     "online_providers_title": "외부 폰트 서비스 (Online Providers)",
     "online_providers_desc": "외부 온라인 웹폰트 카탈로그를 사이드바 메뉴에 활성화하고 탐색 기능을 사용합니다.",
+    "enable_curated_fonts": "추천 무료 폰트 (엄선) 활성화",
+    "enable_curated_fonts_desc": "사이드바에 엄선된 무료 한글/영문 폰트 카탈로그를 표시하고 실시간 프리뷰를 탐색합니다.",
     "enable_google_fonts": "Google Fonts 활성화",
     "enable_google_fonts_desc": "사이드바에 Google Fonts 메뉴를 표시하고 1,700개 이상의 오픈소스 폰트를 탐색합니다.",
     "enable_fontsource": "Font Source 활성화",
@@ -771,6 +778,8 @@
     "theme_label": "인터페이스 테마",
     "online_providers_label": "온라인 폰트 라이브러리 연동",
     "online_providers_desc": "사이드바에 외부 웹폰트 카탈로그 메뉴를 표시하고 실시간 프리뷰를 탐색합니다.",
+    "curated_fonts_label": "추천 무료 폰트 (엄선)",
+    "curated_fonts_desc": "엄선된 고품질 무료 한글/영문 폰트 카탈로그 및 프리뷰",
     "google_fonts_label": "Google Fonts",
     "google_fonts_desc": "1,700개 이상의 Google 오픈소스 폰트 카탈로그 및 프리뷰",
     "fontsource_label": "Font Source",

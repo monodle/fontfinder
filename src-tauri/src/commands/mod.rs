@@ -5,6 +5,7 @@ use crate::watcher::FontFolderWatcher;
 
 pub mod activation;
 pub mod backup;
+pub mod curated_font;
 pub mod favorites;
 pub mod folders;
 pub mod font;
@@ -24,6 +25,7 @@ pub struct AppState {
 // 기존 lib.rs 및 외부 모듈과의 100% 하위 호환성을 위한 일괄 re-export
 pub use activation::*;
 pub use backup::*;
+pub use curated_font::*;
 pub use favorites::*;
 pub use folders::*;
 pub use font::*;

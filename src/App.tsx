@@ -25,13 +25,16 @@ import { useAppHotkeys } from "./hooks/useAppHotkeys";
 import { useAppModals } from "./hooks/useAppModals";
 import { useGoogleFonts } from "./hooks/useGoogleFonts";
 import { useFontsource } from "./hooks/useFontsource";
+import { useCuratedFonts } from "./hooks/useCuratedFonts";
 
 import { Sidebar } from "./components/layout/Sidebar";
 import { HeaderToolbar } from "./components/layout/HeaderToolbar";
 import { LocationBar } from "./components/layout/LocationBar";
+import { ExternalLicenseNotice } from "./components/layout/ExternalLicenseNotice";
 import { VirtualFontList } from "./components/font-list/VirtualFontList";
 import { GoogleFontFilterBar } from "./components/google-fonts/GoogleFontFilterBar";
 import { FontsourceFilterBar } from "./components/fontsource/FontsourceFilterBar";
+import { CuratedFontFilterBar } from "./components/curated/CuratedFontFilterBar";
 import { ContextMenu } from "./components/font-list/ContextMenu";
 import { EmptyState } from "./components/common";
 import { AppModalsContainer } from "./components/modals/AppModalsContainer";
@@ -105,8 +108,17 @@ export default function App() {
     onRequestRemoveFromSet: modals.handleRequestRemoveFromSet,
   });
 
+  const isCuratedFonts = filterAndSort.activeCategory === "curated_fonts";
   const isGoogleFonts = filterAndSort.activeCategory === "google_fonts";
   const isFontsource = filterAndSort.activeCategory === "fontsource";
+
+  // 8.5. 추천 무료 폰트 (팀 엄선 무료 폰트) 공급자 훅
+  const curatedFonts = useCuratedFonts({
+    enabled: Boolean(appSettings.enableCuratedFonts !== false),
+    externalSearchQuery: isCuratedFonts ? filterAndSort.searchQuery : "",
+    sortSettings,
+    installedFonts: core.fonts,
+  });
 
   // 9. Google Fonts 공급자 훅 (글로벌 검색어, 정렬 설정, 로컬 설치 폰트 실시간 연동)
   const googleFonts = useGoogleFonts({
@@ -126,6 +138,12 @@ export default function App() {
 
   // 외부 폰트 제공자 비활성화 시 안전 카테고리 폴백
   useEffect(() => {
+    if (isCuratedFonts && appSettings.enableCuratedFonts === false) {
+      filterAndSort.setActiveCategory(appSettings.defaultCategory || "all");
+    }
+  }, [isCuratedFonts, appSettings.enableCuratedFonts, appSettings.defaultCategory, filterAndSort]);
+
+  useEffect(() => {
     if (isGoogleFonts && !appSettings.enableGoogleFonts) {
       filterAndSort.setActiveCategory(appSettings.defaultCategory || "all");
     }
@@ -136,6 +154,13 @@ export default function App() {
       filterAndSort.setActiveCategory(appSettings.defaultCategory || "all");
     }
   }, [isFontsource, appSettings.enableFontsource, appSettings.defaultCategory, filterAndSort]);
+
+  // 선택된 추천 무료 폰트 메타데이터 목록
+  const selectedCuratedFonts = useMemo(() => {
+    if (!isCuratedFonts) return [];
+    const set = selection.selectedFontIds;
+    return curatedFonts.filteredMetadataFonts.filter((f) => set.has(f.id));
+  }, [isCuratedFonts, selection.selectedFontIds, curatedFonts.filteredMetadataFonts]);
 
   // 선택된 구글 폰트 메타데이터 목록 (드래그/클릭 다중 선택과 실시간 동기화)
   const selectedGoogleFonts = useMemo(() => {
@@ -394,6 +419,10 @@ export default function App() {
         onUpdateSetParent={setLibrary.handleUpdateSetParent}
         onUpdateSetColor={setLibrary.handleUpdateSetColor}
         onUpdateFolderColor={folderLibrary.handleUpdateFolderColor}
+        curatedFontsCount={curatedFonts.totalCount}
+        isCuratedFontsOnline={curatedFonts.isOnline}
+        isCuratedFontsLoading={curatedFonts.isLoading}
+        enableCuratedFonts={Boolean(appSettings.enableCuratedFonts !== false)}
         googleFontsCount={googleFonts.totalCount}
         isGoogleFontsOnline={googleFonts.isOnline}
         isGoogleFontsLoading={googleFonts.isLoading}
@@ -405,7 +434,7 @@ export default function App() {
       />
 
       {/* 2. Main Content Canvas */}
-      <main className="flex-1 flex flex-col min-w-0 bg-theme-app">
+      <main className="flex-1 flex flex-col min-w-0 bg-theme-app relative">
         <HeaderToolbar
           searchInputRef={searchInputRef}
           searchQuery={filterAndSort.searchQuery}
@@ -429,6 +458,8 @@ export default function App() {
           selectedGoogleFonts={selectedGoogleFonts}
           isFontsourceActive={isFontsource}
           selectedFontsourceFonts={selectedFontsourceFonts}
+          isCuratedFontsActive={isCuratedFonts}
+          selectedCuratedFonts={selectedCuratedFonts}
         />
 
         <LocationBar
@@ -436,11 +467,13 @@ export default function App() {
           customFolders={folderLibrary.customFolders}
           sets={setLibrary.sets}
           fontsCount={
-            isGoogleFonts
-              ? googleFonts.filteredMetadataFonts.length
-              : isFontsource
-              ? fontsource.filteredMetadataFonts.length
-              : filterAndSort.filteredFonts.length
+            isCuratedFonts
+              ? curatedFonts.filteredMetadataFonts.length
+              : isGoogleFonts
+                ? googleFonts.filteredMetadataFonts.length
+                : isFontsource
+                  ? fontsource.filteredMetadataFonts.length
+                  : filterAndSort.filteredFonts.length
           }
           selectedCount={selection.selectedFontIds.size}
           detailMode={detailMode}
@@ -450,6 +483,20 @@ export default function App() {
           onOpenFolder={handleOpenFolder}
           onRelinkFolder={actions.handleRelinkFolder}
         />
+
+        {/* 2.5. 추천 무료 폰트 전용 서브 필터 툴바 */}
+        {isCuratedFonts && (
+          <CuratedFontFilterBar
+            selectedCategory={curatedFonts.selectedCategory}
+            onSelectCategory={curatedFonts.setSelectedCategory}
+            onlyVariable={curatedFonts.onlyVariable}
+            onToggleVariable={() => curatedFonts.setOnlyVariable((prev) => !prev)}
+            onlyInstalled={curatedFonts.onlyInstalled}
+            onToggleInstalled={() => curatedFonts.setOnlyInstalled((prev) => !prev)}
+            filteredCount={curatedFonts.filteredMetadataFonts.length}
+            totalCount={curatedFonts.totalCount}
+          />
+        )}
 
         {/* 3. Google Fonts 전용 서브 필터 툴바 */}
         {isGoogleFonts && (
@@ -484,7 +531,70 @@ export default function App() {
         )}
 
         <div className="flex-1 min-w-0 overflow-hidden">
-          {isGoogleFonts ? (
+          {isCuratedFonts ? (
+            !curatedFonts.isOnline ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <WifiOff className="w-10 h-10 text-amber-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  {t("sidebar.curated_fonts_offline", "인터넷 연결이 필요합니다")}
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  네트워크가 연결되지 않았거나 외부 인터넷에 접속할 수 없습니다. 연결 상태를 확인해주세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={curatedFonts.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : curatedFonts.error && curatedFonts.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <AlertTriangle className="w-10 h-10 text-rose-500 mb-3" />
+                <h3 className="text-base font-semibold text-theme-text mb-1">
+                  추천 무료 폰트를 불러올 수 없습니다
+                </h3>
+                <p className="text-xs text-theme-text-muted max-w-sm mb-4">
+                  {curatedFonts.error || "카탈로그를 가져오는 중 오류가 발생했습니다."}
+                </p>
+                <button
+                  type="button"
+                  onClick={curatedFonts.reload}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-theme-accent text-white text-xs font-medium hover:bg-theme-accent/90 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>다시 시도</span>
+                </button>
+              </div>
+            ) : curatedFonts.isLoading && curatedFonts.fonts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-theme-text-muted">
+                <RefreshCw className="w-8 h-8 animate-spin text-theme-accent mb-3" />
+                <p className="text-sm font-semibold text-theme-text mb-1">추천 무료 폰트 카탈로그 로드 중...</p>
+                <p className="text-xs text-theme-text-muted">엄선된 무료 한글 폰트 메타데이터를 불러오고 있습니다.</p>
+              </div>
+            ) : curatedFonts.filteredMetadataFonts.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <EmptyState
+                  icon={<Sliders className="w-6 h-6" />}
+                  title={t("empty.no_fonts_title")}
+                  description={t("empty.no_fonts_desc")}
+                />
+              </div>
+            ) : (
+              <VirtualFontList
+                fonts={curatedFonts.filteredMetadataFonts}
+                previewSettings={previewSettings}
+                viewMode={viewMode}
+                detailMode={detailMode}
+                gridColumns={gridColumns}
+                selectedFontIds={selection.selectedFontIds}
+                onSelectFont={selection.handleSelectFont}
+                onSelectionChange={selection.handleSelectionChange}
+              />
+            )
+          ) : isGoogleFonts ? (
             !googleFonts.isOnline ? (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                 <WifiOff className="w-10 h-10 text-amber-500 mb-3" />
@@ -675,6 +785,9 @@ export default function App() {
             />
           )}
         </div>
+
+        {/* 외부 폰트 라이브러리 라이선스 안내 배너 (5초 후 자동 숨김) */}
+        <ExternalLicenseNotice activeCategory={filterAndSort.activeCategory} />
       </main>
 
       {/* 3. Custom Context Menu */}

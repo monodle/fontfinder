@@ -17,6 +17,7 @@ import {
   Info,
   ArrowDownAZ,
   Package,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { ModalDialog, ConfirmModal, SettingSection, SettingRow, Tabs, TabItem } from "../common";
@@ -322,6 +323,49 @@ export function SettingsModal({
                   subtitle={t("settings.online_providers_desc")}
                 >
                   <div className="space-y-2">
+                    {/* 추천 무료 폰트 (엄선) 활성화 토글 */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-theme-card border border-theme-border hover:border-theme-border-card-hover transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 mt-0.5 shrink-0">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-theme-text">
+                            {t("settings.enable_curated_fonts", "추천 무료 폰트 (엄선) 활성화")}
+                          </span>
+                          <span className="text-[11px] text-theme-text-muted mt-0.5">
+                            {t("settings.enable_curated_fonts_desc", "사이드바에 엄선된 무료 한글 폰트 카탈로그를 표시합니다.")}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={form.enableCuratedFonts ?? true}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            enableCuratedFonts: !(prev.enableCuratedFonts ?? true),
+                          }))
+                        }
+                        className={cn(
+                          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                          (form.enableCuratedFonts ?? true)
+                            ? "bg-theme-accent"
+                            : "bg-theme-border"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+                            (form.enableCuratedFonts ?? true)
+                              ? "translate-x-4"
+                              : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                    </div>
+
                     {/* Google Fonts 활성화 토글 */}
                     <div className="flex items-center justify-between p-3 rounded-xl bg-theme-card border border-theme-border hover:border-theme-border-card-hover transition-colors">
                       <div className="flex items-start gap-3">

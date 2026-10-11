@@ -94,6 +94,7 @@ pub fn run() {
             commands::get_font_details,
             commands::fetch_google_fonts_metadata,
             commands::fetch_fontsource_metadata,
+            commands::fetch_curated_font_metadata,
             commands::check_network_connectivity,
         ])
         .on_window_event(|window, event| {

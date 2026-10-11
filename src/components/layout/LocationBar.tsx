@@ -243,6 +243,10 @@ export function LocationBar({
     icon = <Copy className="w-3.5 h-3.5 text-rose-500" />;
     title = t("sidebar.category_duplicates");
     description = t("sidebar.duplicates_desc");
+  } else if (activeCategory === "curated_fonts") {
+    icon = <Sparkles className="w-3.5 h-3.5 text-amber-500" />;
+    title = t("sidebar.category_curated_fonts", "추천 무료 폰트");
+    description = t("sidebar.curated_fonts_desc", "팀 엄선 무료 폰트 카탈로그");
   } else if (activeCategory === "google_fonts") {
     icon = <Globe className="w-3.5 h-3.5 text-sky-500" />;
     title = "Google Fonts";

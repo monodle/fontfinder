@@ -1,4 +1,5 @@
 import { fontService } from "../services/fontService";
+import { curatedFontService } from "../services/curatedFontService";
 import { FontMetadata } from "../types/font";
 
 /**
@@ -218,6 +219,31 @@ class FontCacheManager {
       }
       const familyName = font.family_name || font.full_name;
       return `"${familyName}", var(--font-system)`;
+    }
+
+    // Curated 공급자 폰트인 경우 (file_path가 curated:로 시작)
+    if (font.file_path.startsWith("curated:")) {
+      const rawTarget = font.file_path.replace("curated:", "");
+      const [fontId, explicitCssUrl] = rawTarget.includes("|")
+        ? rawTarget.split("|")
+        : [rawTarget, undefined];
+      const cssUrl = explicitCssUrl || curatedFontService.getCssUrl(fontId);
+      const linkId = `curated-${encodeURIComponent(fontId)}`;
+
+      if (cssUrl && typeof document !== "undefined" && !document.getElementById(linkId)) {
+        const link = document.createElement("link");
+        link.id = linkId;
+        link.rel = "stylesheet";
+        link.href = cssUrl;
+        link.onerror = () => {
+          console.warn(`[FontLoader] Curated 웹폰트 로드 실패: ${fontId} (${cssUrl})`);
+        };
+        document.head.appendChild(link);
+      }
+      const curatedItem = curatedFontService.getFontById(fontId);
+      const cssFamily = curatedItem?.family || font.postscript_name || font.family_name;
+      const displayName = font.family_name || font.full_name;
+      return `"${cssFamily}", "${displayName}", var(--font-system)`;
     }
 
     const familyName = getCustomFontFamily(font);

@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Sliders, Bold, Italic, Underline, Download, ExternalLink, Info } from "lucide-react";
+import { Sliders, Bold, Italic, Underline, Download, ExternalLink, Info, Search } from "lucide-react";
 import { PreviewSettings, FontMetadata } from "../../types/font";
-import { googleFontService } from "../../services/googleFontService";
-import { fontsourceService } from "../../services/fontsourceService";
+import { resolveOnlineFontLink, openOnlineFontLink } from "../../utils/onlineFontUrl";
 import { ColorPresetPicker } from "../color/ColorPresetPicker";
 import { TextAlignDropdown } from "../controls/TextAlignDropdown";
 import { ViewModeControl } from "../controls/ViewModeControl";
@@ -33,6 +32,8 @@ interface HeaderToolbarProps {
   selectedGoogleFonts?: FontMetadata[];
   isFontsourceActive?: boolean;
   selectedFontsourceFonts?: FontMetadata[];
+  isCuratedFontsActive?: boolean;
+  selectedCuratedFonts?: FontMetadata[];
 }
 
 export function HeaderToolbar({
@@ -58,6 +59,8 @@ export function HeaderToolbar({
   selectedGoogleFonts = [],
   isFontsourceActive = false,
   selectedFontsourceFonts = [],
+  isCuratedFontsActive = false,
+  selectedCuratedFonts = [],
 }: HeaderToolbarProps) {
   const { t } = useTranslation();
   const [isDownloadPopoverOpen, setIsDownloadPopoverOpen] = useState(false);
@@ -78,10 +81,19 @@ export function HeaderToolbar({
     };
   }, [isDownloadPopoverOpen]);
 
-  const isOnlineProviderActive = isGoogleFontsActive || isFontsourceActive;
-  const selectedOnlineFonts = isFontsourceActive ? selectedFontsourceFonts : selectedGoogleFonts;
+  const isOnlineProviderActive =
+    isGoogleFontsActive || isFontsourceActive || isCuratedFontsActive;
+  const selectedOnlineFonts = isCuratedFontsActive
+    ? selectedCuratedFonts
+    : isFontsourceActive
+    ? selectedFontsourceFonts
+    : selectedGoogleFonts;
   const hasSelectedOnlineFonts = selectedOnlineFonts.length > 0;
-  const providerTitle = isFontsourceActive ? "Font Source" : "Google Fonts";
+  const providerTitle = isCuratedFontsActive
+    ? "추천 무료 폰트"
+    : isFontsourceActive
+    ? "Font Source"
+    : "Google Fonts";
 
   return (
     <header className="h-14 border-b border-theme-border bg-theme-header px-4 flex items-center justify-between gap-3 shrink-0 select-none relative z-30">
@@ -138,32 +150,39 @@ export function HeaderToolbar({
 
                 {hasSelectedOnlineFonts ? (
                   <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                    {selectedOnlineFonts.map((font) => (
-                      <div
-                        key={font.id}
-                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-theme-card border border-theme-border/60 hover:border-theme-accent/40 transition-colors"
-                      >
-                        <span className="font-semibold text-xs text-theme-text truncate flex-1" title={font.family_name}>
-                          {font.family_name}
-                        </span>
-                        <span className="text-theme-text-muted text-xs shrink-0">:</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (font.file_path.startsWith("fontsource:")) {
-                              const fId = font.file_path.replace("fontsource:", "");
-                              fontsourceService.openSpecimenPage(fId);
-                            } else {
-                              googleFontService.openSpecimenPage(font.family_name);
-                            }
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-theme-accent text-white text-[11px] font-semibold hover:bg-theme-accent/90 active:scale-95 transition-all shrink-0 cursor-pointer shadow-2xs"
+                    {selectedOnlineFonts.map((font) => {
+                      const linkInfo = resolveOnlineFontLink(font);
+                      return (
+                        <div
+                          key={font.id}
+                          className="flex items-center justify-between gap-2 p-2 rounded-lg bg-theme-card border border-theme-border/60 hover:border-theme-accent/40 transition-colors"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>페이지 열기</span>
-                        </button>
-                      </div>
-                    ))}
+                          <span className="font-semibold text-xs text-theme-text truncate flex-1" title={font.family_name}>
+                            {font.family_name}
+                          </span>
+                          <span className="text-theme-text-muted text-xs shrink-0">:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void openOnlineFontLink(font);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95 ${
+                              linkInfo.isGoogleSearch
+                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
+                                : "bg-theme-accent text-white hover:bg-theme-accent/90"
+                            }`}
+                            title={linkInfo.tooltip}
+                          >
+                            {linkInfo.isGoogleSearch ? (
+                              <Search className="w-3 h-3" />
+                            ) : (
+                              <ExternalLink className="w-3 h-3" />
+                            )}
+                            <span>{linkInfo.label}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-4 text-center text-theme-text-muted">

@@ -22,7 +22,8 @@
     "clear": "Clear",
     "copy": "Copy",
     "close_esc": "Close (Esc)",
-    "copy_success": "Copied to clipboard."
+    "copy_success": "Copied to clipboard.",
+    "external_license_disclaimer": "This service only provides links to official distribution sources. License terms may change at any time according to the publisher's policy, so please be sure to check the latest license terms on the official page before downloading."
   },
   "dialog": {
     "cancel": "Cancel",
@@ -66,6 +67,10 @@
     "category_activated": "Temporarily Activated",
     "category_favorites": "Favorite Fonts",
     "category_duplicates": "Duplicate Fonts",
+    "category_curated_fonts": "Curated Free Fonts",
+    "curated_fonts_desc": "Hand-picked commercial-free Korean and Latin fonts catalog",
+    "curated_fonts_offline": "Internet connection required",
+    "curated_fonts_view_specimen": "Visit Official Website",
     "category_google_fonts": "Google Fonts",
     "google_fonts_offline": "Internet connection required",
     "google_fonts_view_specimen": "View on Google Fonts",
