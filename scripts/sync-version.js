@@ -85,7 +85,7 @@ function getReleaseDate() {
 }
 
 /**
- * README.md의 버전 및 배포일 동기화
+ * README.md의 버전 및 배포일, 다운로드 링크 동기화
  */
 function syncReadme(version, releaseDate) {
   const readmePath = path.join(rootDir, "README.md");
@@ -131,6 +131,16 @@ function syncReadme(version, releaseDate) {
       `$1${version}$2${releaseDate.dash}$3`
     );
 
+    // 6. 다운로드 URL (download/latest/Font.Finder_${version}_...)
+    content = content.replace(
+      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
+      `$1${version}$2`
+    );
+
     if (content !== original) {
       fs.writeFileSync(readmePath, content, "utf8");
       return true;
@@ -142,7 +152,7 @@ function syncReadme(version, releaseDate) {
 }
 
 /**
- * www/index.html의 버전 및 배포일 동기화
+ * www/index.html의 버전 및 배포일, 다운로드 링크 동기화
  */
 function syncWebIndex(version, releaseDate) {
   const htmlPath = path.join(rootDir, "www", "index.html");
@@ -189,6 +199,26 @@ function syncWebIndex(version, releaseDate) {
     // 5. 인라인 OS 감지 스크립트 내 텍스트
     content = content.replace(
       /(sub\.textContent\s*=\s*'v)[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
+      `$1${version}$2`
+    );
+
+    // 6. 다운로드 링크 (download/latest/Font.Finder_${version}_...)
+    content = content.replace(
+      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
+      `$1${version}$2`
+    );
+
+    // 7. 가이드 본문 코드 블록 내 파일명
+    content = content.replace(
+      /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg<\/code>)/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe<\/code>)/g,
       `$1${version}$2`
     );
 
