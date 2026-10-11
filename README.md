@@ -9,7 +9,6 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#다운로드-및-설치)
 [![Release](https://img.shields.io/badge/Release-v1.1.2-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
-[![Updated](https://img.shields.io/badge/Updated-2026-10-11-success.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
 [![Website](https://img.shields.io/badge/Website-FontFinder-6366f1.svg)](https://monodle.github.io/fontfinder/)
 
 
@@ -24,8 +23,8 @@
 
 <div align="center">
 
-| 🏷️ 최신 버전 | 📅 최근 배포일 | 📦 배포 채널 | 🔗 릴리즈 노트 |
-| :---: | :---: | :---: | :---: |
+| 🏷️ 최신 버전  | 📅 최근 배포일  |       📦 배포 채널       |                             🔗 릴리즈 노트                              |
+| :----------: | :------------: | :---------------------: | :--------------------------------------------------------------------: |
 | **`v1.1.2`** | **2026-10-11** | Latest Release (Stable) | [상세 보기](https://github.com/monodle/fontfinder/releases/tag/latest) |
 
 <br>
