@@ -4,12 +4,18 @@
  * mobile responsive navigation, and clipboard copy.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   initMobileMenu();
   initGuideTabs();
   initOsDetection();
   initCopyButton();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 /**
  * Mobile navigation menu drawer toggle
@@ -59,8 +65,12 @@ function initOsDetection() {
   const isWindows = userAgent.includes('win');
   const isApple = userAgent.includes('mac') || userAgent.includes('darwin') || userAgent.includes('iphone') || userAgent.includes('ipad');
 
-  const macDownloadUrl = 'https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_aarch64.dmg';
-  const winDownloadUrl = 'https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_x64-setup.exe';
+  const versionElem = document.getElementById('releaseVersionVal');
+  const currentVersion = (versionElem && versionElem.textContent.trim()) || 'v1.1.2';
+  const rawVersion = currentVersion.replace(/^v/i, '');
+
+  const macDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_${rawVersion}_aarch64.dmg`;
+  const winDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_${rawVersion}_x64-setup.exe`;
 
   if (isWindows) {
     // Windows 사용자: Windows 우선 노출
@@ -68,7 +78,7 @@ function initOsDetection() {
     primaryBtn.classList.add('btn-windows');
     primaryIcon.textContent = '🪟';
     primaryText.textContent = 'Windows (x64) 다운로드';
-    primarySub.textContent = 'v1.0.0 정식 릴리즈 (.exe / .msi)';
+    primarySub.textContent = `${currentVersion} 최신 정식 릴리즈 (.exe / .msi)`;
 
     if (altWinLink) altWinLink.style.display = 'none';
     if (altMacLink) altMacLink.style.display = 'inline';
@@ -80,7 +90,7 @@ function initOsDetection() {
     primaryBtn.classList.remove('btn-windows');
     primaryIcon.textContent = '🍎';
     primaryText.textContent = 'macOS (Apple Silicon) 다운로드';
-    primarySub.textContent = 'v1.0.0 정식 릴리즈 (.dmg)';
+    primarySub.textContent = `${currentVersion} 최신 정식 릴리즈 (.dmg)`;
 
     if (altWinLink) altWinLink.style.display = 'inline';
     if (altMacLink) altMacLink.style.display = 'none';
@@ -92,7 +102,7 @@ function initOsDetection() {
     primaryBtn.classList.remove('btn-windows');
     primaryIcon.textContent = '🍎';
     primaryText.textContent = 'macOS (Apple Silicon) 다운로드';
-    primarySub.textContent = 'v1.0.0 정식 릴리즈 (.dmg)';
+    primarySub.textContent = `${currentVersion} 최신 정식 릴리즈 (.dmg)`;
 
     if (altWinLink) altWinLink.style.display = 'inline';
     if (altMacLink) altMacLink.style.display = 'none';

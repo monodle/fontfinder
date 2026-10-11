@@ -196,13 +196,7 @@ function syncWebIndex(version, releaseDate) {
       `$1${releaseDate.dash}">${releaseDate.dot}</time>`
     );
 
-    // 5. 인라인 OS 감지 스크립트 내 텍스트
-    content = content.replace(
-      /(sub\.textContent\s*=\s*'v)[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
-      `$1${version}$2`
-    );
-
-    // 6. 다운로드 링크: latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
+    // 5. 다운로드 링크: latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
     content = content.replace(
       /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
       `$1${version}$2`
@@ -212,7 +206,7 @@ function syncWebIndex(version, releaseDate) {
       `$1${version}$2`
     );
 
-    // 7. 가이드 본문 코드 블록 내 파일명 동기화
+    // 6. 가이드 본문 코드 블록 내 파일명 동기화
     content = content.replace(
       /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg<\/code>)/g,
       `$1${version}$2`

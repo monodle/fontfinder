@@ -281,29 +281,6 @@
               <span aria-hidden="true">&rarr;</span>
             </a>
           </div>
-
-          <script>
-            (function () {
-              var ua = (navigator.userAgent || navigator.platform || '').toLowerCase();
-              if (ua.indexOf('win') !== -1) {
-                var btn = document.getElementById('primaryDownloadBtn');
-                var icon = document.getElementById('primaryDownloadIcon');
-                var text = document.getElementById('primaryDownloadText');
-                var sub = document.getElementById('primaryDownloadSub');
-                var altWin = document.getElementById('altWinLink');
-                var altMac = document.getElementById('altMacLink');
-                if (btn && icon && text && sub) {
-                  btn.href = 'https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.2_x64-setup.exe';
-                  btn.classList.add('btn-windows');
-                  icon.textContent = '🪟';
-                  text.textContent = 'Windows (x64) 다운로드';
-                  sub.textContent = 'v1.1.2 최신 정식 릴리즈 (.exe / .msi)';
-                  if (altWin) altWin.style.display = 'none';
-                  if (altMac) altMac.style.display = 'inline';
-                }
-              }
-            })();
-          </script>
         </div>
 
         <!-- Value Cards (Why Font Finder) -->
@@ -579,25 +556,6 @@
               <p>하단에 새로 나타나는 <strong>[실행]</strong> 버튼을 누르면 정상적으로 설치 및 실행이 진행됩니다.</p>
             </div>
           </div>
-          <script>
-            (function () {
-              var ua = (navigator.userAgent || navigator.platform || '').toLowerCase();
-              if (ua.indexOf('win') !== -1) {
-                var tm = document.getElementById('tabMac');
-                var tw = document.getElementById('tabWin');
-                var gm = document.getElementById('guideMac');
-                var gw = document.getElementById('guideWin');
-                if (tm && tw && gm && gw) {
-                  tm.classList.remove('active');
-                  tm.setAttribute('aria-selected', 'false');
-                  gm.classList.remove('active');
-                  tw.classList.add('active');
-                  tw.setAttribute('aria-selected', 'true');
-                  gw.classList.add('active');
-                }
-              }
-            })();
-          </script>
         </div>
       </div>
     </section>
