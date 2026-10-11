@@ -59,7 +59,151 @@ function getVersionFromEnv() {
 }
 
 /**
- * package.json, tauri.conf.json, Cargo.toml의 버전을 .env 버전과 동기화
+ * 배포 날짜를 추출하거나 오늘 날짜로 생성
+ * .env에 VITE_APP_RELEASE_DATE가 있으면 우선 사용, 없으면 오늘 날짜(로컬 기준) 반환
+ */
+function getReleaseDate() {
+  const envPath = path.join(rootDir, ".env");
+  let envDate = null;
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, "utf8");
+    const match = content.match(/^VITE_APP_RELEASE_DATE\s*=\s*(.+)$/m);
+    if (match && match[1]) {
+      envDate = match[1].trim().split("#")[0].trim().replace(/^["']|["']$/g, "").trim();
+    }
+  }
+
+  const targetDate = envDate ? new Date(envDate) : new Date();
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const day = String(targetDate.getDate()).padStart(2, "0");
+
+  return {
+    dash: `${year}-${month}-${day}`, // YYYY-MM-DD
+    dot: `${year}. ${month}. ${day}`,  // YYYY. MM. DD
+  };
+}
+
+/**
+ * README.md의 버전 및 배포일 동기화
+ */
+function syncReadme(version, releaseDate) {
+  const readmePath = path.join(rootDir, "README.md");
+  if (!fs.existsSync(readmePath)) {
+    return false;
+  }
+
+  try {
+    let content = fs.readFileSync(readmePath, "utf8");
+    const original = content;
+
+    // 1. 배지 (Release & Updated)
+    content = content.replace(
+      /(badge\/Release-v)[0-9A-Za-z.-]+(-amber\.svg)/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /(badge\/Updated-)[0-9-]+(-success\.svg)/g,
+      `$1${releaseDate.dash}$2`
+    );
+
+    // 2. 최신 버전 테이블 (| **`v1.1.0`** | **2026-10-11** | Latest Release)
+    content = content.replace(
+      /(\|\s*\*\*`v)[0-9A-Za-z.-]+(`\*\*\s*\|\s*\*\*)[0-9-]+(\*\*\s*\|\s*Latest Release)/g,
+      `$1${version}$2${releaseDate.dash}$3`
+    );
+
+    // 3. 다운로드 버튼 설명문 (<b>v1.1.0 (2026-10-11 배포)</b>)
+    content = content.replace(
+      /(<b>v)[0-9A-Za-z.-]+(\s*\()[0-9-]+(\s*배포\s*\)<\/b>)/g,
+      `$1${version}$2${releaseDate.dash}$3`
+    );
+
+    // 4. 설치 가이드 알림창 (> 💡 **현재 최신 안정 버전:** `v1.1.0` (배포 일자: `2026-10-11`))
+    content = content.replace(
+      /(현재 최신 안정 버전:\*\* `v)[0-9A-Za-z.-]+(` \(배포 일자: `)[0-9-]+(`\))/g,
+      `$1${version}$2${releaseDate.dash}$3`
+    );
+
+    // 5. 플랫폼 다운로드 테이블 행 (| `1.1.0` | `2026-10-11` | `.dmg` / `.exe`)
+    content = content.replace(
+      /(\|\s*`)[0-9A-Za-z.-]+(`\s*\|\s*`)[0-9-]+(`\s*\|\s*`\.(dmg|exe|msi))/g,
+      `$1${version}$2${releaseDate.dash}$3`
+    );
+
+    if (content !== original) {
+      fs.writeFileSync(readmePath, content, "utf8");
+      return true;
+    }
+  } catch (err) {
+    console.error("[sync-version] Failed to update README.md:", err);
+  }
+  return false;
+}
+
+/**
+ * www/index.html의 버전 및 배포일 동기화
+ */
+function syncWebIndex(version, releaseDate) {
+  const htmlPath = path.join(rootDir, "www", "index.html");
+  if (!fs.existsSync(htmlPath)) {
+    return false;
+  }
+
+  try {
+    let content = fs.readFileSync(htmlPath, "utf8");
+    const original = content;
+
+    // 1. JSON-LD 메타데이터
+    content = content.replace(
+      /("softwareVersion":\s*")[^"]+(")/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /("dateModified":\s*")[^"]+(")/g,
+      `$1${releaseDate.dash}$2`
+    );
+
+    // 2. 상단 네비게이션 버전 배지
+    content = content.replace(
+      /(<span class="badge badge-subtle"[^>]*>v)[^<]+(<\/span>)/g,
+      `$1${version}$2`
+    );
+
+    // 3. CTA 메인 버튼 서브텍스트
+    content = content.replace(
+      /(id="primaryDownloadSub">v)[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
+      `$1${version}$2`
+    );
+
+    // 4. 최신 버전 메타 인포 카드 (버전 및 일자)
+    content = content.replace(
+      /(id="releaseVersionVal">v)[0-9A-Za-z.-]+(<\/strong>)/g,
+      `$1${version}$2`
+    );
+    content = content.replace(
+      /(id="releaseDateVal"\s+datetime=")[^"]+(">[^<]+<\/time>)/g,
+      `$1${releaseDate.dash}">${releaseDate.dot}</time>`
+    );
+
+    // 5. 인라인 OS 감지 스크립트 내 텍스트
+    content = content.replace(
+      /(sub\.textContent\s*=\s*'v)[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
+      `$1${version}$2`
+    );
+
+    if (content !== original) {
+      fs.writeFileSync(htmlPath, content, "utf8");
+      return true;
+    }
+  } catch (err) {
+    console.error("[sync-version] Failed to update www/index.html:", err);
+  }
+  return false;
+}
+
+/**
+ * package.json, tauri.conf.json, Cargo.toml, README.md, www/index.html 버전을 .env 버전과 동기화
  */
 export function syncAppVersion() {
   const version = getVersionFromEnv();
@@ -67,6 +211,7 @@ export function syncAppVersion() {
     return;
   }
 
+  const releaseDate = getReleaseDate();
   const updatedFiles = [];
 
   // 1. package.json 동기화
@@ -117,8 +262,18 @@ export function syncAppVersion() {
     }
   }
 
+  // 4. README.md 동기화
+  if (syncReadme(version, releaseDate)) {
+    updatedFiles.push("README.md");
+  }
+
+  // 5. www/index.html 동기화
+  if (syncWebIndex(version, releaseDate)) {
+    updatedFiles.push("www/index.html");
+  }
+
   if (updatedFiles.length > 0) {
-    console.log(`[sync-version] Synchronized version to ${version} in: ${updatedFiles.join(", ")}`);
+    console.log(`[sync-version] Synchronized version ${version} (${releaseDate.dash}) in: ${updatedFiles.join(", ")}`);
   }
 }
 

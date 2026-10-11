@@ -36,7 +36,8 @@
     "applicationCategory": "DesignApplication",
     "applicationSubCategory": "Font Management Software",
     "operatingSystem": "macOS 11+, Windows 10, Windows 11",
-    "softwareVersion": "1.0.0",
+    "softwareVersion": "1.1.2",
+    "dateModified": "2026-10-11",
     "description": "Windows와 macOS를 위한 가장 가볍고 감각적인 통합 폰트 관리 프로그램. 시스템 부담 없이 폰트를 즉시 로딩하고 실시간 가변 폰트 제어 및 정밀 비교를 제공합니다.",
     "url": "https://monodle.github.io/fontfinder/",
     "downloadUrl": "https://github.com/monodle/fontfinder/releases/tag/latest",
@@ -187,7 +188,7 @@
       <a href="#" class="brand" aria-label="FontFinder 홈">
         <img src="./assets/logo.png" alt="FontFinder Logo" class="brand-logo" width="36" height="36" />
         <span class="brand-name">FontFinder</span>
-        <span class="badge badge-subtle">v1.0.0</span>
+        <span class="badge badge-subtle">v1.1.2</span>
       </a>
 
       <!-- Mobile Hamburger Button -->
@@ -240,7 +241,7 @@
             <span class="btn-icon" id="primaryDownloadIcon">🍎</span>
             <div class="btn-text-group">
               <span class="btn-main-text" id="primaryDownloadText">macOS (Apple Silicon) 다운로드</span>
-              <span class="btn-sub-text" id="primaryDownloadSub">v1.0.0 정식 릴리즈 (.dmg)</span>
+              <span class="btn-sub-text" id="primaryDownloadSub">v1.1.2 최신 정식 릴리즈 (.dmg)</span>
             </div>
           </a>
 
@@ -260,6 +261,27 @@
               모든 버전 보기 &rarr;
             </a>
           </div>
+
+          <!-- Latest Release Meta Info Card -->
+          <div class="release-meta-badge" id="releaseMetaBadge">
+            <span class="release-badge-indicator" aria-hidden="true"></span>
+            <div class="release-meta-item">
+              <span class="meta-label">최신 버전</span>
+              <strong class="meta-value version-val" id="releaseVersionVal">v1.1.2</strong>
+            </div>
+            <span class="meta-divider" aria-hidden="true">•</span>
+            <div class="release-meta-item">
+              <span class="meta-label">최근 업데이트</span>
+              <time class="meta-value date-val" id="releaseDateVal" datetime="2026-10-11">2026. 10. 11</time>
+            </div>
+            <span class="meta-divider" aria-hidden="true">•</span>
+            <a href="https://github.com/monodle/fontfinder/releases/tag/latest" target="_blank" rel="noopener noreferrer"
+              class="meta-link" id="releaseNotesLink">
+              <span>릴리즈 내역</span>
+              <span aria-hidden="true">&rarr;</span>
+            </a>
+          </div>
+
           <script>
             (function () {
               var ua = (navigator.userAgent || navigator.platform || '').toLowerCase();
@@ -275,7 +297,7 @@
                   btn.classList.add('btn-windows');
                   icon.textContent = '🪟';
                   text.textContent = 'Windows (x64) 다운로드';
-                  sub.textContent = 'v1.0.0 정식 릴리즈 (.exe / .msi)';
+                  sub.textContent = 'v1.1.2 최신 정식 릴리즈 (.exe / .msi)';
                   if (altWin) altWin.style.display = 'none';
                   if (altMac) altMac.style.display = 'inline';
                 }

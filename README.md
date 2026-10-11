@@ -8,7 +8,8 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey.svg)](#다운로드-및-설치)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
+[![Release](https://img.shields.io/badge/Release-v1.1.2-amber.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
+[![Updated](https://img.shields.io/badge/Updated-2026-10-11-success.svg)](https://github.com/monodle/fontfinder/releases/tag/latest)
 [![Website](https://img.shields.io/badge/Website-FontFinder-6366f1.svg)](https://monodle.github.io/fontfinder/)
 
 
@@ -21,15 +22,23 @@
 
 ### 📥 최신 버전 다운로드
 
-깃허브 릴리즈에서 운영체제에 맞는 설치 파일을 다운로드하세요.
+<div align="center">
+
+| 🏷️ 최신 버전 | 📅 최근 배포일 | 📦 배포 채널 | 🔗 릴리즈 노트 |
+| :---: | :---: | :---: | :---: |
+| **`v1.1.2`** | **2026-10-11** | Latest Release (Stable) | [상세 보기](https://github.com/monodle/fontfinder/releases/tag/latest) |
+
+<br>
 
 [![Download for macOS](https://img.shields.io/badge/macOS%20(Apple%20Silicon)-Download%20.dmg-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_aarch64.dmg)
 &nbsp;&nbsp;
 [![Download for Windows](https://img.shields.io/badge/Windows%20(x64)-Download%20.msi%20%2F%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_x64-setup.exe)
 
 <p align="center">
-  <sub>* 위 버튼 클릭 시 최신 릴리즈 다운로드 링크로 연결됩니다. </sub>
+  <sub>* 운영체제에 맞는 버튼을 클릭하면 <b>v1.1.2 (2026-10-11 배포)</b> 최신 설치 파일이 즉시 다운로드됩니다. </sub>
 </p>
+
+</div>
 
 </div>
 
@@ -130,14 +139,14 @@
 
 ## 🚀 다운로드 및 설치
 
-### 1. 다운로드 링크
+> 💡 **현재 최신 안정 버전:** `v1.1.2` (배포 일자: `2026-10-11`)
 
-| 플랫폼      | 아키텍처      | 형식            | 다운로드                                                                                                                            |
-| :---------- | :------------ | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| **macOS**   | Apple Silicon | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_aarch64.dmg) |
-| **Windows** | x64 (64-bit)  | `.exe` / `.msi` | [**Windows (x64) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_x64-setup.exe)       |
+| 플랫폼      | 아키텍처      | 버전    | 배포 일자    | 형식            | 다운로드                                                                                                                            |
+| :---------- | :------------ | :------ | :----------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| **macOS**   | Apple Silicon | `1.1.2` | `2026-10-11` | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_aarch64.dmg) |
+| **Windows** | x64 (64-bit)  | `1.1.2` | `2026-10-11` | `.exe` / `.msi` | [**Windows (x64) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_latest_x64-setup.exe)       |
 
-> 💡 추후 업데이트되는 새 버전은 [Releases 페이지](https://github.com/monodle/fontfinder/releases)에서도 확인하실 수 있습니다.
+> 💡 지난 버전 및 상세 변경 이력은 [Releases 페이지](https://github.com/monodle/fontfinder/releases)에서도 확인하실 수 있습니다.
 
 ---
 

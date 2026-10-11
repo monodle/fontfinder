@@ -403,6 +403,68 @@ video {
   color: rgba(255, 255, 255, 0.15);
 }
 
+/* Latest Release Meta Info Card */
+.release-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-top: 4px;
+}
+
+.release-badge-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.release-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.meta-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.meta-value {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.meta-divider {
+  color: rgba(255, 255, 255, 0.18);
+  font-size: 0.75rem;
+}
+
+.meta-link {
+  color: #818cf8;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
+  transition: color var(--transition-fast);
+}
+
+.meta-link:hover {
+  color: #a5b4fc;
+  text-decoration: underline;
+}
+
 /* Value Cards (Why Font Finder) */
 .value-cards {
   display: grid;
@@ -1147,6 +1209,17 @@ video {
     font-size: 0.82rem;
     gap: 8px;
     line-height: 1.4;
+  }
+
+  .release-meta-badge {
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    gap: 8px;
+    width: 100%;
+    max-width: 320px;
+    font-size: 0.8rem;
   }
 
   /* Value Cards: 2x2 Grid on Mobile (Zero awkward vertical stretching) */

@@ -1,18 +1,19 @@
 {
   "name": "fontfinder",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.2",
   "type": "module",
   "scripts": {
     "sync:version": "node scripts/sync-version.js",
     "icon:gen": "tauri icon ./src-tauri/icons/1024x1024.png",
     "predev": "node scripts/sync-version.js",
-    "dev": "vite",
+    "dev": "node scripts/sync-version.js && vite",
     "prebuild": "node scripts/sync-version.js",
-    "build": "tsc && vite build",
+    "build": "node scripts/sync-version.js && tsc && vite build",
     "preview": "vite preview",
     "pretauri": "node scripts/sync-version.js",
-    "tauri": "tauri",
+    "tauri": "node scripts/sync-version.js && tauri",
+    "tauri:build": "node scripts/sync-version.js && tauri build",
     "build:app": "node scripts/sync-version.js && tauri build -- --locked"
   },
   "dependencies": {
