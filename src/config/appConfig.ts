@@ -60,6 +60,7 @@ export const appConfig = {
   },
   curatedFonts: {
     url: parsedEnv.VITE_CURATED_FONTS_URL,
+    cacheTtlMs: parsedEnv.VITE_CURATED_FONTS_CACHE_TTL_MS,
   },
   ui: {
     toastDurationMs: parsedEnv.VITE_TOAST_DURATION_MS,

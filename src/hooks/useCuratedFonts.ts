@@ -40,6 +40,7 @@ function cleanFontName(name?: string): string {
 
 interface UseCuratedFontsOptions {
   enabled?: boolean;
+  isActive?: boolean;
   externalSearchQuery?: string;
   sortSettings?: FontSortSettings;
   installedFonts?: FontMetadata[];
@@ -50,6 +51,7 @@ export function useCuratedFonts(options?: UseCuratedFontsOptions) {
   const currentLang = i18n.language;
 
   const isEnabled = options?.enabled !== false;
+  const isActive = options?.isActive ?? true;
   const [fonts, setFonts] = useState<CuratedFontItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(curatedFontService.isOnline);
@@ -117,8 +119,8 @@ export function useCuratedFonts(options?: UseCuratedFontsOptions) {
     });
   }, []);
 
-  // 메타데이터 로드 함수
-  const loadMetadata = useCallback(async () => {
+  // 메타데이터 로드 함수 (forceRefresh: 캐시 무시 강제 원격 요청 여부)
+  const loadMetadata = useCallback(async (forceRefresh = false) => {
     const isOnlineNow = await networkManager.checkNow();
     if (!isOnlineNow) {
       setIsOnline(false);
@@ -129,7 +131,9 @@ export function useCuratedFonts(options?: UseCuratedFontsOptions) {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await curatedFontService.getMetadata();
+      const data = forceRefresh
+        ? await curatedFontService.refresh()
+        : await curatedFontService.getMetadata();
       setFonts(data);
       setIsOnline(true);
     } catch (err) {
@@ -140,12 +144,23 @@ export function useCuratedFonts(options?: UseCuratedFontsOptions) {
     }
   }, []);
 
-  // 최초 로드 및 활성화 시 자동 로드
+  // 최초 로드 및 화면 진입/활성화 시 캐시 만료 여부 확인 후 자동 갱신
   useEffect(() => {
-    if (isEnabled && isOnline && fonts.length === 0) {
-      loadMetadata();
+    if (!isEnabled || !isOnline || !isActive) {
+      return;
     }
-  }, [isEnabled, isOnline, fonts.length, loadMetadata]);
+
+    // 1. 아직 로드된 폰트가 없는 경우 기본 로드 (캐시 유효하면 캐시 사용)
+    if (fonts.length === 0) {
+      loadMetadata(false);
+      return;
+    }
+
+    // 2. 이미 폰트가 있더라도 캐시 유효기간(6시간)이 만료된 상태로 진입한 경우 자동 갱신
+    if (curatedFontService.isCacheExpired()) {
+      loadMetadata(true);
+    }
+  }, [isEnabled, isOnline, isActive, fonts.length, loadMetadata]);
 
   // 설치 여부 판별 헬퍼
   const getInstalledStatus = useCallback(
@@ -363,8 +378,7 @@ export function useCuratedFonts(options?: UseCuratedFontsOptions) {
     onlyInstalled,
     setOnlyInstalled,
     reload: async () => {
-      await networkManager.checkNow();
-      await loadMetadata();
+      await loadMetadata(true);
     },
   };
 }

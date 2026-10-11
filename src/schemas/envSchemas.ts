@@ -70,6 +70,11 @@ const appEnvSchema = z
       .transform((val) =>
         normalizeCuratedFontUrl(typeof val === "string" ? val : undefined)
       ),
+    VITE_CURATED_FONTS_CACHE_TTL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .catch(6 * 60 * 60 * 1000),
     VITE_APP_NAME: z
       .unknown()
       .optional()

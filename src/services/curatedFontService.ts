@@ -11,6 +11,8 @@ import { networkManager } from "./networkManager";
 import { openExternalUrl, buildGoogleSearchUrl } from "../utils/url";
 
 const CACHE_KEY = "fontfinder_curated_metadata_v4";
+const CACHE_TIMESTAMP_KEY = "fontfinder_curated_metadata_v4_timestamp";
+export const CURATED_FONTS_CACHE_TTL_MS = appConfig.curatedFonts.cacheTtlMs;
 const MAX_CATALOG_CHAIN_DEPTH = 30;
 
 /**
@@ -139,10 +141,19 @@ class CuratedFontService {
   private cachedFonts: CuratedFontItem[] | null = null;
   private fontMap: Map<string, CuratedFontItem> = new Map();
   private fetchPromise: Promise<CuratedFontItem[]> | null = null;
+  private lastFetchedTimestamp: number | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
       try {
+        const storedTime = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+        if (storedTime) {
+          const parsedTime = Number(storedTime);
+          if (!Number.isNaN(parsedTime) && parsedTime > 0) {
+            this.lastFetchedTimestamp = parsedTime;
+          }
+        }
+
         const stored = localStorage.getItem(CACHE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -162,6 +173,40 @@ class CuratedFontService {
         // 로컬 스토리지 접근 실패 시 무시
       }
     }
+  }
+
+  /**
+   * 캐시가 유효한지(존재하고 설정된 TTL 이내인지) 검사합니다.
+   */
+  public isCacheValid(): boolean {
+    if (!this.cachedFonts || this.cachedFonts.length === 0) {
+      return false;
+    }
+    if (this.lastFetchedTimestamp === null) {
+      return false;
+    }
+    return Date.now() - this.lastFetchedTimestamp < this.cacheTtlMs;
+  }
+
+  /**
+   * 캐시가 만료되었거나 존재하지 않는지 여부를 반환합니다.
+   */
+  public isCacheExpired(): boolean {
+    return !this.isCacheValid();
+  }
+
+  /**
+   * 마지막으로 원격 서버에서 메타데이터를 가져온 타임스탬프(ms)를 반환합니다.
+   */
+  public getLastFetchedTimestamp(): number | null {
+    return this.lastFetchedTimestamp;
+  }
+
+  /**
+   * 설정된 추천 폰트 캐시 유효 기간(ms)
+   */
+  public get cacheTtlMs(): number {
+    return appConfig.curatedFonts.cacheTtlMs;
   }
 
   public get isOnline(): boolean {
@@ -252,7 +297,7 @@ class CuratedFontService {
    * @param forceRefresh 캐시를 무시하고 원격 서버에서 강제로 새로 가져올지 여부
    */
   public async getMetadata(forceRefresh = false): Promise<CuratedFontItem[]> {
-    if (!forceRefresh && this.cachedFonts && this.cachedFonts.length > 0) {
+    if (!forceRefresh && this.isCacheValid() && this.cachedFonts && this.cachedFonts.length > 0) {
       return this.cachedFonts;
     }
 
@@ -309,10 +354,12 @@ class CuratedFontService {
         }
 
         this.setCachedFonts(aggregatedFonts);
+        this.lastFetchedTimestamp = Date.now();
 
         if (typeof window !== "undefined" && aggregatedFonts.length > 0) {
           try {
             localStorage.setItem(CACHE_KEY, JSON.stringify(aggregatedFonts));
+            localStorage.setItem(CACHE_TIMESTAMP_KEY, String(this.lastFetchedTimestamp));
           } catch {
             // 용량 초과 시 무시
           }
@@ -323,6 +370,11 @@ class CuratedFontService {
         const isActuallyOnline = await networkManager.checkNow();
         if (!isActuallyOnline) {
           networkManager.reportNetworkFailure();
+        }
+        // 오프라인이거나 일시적 네트워크 에러 시 기존 캐시가 있다면 폴백으로 제공
+        if (this.cachedFonts && this.cachedFonts.length > 0) {
+          console.warn("[CuratedFontService] 네트워크 요청 실패로 기존 캐시 데이터 사용:", err);
+          return this.cachedFonts;
         }
         throw err;
       } finally {

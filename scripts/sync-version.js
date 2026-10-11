@@ -99,7 +99,7 @@ function syncReadme(version, releaseDate) {
 
     // 1. 배지 (Release & Updated)
     content = content.replace(
-      /(badge\/Release-v)[0-9A-Za-z.-]+(-amber\.svg)/g,
+      /(badge\/Release-)(?:v)?[0-9A-Za-z.-]+(-amber\.svg)/g,
       `$1${version}$2`
     );
     content = content.replace(
@@ -107,37 +107,37 @@ function syncReadme(version, releaseDate) {
       `$1${releaseDate.dash}$2`
     );
 
-    // 2. 최신 버전 테이블 (| **`v1.1.0`** | **2026-10-11** | Latest Release)
+    // 2. 최신 버전 테이블 (| **`1.1.0`** | **2026-10-11** | Latest Release)
     content = content.replace(
-      /(\|\s*\*\*`v)[0-9A-Za-z.-]+(`\*\*\s*\|\s*\*\*)[0-9-]+(\*\*\s*\|\s*Latest Release)/g,
+      /(\|\s*\*\*`)(?:v)?[0-9A-Za-z.-]+(`\*\*\s*\|\s*\*\*)[0-9-]+(\*\*\s*\|\s*Latest Release)/g,
       `$1${version}$2${releaseDate.dash}$3`
     );
 
-    // 3. 다운로드 버튼 설명문 (<b>v1.1.0 (2026-10-11 배포)</b>)
+    // 3. 다운로드 버튼 설명문 (<b>1.1.0 (2026-10-11 배포)</b>)
     content = content.replace(
-      /(<b>v)[0-9A-Za-z.-]+(\s*\()[0-9-]+(\s*배포\s*\)<\/b>)/g,
+      /(<b>)(?:v)?[0-9A-Za-z.-]+(\s*\()[0-9-]+(\s*배포\s*\)<\/b>)/g,
       `$1${version}$2${releaseDate.dash}$3`
     );
 
-    // 4. 설치 가이드 알림창 (> 💡 **현재 최신 안정 버전:** `v1.1.0` (배포 일자: `2026-10-11`))
+    // 4. 설치 가이드 알림창 (> 💡 **현재 최신 안정 버전:** `1.1.0` (배포 일자: `2026-10-11`))
     content = content.replace(
-      /(현재 최신 안정 버전:\*\* `v)[0-9A-Za-z.-]+(` \(배포 일자: `)[0-9-]+(`\))/g,
+      /(현재 최신 안정 버전:\*\* `)(?:v)?[0-9A-Za-z.-]+(` \(배포 일자: `)[0-9-]+(`\))/g,
       `$1${version}$2${releaseDate.dash}$3`
     );
 
     // 5. 플랫폼 다운로드 테이블 행 (| `1.1.0` | `2026-10-11` | `.dmg` / `.exe`)
     content = content.replace(
-      /(\|\s*`)[0-9A-Za-z.-]+(`\s*\|\s*`)[0-9-]+(`\s*\|\s*`\.(dmg|exe|msi))/g,
+      /(\|\s*`)(?:v)?[0-9A-Za-z.-]+(`\s*\|\s*`)[0-9-]+(`\s*\|\s*`\.(dmg|exe|msi))/g,
       `$1${version}$2${releaseDate.dash}$3`
     );
 
     // 6. 다운로드 URL은 latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
     content = content.replace(
-      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
+      /(download\/latest\/Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
       `$1${version}$2`
     );
     content = content.replace(
-      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
+      /(download\/latest\/Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
       `$1${version}$2`
     );
 
@@ -176,19 +176,19 @@ function syncWebIndex(version, releaseDate) {
 
     // 2. 상단 네비게이션 버전 배지
     content = content.replace(
-      /(<span class="badge badge-subtle"[^>]*>v)[^<]+(<\/span>)/g,
+      /(<span class="badge badge-subtle"[^>]*>)(?:v)?[^<]+(<\/span>)/g,
       `$1${version}$2`
     );
 
     // 3. CTA 메인 버튼 서브텍스트
     content = content.replace(
-      /(id="primaryDownloadSub">v)[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
+      /(id="primaryDownloadSub">)(?:v)?[0-9A-Za-z.-]+(\s+최신 정식 릴리즈)/g,
       `$1${version}$2`
     );
 
     // 4. 최신 버전 메타 인포 카드 (버전 및 일자)
     content = content.replace(
-      /(id="releaseVersionVal">v)[0-9A-Za-z.-]+(<\/strong>)/g,
+      /(id="releaseVersionVal">)(?:v)?[0-9A-Za-z.-]+(<\/strong>)/g,
       `$1${version}$2`
     );
     content = content.replace(
@@ -198,21 +198,21 @@ function syncWebIndex(version, releaseDate) {
 
     // 5. 다운로드 링크: latest 릴리즈 경로 아래 Font.Finder_${version}_... 형태 유지
     content = content.replace(
-      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
+      /(download\/latest\/Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_aarch64\.dmg)/g,
       `$1${version}$2`
     );
     content = content.replace(
-      /(download\/latest\/Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
+      /(download\/latest\/Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_x64-setup\.exe)/g,
       `$1${version}$2`
     );
 
     // 6. 가이드 본문 코드 블록 내 파일명 동기화
     content = content.replace(
-      /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_aarch64\.dmg<\/code>)/g,
+      /(<code>Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_aarch64\.dmg<\/code>)/g,
       `$1${version}$2`
     );
     content = content.replace(
-      /(<code>Font\.Finder_)[0-9A-Za-z.-]+(_x64-setup\.exe<\/code>)/g,
+      /(<code>Font\.Finder_)(?:v)?[0-9A-Za-z.-]+(_x64-setup\.exe<\/code>)/g,
       `$1${version}$2`
     );
 

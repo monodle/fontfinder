@@ -115,6 +115,7 @@ export default function App() {
   // 8.5. 추천 무료 폰트 (팀 엄선 무료 폰트) 공급자 훅
   const curatedFonts = useCuratedFonts({
     enabled: Boolean(appSettings.enableCuratedFonts !== false),
+    isActive: isCuratedFonts,
     externalSearchQuery: isCuratedFonts ? filterAndSort.searchQuery : "",
     sortSettings,
     installedFonts: core.fonts,

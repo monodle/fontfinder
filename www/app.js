@@ -66,7 +66,7 @@ function initOsDetection() {
   const isApple = userAgent.includes('mac') || userAgent.includes('darwin') || userAgent.includes('iphone') || userAgent.includes('ipad');
 
   const versionElem = document.getElementById('releaseVersionVal');
-  const currentVersion = (versionElem && versionElem.textContent.trim()) || 'v1.1.2';
+  const currentVersion = (versionElem && versionElem.textContent.trim()) || '1.1.2';
   const rawVersion = currentVersion.replace(/^v/i, '');
 
   const macDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_${rawVersion}_aarch64.dmg`;
