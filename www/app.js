@@ -66,11 +66,11 @@ function initOsDetection() {
   const isApple = userAgent.includes('mac') || userAgent.includes('darwin') || userAgent.includes('iphone') || userAgent.includes('ipad');
 
   const versionElem = document.getElementById('releaseVersionVal');
-  const currentVersion = (versionElem && versionElem.textContent.trim()) || '1.1.2';
+  const currentVersion = (versionElem && versionElem.textContent.trim()) || '1.1.3';
   const rawVersion = currentVersion.replace(/^v/i, '');
 
-  const macDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_${rawVersion}_aarch64.dmg`;
-  const winDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_${rawVersion}_x64-setup.exe`;
+  const macDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/v${rawVersion}/Font.Finder_${rawVersion}_aarch64.dmg`;
+  const winDownloadUrl = `https://github.com/monodle/fontfinder/releases/download/v${rawVersion}/Font.Finder_${rawVersion}_x64-setup.exe`;
 
   if (isWindows) {
     // Windows 사용자: Windows 우선 노출

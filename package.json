@@ -12,9 +12,10 @@
     "build": "node scripts/sync-version.js && tsc && vite build",
     "preview": "vite preview",
     "pretauri": "node scripts/sync-version.js",
-    "tauri": "node scripts/sync-version.js && tauri",
-    "tauri:build": "node scripts/sync-version.js && tauri build",
-    "build:app": "node scripts/sync-version.js && tauri build -- --locked"
+    "tauri": "node scripts/tauri.js",
+    "tauri:build": "node scripts/tauri.js build",
+    "build:app": "node scripts/tauri.js build --locked",
+    "release": "node scripts/publish-release.js"
   },
   "dependencies": {
     "@tanstack/react-virtual": "3.14.13",
