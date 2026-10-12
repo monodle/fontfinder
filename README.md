@@ -25,7 +25,7 @@
 
 | 🏷️ 최신 버전  | 📅 최근 배포일  |       📦 배포 채널       |                             🔗 릴리즈 노트                              |
 | :----------: | :------------: | :---------------------: | :--------------------------------------------------------------------: |
-| **`1.1.3`** | **2026-10-11** | Latest Release (Stable) | [상세 보기](https://github.com/monodle/fontfinder/releases/tag/latest) |
+| **`1.1.3`** | **2026-10-12** | Latest Release (Stable) | [상세 보기](https://github.com/monodle/fontfinder/releases/tag/latest) |
 
 <br>
 
@@ -34,7 +34,7 @@
 [![Download for Windows](https://img.shields.io/badge/Windows%20(x64)-Download%20.msi%20%2F%20.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.3_x64-setup.exe)
 
 <p align="center">
-  <sub>* 운영체제에 맞는 버튼을 클릭하면 <b>1.1.3 (2026-10-11 배포)</b> 최신 설치 파일이 즉시 다운로드됩니다. </sub>
+  <sub>* 운영체제에 맞는 버튼을 클릭하면 <b>1.1.3 (2026-10-12 배포)</b> 최신 설치 파일이 즉시 다운로드됩니다. </sub>
 </p>
 
 </div>
@@ -138,12 +138,12 @@
 
 ## 🚀 다운로드 및 설치
 
-> 💡 **현재 최신 안정 버전:** `1.1.3` (배포 일자: `2026-10-11`)
+> 💡 **현재 최신 안정 버전:** `1.1.3` (배포 일자: `2026-10-12`)
 
 | 플랫폼      | 아키텍처      | 버전    | 배포 일자    | 형식            | 다운로드                                                                                                                            |
 | :---------- | :------------ | :------ | :----------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| **macOS**   | Apple Silicon | `1.1.3` | `2026-10-11` | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.3_aarch64.dmg) |
-| **Windows** | x64 (64-bit)  | `1.1.3` | `2026-10-11` | `.exe` / `.msi` | [**Windows (x64) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.3_x64-setup.exe)       |
+| **macOS**   | Apple Silicon | `1.1.3` | `2026-10-12` | `.dmg`          | [**macOS (Apple Silicon) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.3_aarch64.dmg) |
+| **Windows** | x64 (64-bit)  | `1.1.3` | `2026-10-12` | `.exe` / `.msi` | [**Windows (x64) 다운로드**](https://github.com/monodle/fontfinder/releases/download/latest/Font.Finder_1.1.3_x64-setup.exe)       |
 
 > 💡 지난 버전 및 상세 변경 이력은 [Releases 페이지](https://github.com/monodle/fontfinder/releases)에서도 확인하실 수 있습니다.
 
